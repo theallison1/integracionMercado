@@ -1,0 +1,13 @@
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/CardPaymentJavaSampleApplication.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/dto/PaymentResponseDTO.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/controller/TemplateController.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/dto/CardPaymentDTO.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/service/CardPaymentService.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/exception/Advisor.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/config/BeansConfig.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/config/SwaggerConfig.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/dto/PayerDTO.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/config/config.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/exception/MercadoPagoException.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/controller/CardPaymentController.java
+/home/admin1/Escritorio/card-payment-bricks-sample-java-main/src/main/java/com/mercadopago/sample/dto/PayerIdentificationDTO.java
