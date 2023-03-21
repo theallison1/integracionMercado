@@ -13,12 +13,42 @@ async function loadPaymentForm() {
                 console.log('brick ready')
             },
             onError: (error) => {
-                alert(JSON.stringify(error))
+                alert(JSON.stringify("errorlllllll"))
             },
             onSubmit: (cardFormData) => {
-                alert(JSON.stringify(cardFormData));
 
-                proccessPayment(cardFormData)
+                alert("entra ala funcion");
+                  fetch('http://localhost:8080/process_payment', {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify(cardFormData)
+                                })
+                                  .then((response) => {
+                                    // recibir el resultado del pago
+                                    alert(JSON.stringify(response));
+                                    return response.json();
+                                  })
+                                  .then(result => {
+                                                           if(!result.hasOwnProperty("error_message")) {
+                                                               document.getElementById("payment-id").innerText = result.id;
+                                                               document.getElementById("payment-status").innerText = result.status;
+                                                               document.getElementById("payment-detail").innerText = result.detail;
+                                                               $('.container__payment').fadeOut(500);
+                                                               setTimeout(() => { $('.container__result').show(500).fadeIn(); }, 500);
+                                                           } else {
+                                                               alert(JSON.stringify({
+                                                                   status: result.status,
+                                                                   message: result.error_message
+                                                               }))
+                                                           }
+                                                       })
+                                  .catch((error) => {
+                                    // manejar la respuesta de error al intentar crear el pago
+                                    alert(JSON.stringify(error.status));
+
+                                  });
             }
         },
         locale: 'es-AR',
@@ -43,24 +73,41 @@ async function loadPaymentForm() {
      
 };
 
-const proccessPayment = (cardFormData) => {
-                                       alert(JSON.stringify(cardFormData));
-
-    fetch("http://localhost:8080/process_payment/holis", {
-        method: "GET",
- body: JSON.stringify(cardFormData),
-  headers: {"Content-type": "application/json; "}
-
-
-    })
-    .then(response => {
-        return response.json();
-    })
-    .catch(error => {
-
+ const proccessPayment = (cardFormData) => {
+ alert("entra ala funcion");
+ fetch('http://localhost:8080/process_payment', {
+                 method: "POST",
+                 headers: {
+                   "Content-Type": "application/json",
+                 },
+                 body: JSON.stringify(cardFormData)
+               })
+                 .then((response) => {
+                   // recibir el resultado del pago
+                   alert(JSON.stringify(response));
+                return response.json();
+                 })
+                 .then(result => {
+                         if(!result.hasOwnProperty("error_message")) {
+                             document.getElementById("payment-id").innerText = result.id;
+                             document.getElementById("payment-status").innerText = result.status;
+                             document.getElementById("payment-detail").innerText = result.detail;
+                             $('.container__payment').fadeOut(500);
+                             setTimeout(() => { $('.container__result').show(500).fadeIn(); }, 500);
+                         } else {
+                             alert(JSON.stringify({
+                                 status: result.status,
+                                 message: result.error_message
+                             }))
+                         }
+                     })
+                 .catch((error) => {
+                   // manejar la respuesta de error al intentar crear el pago
+                   alert(JSON.stringify(error.status));
         alert("Unexpected error\n"+JSON.stringify(error));
-    });
+                 })
 }
+
 
 // Handle transitions
 document.getElementById('checkout-btn').addEventListener('click', function(){

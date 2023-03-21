@@ -31,11 +31,8 @@ public class CardPaymentController {
 
     @CrossOrigin(origins = "http://localhost:8080")
     @PostMapping
-    public ResponseEntity<PaymentResponseDTO> processPayment(@RequestBody @Valid CardPaymentDTO cardPaymentDTO) {
-
-
-
-
+    public ResponseEntity<PaymentResponseDTO> processPayment(@RequestBody  CardPaymentDTO cardPaymentDTO) {
+        LOGGER.info(cardPaymentDTO.toString());
 
         PaymentResponseDTO payment = cardPaymentService.processPayment(cardPaymentDTO);
         LOGGER.info(payment.getStatus().toString());
@@ -44,7 +41,7 @@ public class CardPaymentController {
 
 
     @GetMapping(value = "/holis")
-    public ResponseEntity<String> getAuthenticationRequest( @RequestBody @Valid CardPaymentDTO cardPaymentDTO) {
+    public ResponseEntity<String> getAuthenticationRequest( ) {
 
         LOGGER.info("entro al controller----------------------");
         LOGGER.info("entro al controller----------------------");
