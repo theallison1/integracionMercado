@@ -15,15 +15,16 @@ async function loadPaymentForm() {
             onError: (error) => {
                 alert(JSON.stringify("errorlllllll"))
             },
-            onSubmit: (cardFormData) => {
+            onSubmit: ({ selectedPaymentMethod, formData }) => {
 
                 alert("entra ala funcion");
+                alert(JSON.stringify(formData));
                   fetch('http://localhost:8080/process_payment', {
                                   method: "POST",
                                   headers: {
                                     "Content-Type": "application/json",
                                   },
-                                  body: JSON.stringify(cardFormData)
+                                  body: JSON.stringify(formData)
                                 })
                                   .then((response) => {
                                     // recibir el resultado del pago
@@ -32,11 +33,8 @@ async function loadPaymentForm() {
                                   })
                                   .then(result => {
                                                            if(!result.hasOwnProperty("error_message")) {
-                                                               document.getElementById("payment-id").innerText = result.id;
-                                                               document.getElementById("payment-status").innerText = result.status;
-                                                               document.getElementById("payment-detail").innerText = result.detail;
-                                                               $('.container__payment').fadeOut(500);
-                                                               setTimeout(() => { $('.container__result').show(500).fadeIn(); }, 500);
+                                                           const bricksBuilder = mp.bricks();
+                                                              renderStatusScreenBrick(bricksBuilder);
                                                            } else {
                                                                alert(JSON.stringify({
                                                                    status: result.status,
@@ -53,8 +51,11 @@ async function loadPaymentForm() {
         },
         locale: 'es-AR',
         customization: {
-            paymentMethods: {
-                maxInstallments: 5
+           paymentMethods: {
+                      creditCard: 'all',
+                      debitCard: 'all',
+                      ticket: 'all',
+                      walletPurchase: 'all'
             },
             visual: {
                 style: {
@@ -69,44 +70,10 @@ async function loadPaymentForm() {
     }
 
     const bricks = mercadopago.bricks();
-    cardPaymentBrickController = await bricks.create('cardPayment', 'mercadopago-bricks-contaner__PaymentCard', settings);
+    cardPaymentBrickController = await bricks.create('payment', 'mercadopago-bricks-contaner__PaymentCard', settings);
+
      
 };
-
- const proccessPayment = (cardFormData) => {
- alert("entra ala funcion");
- fetch('http://localhost:8080/process_payment', {
-                 method: "POST",
-                 headers: {
-                   "Content-Type": "application/json",
-                 },
-                 body: JSON.stringify(cardFormData)
-               })
-                 .then((response) => {
-                   // recibir el resultado del pago
-                   alert(JSON.stringify(response));
-                return response.json();
-                 })
-                 .then(result => {
-                         if(!result.hasOwnProperty("error_message")) {
-                             document.getElementById("payment-id").innerText = result.id;
-                             document.getElementById("payment-status").innerText = result.status;
-                             document.getElementById("payment-detail").innerText = result.detail;
-                             $('.container__payment').fadeOut(500);
-                             setTimeout(() => { $('.container__result').show(500).fadeIn(); }, 500);
-                         } else {
-                             alert(JSON.stringify({
-                                 status: result.status,
-                                 message: result.error_message
-                             }))
-                         }
-                     })
-                 .catch((error) => {
-                   // manejar la respuesta de error al intentar crear el pago
-                   alert(JSON.stringify(error.status));
-        alert("Unexpected error\n"+JSON.stringify(error));
-                 })
-}
 
 
 // Handle transitions
@@ -134,6 +101,27 @@ function updatePrice(){
     document.getElementById('summary-quantity').innerText = quantity;
     document.getElementById('summary-total').innerText = '$ ' + amount;
     document.getElementById('amount').value = amount;
+};
+function  renderStatusScreenBrick (bricksBuilder) {
+ let id =document.getElementById("payment-id").value;
+const settings = {
+  initialization: {
+    paymentId: id, // id de pago generado por Mercado Pago
+  },
+  callbacks: {
+    onReady: () => {
+      // callback llamado cuando Brick está listo
+    },
+    onError: (error) => {
+      // callback llamado para todos los casos de error de Brick
+    },
+  },
+};
+window.statusBrickController =  bricksBuilder.create(
+  'statusScreen',
+  'container container__result',
+  settings
+);
 };
 
 

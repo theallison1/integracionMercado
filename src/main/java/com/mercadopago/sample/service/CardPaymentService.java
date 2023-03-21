@@ -5,6 +5,7 @@ import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.payment.PaymentCreateRequest;
 import com.mercadopago.client.payment.PaymentPayerRequest;
+import com.mercadopago.client.preference.PreferenceBackUrlsRequest;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceItemRequest;
 import com.mercadopago.client.preference.PreferenceRequest;
@@ -34,18 +35,19 @@ public class CardPaymentService {
         try {
             MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
 
-            PaymentClient paymentClient = new PaymentClient();
-            PreferenceClient client = new PreferenceClient();
+            PaymentClient client = new PaymentClient();
 
             PaymentCreateRequest paymentCreateRequest =
                     PaymentCreateRequest.builder()
                             .transactionAmount(cardPaymentDTO.getTransactionAmount())
                             .token(cardPaymentDTO.getToken())
+                            .description(cardPaymentDTO.getProductDescription())
                             .installments(cardPaymentDTO.getInstallments())
                             .paymentMethodId(cardPaymentDTO.getPaymentMethodId())
                             .payer(
                                     PaymentPayerRequest.builder()
                                             .email(cardPaymentDTO.getPayer().getEmail())
+                                            .firstName(cardPaymentDTO.getPayer().getIdentification().getType())
                                             .identification(
                                                     IdentificationRequest.builder()
                                                             .type(cardPaymentDTO.getPayer().getIdentification().getType())
@@ -54,30 +56,15 @@ public class CardPaymentService {
                                             .build())
                             .build();
 
-            // Create an item in the preference
-            List<PreferenceItemRequest> items = new ArrayList<>();
-            PreferenceItemRequest item =
-                    PreferenceItemRequest.builder()
-                            .title("Meu produto")
-                            .quantity(1)
-                            .unitPrice(new BigDecimal("100"))
-                            .build();
-            items.add(item);
-            PreferenceRequest request = PreferenceRequest.builder()
-                    // the .purpose('wallet_purchase') only allows logged payments
-                    // to allow guest payments you can omit this line
-                    .purpose("wallet_purchase")
-                    .items(items).build();
+            Payment payment= client.create(paymentCreateRequest);
 
-            Payment createdPayment = paymentClient.create(paymentCreateRequest);
-            client.create(request);
-            LOGGER.info(createdPayment.getStatus().toString());
-            LOGGER.info("entro aaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+
 
             return new PaymentResponseDTO(
-                    createdPayment.getId(),
-                    String.valueOf(createdPayment.getStatus()),
-                    createdPayment.getStatusDetail());
+                    payment.getId(),
+                    String.valueOf(payment.getStatus()),
+                    payment.getStatusDetail());
         } catch (MPApiException apiException) {
             System.out.println(apiException.getApiResponse().getContent());
             throw new MercadoPagoException(apiException.getApiResponse().getContent());
