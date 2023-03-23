@@ -6,6 +6,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
         <link rel="stylesheet" type="text/css" href="css/index.css">
+        <script  src="https://sdk.mercadopago.com/js/v2"></script>
+
     </head>
     <body>
         <input id="mercado-pago-public-key" value="{{TEST-2faa9e28-88fe-426b-a97c-24c2234205ae}}" type="hidden" />
@@ -92,34 +94,39 @@
                         <h2>Payment Result</h2>
                         <p>This is an example of Mercado Pago Card Payment Brick Integration</p>
                     </div>
+
+
                     <div class="content">
                         <div class="row">
                             <div class="col-md-12 col-lg-12">
                                 <div class="items product info product-details">
                                     <div class="row justify-content-md-center">
                                         <div class="col-md-4 product-detail">
-                                            <div class="product-info">
-                                                <br>
-                                                <p><b>ID: </b><span id="payment-id"></span></p>
-                                                <p><b>Status: </b><span id="payment-status"></span></p>
-                                                <p><b>Detail: </b><span id="payment-detail"></span></p>
-                                                <br>
-                                            </div>
+
+                                            <div id="statusScreenBrick_container"></div>
+
+
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
                 </div>
+
             </section>
         </main>
         <footer>
-            <div class="footer_logo"><img id="horizontal_logo" src="img/horizontal_logo.png"></div>
+            <div class="footer_logo"><img id="horizontal_logo" src="img/horizontal_logo.png" alt=""></div>
 
         </footer>
+
     </body>
+
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-    <script src="https://sdk.mercadopago.com/js/v2"></script>
+    <script  src="https://sdk.mercadopago.com/js/v2"></script>
+
     <script type="text/javascript" src="js/index.js" defer></script>
 </html>
