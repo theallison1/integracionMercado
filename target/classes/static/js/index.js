@@ -1,27 +1,29 @@
 const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key").value;
 const mercadopago = new MercadoPago('TEST-2faa9e28-88fe-426b-a97c-24c2234205ae');
 let cardPaymentBrickController;
-       const bricksBuilder = mercadopago.bricks();
-           const renderStatusScreenBrick = async (bricksBuilder,result)  => {
+const bricksBuilder = mercadopago.bricks();
+const renderStatusScreenBrick = async (bricksBuilder, result) => {
 
 
-         var message = "";
-         message =result.id;
+    var message = "";
+    message = result.id;
 
-               window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container',  {
-                     initialization: {
-                    paymentId:       message       },
-                          callbacks: {
-                        onReady: () => {
-                          // handle form ready
-                              },onError: (error) => {
-            // handle error
+    window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
+        initialization: {
+            paymentId: message
+        },
+        callbacks: {
+            onReady: () => {
+                // handle form ready
+            },
+            onError: (error) => {
+                // handle error
+            }
         }
-    }
-});
-           };
+    });
+};
 
- function loadPaymentForm() {
+function loadPaymentForm() {
     const productCost = document.getElementById('amount').value;
     const settings = {
         initialization: {
@@ -34,51 +36,56 @@ let cardPaymentBrickController;
             onError: (error) => {
                 alert(JSON.stringify("errorlllllll"))
             },
-            onSubmit: ({ selectedPaymentMethod, formData }) => {
+            onSubmit: ({
+                selectedPaymentMethod,
+                formData
+            }) => {
 
                 alert("entra ala funcion");
                 alert(JSON.stringify(formData));
-                  fetch('http://localhost:8080/process_payment', {
-                                  method: "POST",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify(formData)
-                                })
-                                  .then((response) => {
-                                    // recibir el resultado del pago
-                                    alert(JSON.stringify(response));
-                                    return response.json();
-                                  })
-                                  .then(result => {
-                                                           if(!result.hasOwnProperty("error_message")) {
-                                                               renderStatusScreenBrick(bricksBuilder,result);
-                                                              alert("deberia renderisar");
+                fetch('http://localhost:8080/process_payment', {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(formData)
+                    })
+                    .then((response) => {
+                        // recibir el resultado del pago
+                        alert(JSON.stringify(response));
+                        return response.json();
+                    })
+                    .then(result => {
+                        if (!result.hasOwnProperty("error_message")) {
+                            renderStatusScreenBrick(bricksBuilder, result);
+                            alert("deberia renderisar");
 
-                                                                 $('.container__payment').fadeOut(500);
-                                                                   setTimeout(() => { $('.container__result').show(500).fadeIn(); }, 500);
+                            $('.container__payment').fadeOut(500);
+                            setTimeout(() => {
+                                $('.container__result').show(500).fadeIn();
+                            }, 500);
 
-                                                           } else {
-                                                               alert(JSON.stringify({
-                                                                   status: result.status,
-                                                                   message: result.error_message
-                                                               }))
-                                                           }
-                                                       })
-                                  .catch((error) => {
-                                    // manejar la respuesta de error al intentar crear el pago
-                                    alert(JSON.stringify(error.status));
+                        } else {
+                            alert(JSON.stringify({
+                                status: result.status,
+                                message: result.error_message
+                            }))
+                        }
+                    })
+                    .catch((error) => {
+                        // manejar la respuesta de error al intentar crear el pago
+                        alert(JSON.stringify(error.status));
 
-                                  });
+                    });
             }
         },
         locale: 'es-AR',
         customization: {
-           paymentMethods: {
-                      creditCard: 'all',
-                      debitCard: 'all',
-                      ticket: 'all',
-                      walletPurchase: 'all'
+            paymentMethods: {
+                creditCard: 'all',
+                debitCard: 'all',
+                ticket: 'all',
+                walletPurchase: 'all'
             },
             visual: {
                 style: {
@@ -93,7 +100,7 @@ let cardPaymentBrickController;
     }
 
     const bricks = mercadopago.bricks();
-    cardPaymentBrickController =  bricks.create('payment', 'mercadopago-bricks-contaner__PaymentCard', settings);
+    cardPaymentBrickController = bricks.create('payment', 'mercadopago-bricks-contaner__PaymentCard', settings);
 
 
 };
@@ -102,7 +109,7 @@ let cardPaymentBrickController;
 
 
 // Handle transitions
-document.getElementById('checkout-btn').addEventListener('click', function(){
+document.getElementById('checkout-btn').addEventListener('click', function() {
     $('.container__cart').fadeOut(500);
     setTimeout(() => {
         loadPaymentForm();
@@ -110,13 +117,15 @@ document.getElementById('checkout-btn').addEventListener('click', function(){
     }, 500);
 });
 
-document.getElementById('go-back').addEventListener('click', function(){
+document.getElementById('go-back').addEventListener('click', function() {
     $('.container__payment').fadeOut(500);
-    setTimeout(() => { $('.container__cart').show(500).fadeIn(); }, 500);
+    setTimeout(() => {
+        $('.container__cart').show(500).fadeIn();
+    }, 500);
 });
 
 // Handle price update
-function updatePrice(){
+function updatePrice() {
     let quantity = document.getElementById('quantity').value;
     let unitPrice = document.getElementById('unit-price').innerText;
     let amount = parseInt(unitPrice) * parseInt(quantity);
