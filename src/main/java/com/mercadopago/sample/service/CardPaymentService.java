@@ -15,6 +15,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 @Service
 public class CardPaymentService {
@@ -65,4 +72,30 @@ public class CardPaymentService {
             throw new MercadoPagoException(exception.getMessage());
         }
     }
-}
+
+
+    public Payment getPaymentById(Long paymentId) throws MPException, MPApiException {
+        MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+        PaymentClient client = new PaymentClient();
+        return client.get(paymentId);
+    }
+
+    public byte[] generateReceiptPdf(Payment payment) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PdfWriter writer = new PdfWriter(baos);
+        PdfDocument pdfDocument = new PdfDocument(writer);
+        Document document = new Document(pdfDocument);
+
+        document.add(new Paragraph("Payment Receipt")
+                .setFontSize(18)
+                .setBold());
+        document.add(new Paragraph("ID de operacion: " + payment.getId()));
+        document.add(new Paragraph("Fecha de transaccion: " + payment.getDateCreated()));
+        document.add(new Paragraph("Precio: " + payment.getTransactionAmount()));
+        document.add(new Paragraph("Status: " + payment.getStatus()));
+
+        document.close();
+        return baos.toByteArray();
+    }
+    }
+

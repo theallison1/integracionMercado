@@ -41,6 +41,23 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>itext7-core</artifactId>
+            <version>7.2.6</version> <!-- O la versión más reciente -->
+        </dependency>
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>itext7-fonts</artifactId>
+            <version>7.2.6</version> <!-- O la versión más reciente -->
+        </dependency>
+
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>itext7-svg</artifactId>
+            <version>7.2.6</version> <!-- O la versión más reciente -->
+        </dependency>
+
+        <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>

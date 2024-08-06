@@ -1,5 +1,6 @@
 package com.mercadopago.sample.controller;
 
+import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.sample.dto.CardPaymentDTO;
 import com.mercadopago.sample.dto.PayerDTO;
 import com.mercadopago.sample.dto.PayerIdentificationDTO;
@@ -7,11 +8,14 @@ import com.mercadopago.sample.dto.PaymentResponseDTO;
 import com.mercadopago.sample.service.CardPaymentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 
 @RestController
@@ -34,8 +38,23 @@ public class CardPaymentController {
         LOGGER.info(payment.getId().toString());
         return ResponseEntity.status(HttpStatus.CREATED).body(payment);
     }
+    // Método para obtener el comprobante del pago y devolverlo como archivo PDF
+    @GetMapping("/download_receipt/{paymentId}")
+    public ResponseEntity<byte[]> downloadReceipt(@PathVariable Long paymentId) {
+        try {
+            Payment payment = cardPaymentService.getPaymentById(paymentId);
+            byte[] pdfContent = cardPaymentService.generateReceiptPdf(payment);
 
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(ContentDisposition.attachment().filename("receipt.pdf").build());
 
+            return new ResponseEntity<>(pdfContent, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            LOGGER.error("Error generating receipt", e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
     @GetMapping(value = "/holis")
     public ResponseEntity<String> getAuthenticationRequest( ) {
 
