@@ -12,9 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.Valid;
-import java.io.IOException;
 import java.math.BigDecimal;
 
 @RestController
@@ -34,7 +31,7 @@ public class CardPaymentController {
         LOGGER.info(cardPaymentDTO.toString());
 
         PaymentResponseDTO payment = cardPaymentService.processPayment(cardPaymentDTO);
-        LOGGER.info(payment.getStatus().toString());
+        LOGGER.info(payment.getId().toString());
         return ResponseEntity.status(HttpStatus.CREATED).body(payment);
     }
 
