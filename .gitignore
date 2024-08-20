@@ -1,0 +1,14 @@
+# Archivos y carpetas generados por la compilación
+/target/
+
+# Archivos de configuración de IntelliJ IDEA
+/.idea/
+/*.iml
+/.classpath
+/.project
+/.settings/
+
+# Archivos de sistema operativo
+*.log
+.DS_Store
+Thumbs.db
