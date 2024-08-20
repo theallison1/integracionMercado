@@ -93,6 +93,11 @@ public class CardPaymentService {
         document.add(new Paragraph("Fecha de transaccion: " + payment.getDateCreated()));
         document.add(new Paragraph("Precio: " + payment.getTransactionAmount()));
         document.add(new Paragraph("Status: " + payment.getStatus()));
+        document.add(new Paragraph("Descripcion : " + payment.getDescription()));
+        document.add(new Paragraph(" Nombre : " + payment.getPayer().getFirstName()));
+        document.add(new Paragraph(" Apellido : " + payment.getPayer().getLastName()));
+        document.add(new Paragraph(" Email : " + payment.getPayer().getEmail()));
+        document.add(new Paragraph(" Tipo de identificacion del pagador : " + payment.getPayer().getIdentification().getType()));
 
         document.close();
         return baos.toByteArray();

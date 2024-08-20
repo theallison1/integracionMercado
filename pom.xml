@@ -40,21 +40,12 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.itextpdf/itext7-core -->
         <dependency>
             <groupId>com.itextpdf</groupId>
             <artifactId>itext7-core</artifactId>
-            <version>7.2.6</version> <!-- O la versión más reciente -->
-        </dependency>
-        <dependency>
-            <groupId>com.itextpdf</groupId>
-            <artifactId>itext7-fonts</artifactId>
-            <version>7.2.6</version> <!-- O la versión más reciente -->
-        </dependency>
-
-        <dependency>
-            <groupId>com.itextpdf</groupId>
-            <artifactId>itext7-svg</artifactId>
-            <version>7.2.6</version> <!-- O la versión más reciente -->
+            <version>8.0.5</version>
+            <type>pom</type>
         </dependency>
 
         <dependency>

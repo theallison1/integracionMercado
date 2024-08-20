@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key").value;
+    const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key")?.value;
     if (!mercadoPagoPublicKey) {
         console.error('Mercado Pago public key not found');
         return;
@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     let cardPaymentBrickController;
+    let isPaymentBrickInitialized = false; // Variable para verificar si el Brick ya está inicializado
     const bricksBuilder = mercadopago.bricks();
 
     const renderStatusScreenBrick = async (bricksBuilder, result) => {
@@ -34,14 +35,23 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function loadPaymentForm() {
-        const productCost = document.getElementById('amount').value;
+        if (isPaymentBrickInitialized) return; // Evita inicializar el Brick si ya está inicializado
+
+        const productCost = document.getElementById('amount')?.value;
+        if (!productCost) {
+            console.error('Amount field not found or empty');
+            return;
+        }
+
         const settings = {
             initialization: {
                 amount: productCost,
+
             },
             callbacks: {
                 onReady: () => {
                     console.log('Payment Brick ready');
+                    isPaymentBrickInitialized = true; // Marca el Brick como inicializado
                 },
                 onError: (error) => {
                     console.error('Error initializing payment brick:', error);
@@ -58,12 +68,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         const result = await response.json();
 
-                        if (!result.hasOwnProperty("error_message")) {
+                        if (!result.error_message) {
                             await renderStatusScreenBrick(bricksBuilder, result);
-                            $('.container__payment').fadeOut(500);
-                            setTimeout(() => {
-                                $('.container__result').show(500).fadeIn();
-                            }, 500);
+                            $('.container__payment').fadeIn(500);
+                            $('.container__cart').fadeOut(500);
                             window.paymentId = result.id;
                         } else {
                             console.error('Payment error:', result.error_message);
@@ -81,10 +89,12 @@ document.addEventListener('DOMContentLoaded', function() {
             locale: 'es-AR',
             customization: {
                 paymentMethods: {
-                    creditCard: 'all',
-                    debitCard: 'all',
-                    ticket: 'all',
-                    walletPurchase: 'all'
+                    creditCard: "all",
+                    debitCard: "all",
+                    ticket: "all",
+                    bankTransfer: "all",
+                    atm: "all",
+                    mercadoPago: "all"
                 },
                 visual: {
                     style: {
@@ -107,25 +117,45 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    document.getElementById('checkout-btn').addEventListener('click', function() {
-        $('.container__cart').fadeOut(500);
-        setTimeout(() => {
-            loadPaymentForm();
-            $('.container__payment').show(500).fadeIn();
-        }, 500);
-    });
+    // Verifica la existencia del botón "checkout-btn" antes de añadir el event listener
+    const checkoutBtn = document.getElementById('checkout-btn');
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', function() {
+            $('.container__cart').fadeOut(500);
+            setTimeout(() => {
+                loadPaymentForm();
+                $('.container__payment').fadeIn(500);
+            }, 500);
+        });
+    } else {
+        console.error('Elemento "checkout-btn" no encontrado');
+    }
 
-    document.getElementById('go-back').addEventListener('click', function() {
-        $('.container__payment').fadeOut(500);
-        setTimeout(() => {
-            $('.container__cart').show(500).fadeIn();
-        }, 500);
-    });
+    // Verifica la existencia del botón "go-back" antes de añadir el event listener
+    const goBackBtn = document.getElementById('go-back');
+    if (goBackBtn) {
+        goBackBtn.addEventListener('click', function() {
+            $('.container__payment').fadeOut(500);
+            setTimeout(() => {
+                $('.container__cart').fadeIn(500);
+            }, 500);
+        });
+    } else {
+        console.error('Elemento "go-back" no encontrado');
+    }
+
+    // Verifica la existencia del input "quantity" antes de añadir el event listener
+    const quantityInput = document.getElementById('quantity');
+    if (quantityInput) {
+        quantityInput.addEventListener('change', updatePrice);
+    } else {
+        console.error('Elemento "quantity" no encontrado');
+    }
 
     function updatePrice() {
-        let quantity = document.getElementById('quantity').value;
-        let unitPrice = document.getElementById('unit-price').innerText;
-        let amount = parseInt(unitPrice) * parseInt(quantity);
+        const quantity = parseInt(document.getElementById('quantity')?.value) || 1;
+        const unitPrice = parseInt(document.getElementById('unit-price')?.innerText) || 0;
+        const amount = quantity * unitPrice;
 
         document.getElementById('cart-total').innerText = '$ ' + amount;
         document.getElementById('summary-price').innerText = '$ ' + unitPrice;
@@ -134,31 +164,36 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('amount').value = amount;
     }
 
-    document.getElementById('quantity').addEventListener('change', updatePrice);
     updatePrice();
 
-    document.getElementById('download-receipt').addEventListener('click', function() {
-        const paymentId = window.paymentId;
-        if (!paymentId) {
-            console.error('Payment ID not found');
-            return;
-        }
+    // Verifica la existencia del botón "download-receipt" antes de añadir el event listener
+    const downloadReceiptBtn = document.getElementById('download-receipt');
+    if (downloadReceiptBtn) {
+        downloadReceiptBtn.addEventListener('click', function() {
+            const paymentId = window.paymentId;
+            if (!paymentId) {
+                console.error('Payment ID not found');
+                return;
+            }
 
-        const url = `http://localhost:8080//process_payment/download_receipt/${paymentId}`;
-        fetch(url)
-            .then(response => response.blob())
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'comprobante.pdf'; // Cambia el nombre del archivo si es necesario
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(error => {
-                console.error('Error downloading receipt:', error);
-            });
-    });
+            const url = `http://localhost:8080/process_payment/download_receipt/${paymentId}`;
+            fetch(url)
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'comprobante.pdf'; // Cambia el nombre del archivo si es necesario
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    console.error('Error downloading receipt:', error);
+                });
+        });
+    } else {
+        console.error('Elemento "download-receipt" no encontrado');
+    }
 });
