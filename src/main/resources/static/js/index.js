@@ -2,15 +2,18 @@ const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key").
 const mercadopago = new MercadoPago('TEST-2faa9e28-88fe-426b-a97c-24c2234205ae');
 let cardPaymentBrickController;
 const bricksBuilder = mercadopago.bricks();
+let paymentId;
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
 
 
     var message = "";
     message = result.id;
+    paymentId = result.id;
+    alert(paymentId);
 
     window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
         initialization: {
-            paymentId: message
+            paymentId: paymentId
         },
         callbacks: {
             onReady: () => {
@@ -43,7 +46,7 @@ function loadPaymentForm() {
 
                 alert("entra ala funcion");
                 alert(JSON.stringify(formData));
-                fetch('http://localhost:8080/process_payment', {
+                fetch('/process_payment', {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -53,6 +56,7 @@ function loadPaymentForm() {
                     .then((response) => {
                         // recibir el resultado del pago
                         alert(JSON.stringify(response));
+
                         return response.json();
                     })
                     .then(result => {
@@ -141,3 +145,35 @@ function updatePrice() {
 
 document.getElementById('quantity').addEventListener('change', updatePrice);
 updatePrice();
+// Verifica la existencia del botón "download-receipt" antes de añadir el event listener
+const downloadReceiptBtn = document.getElementById('download-receipt');
+if (downloadReceiptBtn) {
+    downloadReceiptBtn.addEventListener('click', function() {
+        alert(paymentId);
+        document.getElementById('amount').value = amount;
+
+        if (!paymentId) {
+            console.error('Payment ID not found');
+            return;
+        }
+
+        const url = `/process_payment/download_receipt/${paymentId}`;
+        fetch(url)
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'comprobante.pdf'; // Cambia el nombre del archivo si es necesario
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                console.error('Error downloading receipt:', error);
+            });
+    });
+} else {
+    console.error('Elemento "download-receipt" no encontrado');
+};
