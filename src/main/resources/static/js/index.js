@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 onSubmit: async ({ selectedPaymentMethod, formData }) => {
                     try {
-                        const response = await fetch('http://localhost:8080/process_payment', {
+                        const response = await fetch('/process_payment', {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const url = `http://localhost:8080/process_payment/download_receipt/${paymentId}`;
+            const url = `/process_payment/download_receipt/${paymentId}`;
             fetch(url)
                 .then(response => response.blob())
                 .then(blob => {
