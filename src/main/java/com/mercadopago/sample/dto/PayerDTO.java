@@ -9,9 +9,14 @@ public class PayerDTO {
     @NotNull
     private PayerIdentificationDTO identification;
 
+    private String firstName;
+    
+    private String lastName;
+
     public PayerDTO() {
     }
 
+    // Getters y Setters
     public String getEmail() {
         return email;
     }
@@ -26,5 +31,21 @@ public class PayerDTO {
 
     public void setIdentification(PayerIdentificationDTO identification) {
         this.identification = identification;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 }
