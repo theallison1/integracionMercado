@@ -1,40 +1,188 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Millenium</title>
+    <title>Termotanques Millenium</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="css/index.css">
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
-        .product-card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            transition: transform 0.3s;
-            background: white;
+        :root {
+            --primary-color: #d4af37;
+            --secondary-color: #c1272d;
+            --dark-bg: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-light: #ffffff;
+            --text-muted: #b0b0b0;
         }
+        
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-light);
+            font-family: 'Arial', sans-serif;
+        }
+
+        .product-card {
+            background: var(--card-bg);
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
         .product-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+            border-color: var(--primary-color);
         }
+
         .product-image {
             max-height: 200px;
             object-fit: cover;
-            border-radius: 5px;
+            border-radius: 8px;
             width: 100%;
+            border: 2px solid #444;
         }
+
+        .product-image:hover {
+            border-color: var(--primary-color);
+        }
+
         .quantity-control {
             max-width: 100px;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: var(--text-light);
+            text-align: center;
         }
-        .event-theme {
-            background: linear-gradient(135deg, #ff0000, #ff9900);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
+
+        .quantity-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(212, 175, 55, 0.25);
+        }
+
+        .btn-outline-primary {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: var(--dark-bg);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), #e6c158);
+            border: none;
+            color: var(--dark-bg);
             font-weight: bold;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #e6c158, var(--primary-color));
+            transform: translateY(-2px);
+        }
+
+        .event-theme {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .summary {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #444;
+        }
+
+        .block-heading h2 {
+            color: var(--primary-color);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .block-heading p {
+            color: var(--text-muted);
+        }
+
+        .badge-info {
+            background-color: var(--primary-color);
+            color: var(--dark-bg);
+        }
+
+        .text-primary {
+            color: var(--primary-color) !important;
+        }
+
+        .border-bottom {
+            border-bottom: 1px solid #444 !important;
+        }
+
+        .form-control {
+            background-color: #3a3a3a;
+            border: 1px solid #555;
+            color: var(--text-light);
+        }
+
+        .form-control:focus {
+            background-color: #444;
+            border-color: var(--primary-color);
+            color: var(--text-light);
+            box-shadow: 0 0 0 0.2rem rgba(212, 175, 55, 0.25);
+        }
+
+        /* Estilos para el carrito */
+        .cart-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        /* Scroll personalizado */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #e6c158;
+        }
+
+        /* Efectos de texto */
+        h2, h3, h4, h5, h6 {
+            color: var(--primary-color);
+        }
+
+        .price {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .unit-price {
+            color: var(--primary-color);
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        /* Feedback animations */
+        .feedback-message {
+            transition: all 0.3s ease;
         }
     </style>
 </head>
@@ -44,9 +192,9 @@
     <!-- Shopping Cart -->
     <section class="shopping-cart dark">
         <div class="container container__cart">
-            <div class="block-heading">
-                <h2><span class="event-theme">China con África</span></h2>
-                <p>Festival Cultural - Entradas Disponibles</p>
+            <div class="block-heading text-center">
+                <h2><span class="event-theme">milleniumtermotanques</span></h2>
+                <p>Calidad en Termotanques - Productos Disponibles</p>
             </div>
             <div class="content">
                 <div class="row">
@@ -57,12 +205,17 @@
                     </div>
                     <div class="col-md-12 col-lg-4">
                         <div class="summary">
-                            <h3>Tu Carrito</h3>
+                            <h3 class="text-center mb-4">🛒 Tu Carrito</h3>
                             <div id="cart-items">
                                 <!-- Ítems del carrito se cargan aquí -->
                             </div>
-                            <div class="summary-item"><span class="text">Subtotal</span><span class="price" id="cart-total">$0</span></div>
-                            <button class="btn btn-primary btn-lg btn-block" id="checkout-btn" disabled>Ir a Pagar</button>
+                            <div class="summary-item mt-3 pt-3 border-top">
+                                <span class="text">Subtotal</span>
+                                <span class="price" id="cart-total">$0</span>
+                            </div>
+                            <button class="btn btn-primary btn-lg btn-block mt-4" id="checkout-btn" disabled>
+                                💳 Ir a Pagar
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -71,11 +224,11 @@
     </section>
 
     <!-- Las secciones de Payment y Result se mantienen igual -->
-    <section class="payment-form dark">
+    <section class="payment-form dark" style="display: none;">
         <div class="container__payment">
-            <div class="block-heading">
+            <div class="block-heading text-center">
                 <h2>Medios de Pago</h2>
-                <p>CHINA CON ÁFRICA</p>
+                <p>MILLENIUM TERMOTANQUES</p>
             </div>
             <div class="form-payment">
                 <div class="products">
@@ -88,21 +241,18 @@
                     <input type="hidden" id="description" />
                 </div>
                 <div id="mercadopago-bricks-contaner__PaymentCard"></div>
-                <a id="go-back">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 10 10" class="chevron-left">
-                        <path fill="#009EE3" fill-rule="nonzero" id="chevron_left" d="M7.05 1.4L6.2.552 1.756 4.997l4.449 4.448.849-.848-3.6-3.6z"></path>
-                    </svg>
-                    Volver al catálogo
+                <a id="go-back" class="btn btn-outline-primary mt-3">
+                    ← Volver al catálogo
                 </a>
             </div>
         </div>
     </section>
 
-    <section class="shopping-cart dark">
+    <section class="shopping-cart dark" style="display: none;">
         <div class="container container__result">
-            <div class="block-heading">
+            <div class="block-heading text-center">
                 <h2>Resultado del Pago</h2>
-                <p>China con África - Entradas</p>
+                <p>Millenium Termotanques - Compra</p>
             </div>
             <div class="content">
                 <div class="row">
@@ -125,62 +275,57 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 <script type="text/javascript" src="js/index.js" defer></script>
 <script>
-// Catálogo de entradas para el evento CHINA CON ÁFRICA
-const eventTickets = [
+// Catálogo de termotanques Millenium
+const products = [
     {
         id: 1,
-        name: "Entrada SMART - Día 1",
-        description: "Entrada SMART con tecnología avanzada. Acceso al evento principal del primer día con sonido de última generación.",
-        price: 2500,
+        name: "Termotanque SMART AI",
+        description: "Termotanque inteligente con tecnología SMART AI. Máxima eficiencia energética y control digital avanzado.",
+        price: 85000,
         image: "img/smart-1_orig.jpg.jpeg",
         category: "SMART",
-        date: "2024-04-05",
-        stock: 80,
-        features: ["Tecnología SMART AI", "Sonido premium", "Acceso prioritario"]
+        features: ["Tecnología SMART AI", "Control digital", "Eficiencia energética", "Garantía 5 años"],
+        stock: 15
     },
     {
         id: 2,
-        name: "Entrada Eléctrica - Todo el Evento",
-        description: "Entrada con acceso a todas las zonas eléctricas del evento. Incluye áreas techadas y servicio de catering.",
-        price: 3500,
+        name: "Termotanque Eléctrico Premium",
+        description: "Termotanque eléctrico de alto rendimiento. Ideal para hogares con consumo moderado de agua caliente.",
+        price: 45000,
         image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-24-56_orig.png",
-        category: "Eléctrica",
-        date: "2024-04-05 al 07",
-        stock: 60,
-        features: ["Acceso completo", "Zonas techadas", "Catering incluido"]
+        category: "Eléctrico",
+        features: ["Alto rendimiento", "Bajo consumo", "Fácil instalación", "Garantía 3 años"],
+        stock: 25
     },
     {
         id: 3,
-        name: "Entrada Caldera Mixta - VIP",
-        description: "Entrada VIP con acceso a zonas exclusivas. Combina lo mejor de ambos mundos: electricidad y gas con servicios premium.",
-        price: 6000,
+        name: "Termotanque Mixto Caldera",
+        description: "Sistema mixto caldera eléctrica y gas. Solución completa para alto consumo en hoteles y empresas.",
+        price: 120000,
         image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-24-23_orig.png",
-        category: "VIP Mixta",
-        date: "Todos los días",
-        stock: 40,
-        features: ["Zona VIP", "Meet & greet", "Souvenir exclusivo"]
+        category: "Mixto",
+        features: ["Doble sistema", "Alto caudal", "Ideal empresas", "Garantía 7 años"],
+        stock: 8
     },
     {
         id: 4,
-        name: "Entrada Multigas - Grupal",
-        description: "Entrada ideal para grupos. Acceso múltiple con beneficios especiales para disfrutar en compañía.",
-        price: 8000,
+        name: "Termotanque Multigas Industrial",
+        description: "Termotanque multigas para uso industrial. Capacidad elevada para grandes demandas de agua caliente.",
+        price: 150000,
         image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-25-23_orig.png",
-        category: "Grupal",
-        date: "Todos los días",
-        stock: 25,
-        features: ["Para 4 personas", "Descuento grupal", "Área social"]
+        category: "Industrial",
+        features: ["Uso industrial", "Multigas", "Gran capacidad", "Garantía 10 años"],
+        stock: 5
     },
     {
         id: 5,
-        name: "Entrada Estándar - Día 2",
-        description: "Entrada estándar para el segundo día del evento. Acceso a todas las actividades culturales y musicales.",
-        price: 1800,
-        image: "img/smart-1_orig.jpg.jpeg", // Puedes usar otra imagen
-        category: "Estándar",
-        date: "2024-04-06",
-        stock: 120,
-        features: ["Acceso general", "Actividades culturales", "Precio económico"]
+        name: "Termotanque Estándar Familiar",
+        description: "Termotanque estándar ideal para familias. Balance perfecto entre precio y rendimiento.",
+        price: 35000,
+        image: "img/smart-1_orig.jpg.jpeg",
+        category: "Familiar",
+        features: ["Económico", "Fácil mantenimiento", "Ideal familias", "Garantía 2 años"],
+        stock: 30
     }
 ];
 
@@ -192,7 +337,7 @@ function renderProducts() {
     const container = document.getElementById('products-container');
     container.innerHTML = '';
 
-    eventTickets.forEach(product => {
+    products.forEach(product => {
         const productElement = `
             <div class="product-card">
                 <div class="product">
@@ -203,18 +348,17 @@ function renderProducts() {
                                     <img class="img-fluid mx-auto d-block image product-image" 
                                          src="${product.image}" 
                                          alt="${product.name}"
-                                         onerror="this.src='img/placeholder-event.jpg'">
+                                         onerror="this.src='img/placeholder-product.jpg'">
                                 </div>
                                 <div class="col-md-5 product-detail">
                                     <h5 class="text-primary">${product.name}</h5>
                                     <div class="product-info">
-                                        <p><b>Descripción:</b> ${product.description}</p>
-                                        <p><b>Fecha:</b> ${product.date}</p>
-                                        <p><b>Categoría:</b> <span class="badge badge-info">${product.category}</span></p>
-                                        <p><b>Disponibles:</b> ${product.stock}</p>
-                                        <p><b>Precio:</b> $<span class="unit-price font-weight-bold">${product.price}</span></p>
+                                        <p class="mb-2">${product.description}</p>
+                                        <p class="mb-1"><b>Categoría:</b> <span class="badge badge-info">${product.category}</span></p>
+                                        <p class="mb-1"><b>Disponibles:</b> ${product.stock} unidades</p>
+                                        <p class="mb-2"><b>Precio:</b> $<span class="unit-price">${product.price.toLocaleString()}</span></p>
                                         <small class="text-muted">
-                                            <b>Incluye:</b> ${product.features.join(', ')}
+                                            <b>Características:</b> ${product.features.join(', ')}
                                         </small>
                                     </div>
                                 </div>
@@ -225,14 +369,14 @@ function renderProducts() {
                                            value="0" 
                                            min="0" 
                                            max="${product.stock}"
-                                           class="form-control quantity-control mx-auto"
+                                           class="form-control quantity-control mx-auto mb-2"
                                            onchange="updateCart(${product.id}, this.value)">
-                                    <button class="btn btn-outline-primary btn-sm mt-2" 
+                                    <button class="btn btn-outline-primary btn-sm" 
                                             onclick="addToCart(${product.id})">
-                                        🛒 Agregar
+                                        🛒 Agregar al Carrito
                                     </button>
                                     <div class="mt-2">
-                                        <small class="text-success" id="feedback-${product.id}"></small>
+                                        <small class="text-success feedback-message" id="feedback-${product.id}"></small>
                                     </div>
                                 </div>
                             </div>
@@ -254,16 +398,18 @@ function addToCart(productId) {
     if (quantity > 0) {
         updateCart(productId, quantity);
         feedback.textContent = "✓ Agregado al carrito";
+        feedback.style.color = "#28a745";
         setTimeout(() => feedback.textContent = "", 2000);
     } else {
         feedback.textContent = "Selecciona una cantidad";
+        feedback.style.color = "#dc3545";
         setTimeout(() => feedback.textContent = "", 2000);
     }
 }
 
 function updateCart(productId, quantity) {
     const quantityNum = parseInt(quantity);
-    const product = eventTickets.find(p => p.id === productId);
+    const product = products.find(p => p.id === productId);
     
     if (quantityNum === 0) {
         cart = cart.filter(item => item.id !== productId);
@@ -296,28 +442,30 @@ function updateCartDisplay() {
     if (cart.length === 0) {
         cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
         checkoutBtn.disabled = true;
+        checkoutBtn.innerHTML = '💳 Ir a Pagar';
     } else {
         cart.forEach(item => {
             const itemTotal = item.price * item.quantity;
             total += itemTotal;
             
             const cartItemElement = `
-                <div class="cart-item mb-2 p-2 border-bottom">
+                <div class="cart-item p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <small class="font-weight-bold">${item.name}</small><br>
-                            <small class="text-muted">${item.quantity} x $${item.price}</small>
+                            <small class="text-muted">${item.quantity} x $${item.price.toLocaleString()}</small>
                         </div>
-                        <span class="font-weight-bold">$${itemTotal}</span>
+                        <span class="font-weight-bold price">$${itemTotal.toLocaleString()}</span>
                     </div>
                 </div>
             `;
             cartItemsContainer.innerHTML += cartItemElement;
         });
         checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
     }
     
-    document.getElementById('cart-total').textContent = `$${total}`;
+    document.getElementById('cart-total').textContent = `$${total.toLocaleString()}`;
 }
 
 // Inicializar la página
@@ -325,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function() {
     renderProducts();
     updateCartDisplay();
     
-    // Navegación entre secciones (simplificada)
+    // Navegación entre secciones
     document.getElementById('checkout-btn').addEventListener('click', function() {
         if (cart.length > 0) {
             document.querySelector('.shopping-cart').style.display = 'none';
@@ -350,16 +498,17 @@ function updatePaymentSummary() {
         total += itemTotal;
         
         summaryContainer.innerHTML += `
-            <div class="item">
-                <span class="price">$${itemTotal}</span>
-                <p class="item-name">${item.name} x ${item.quantity}</p>
+            <div class="item mb-3 p-2 border-bottom">
+                <span class="price">$${itemTotal.toLocaleString()}</span>
+                <p class="item-name mb-1">${item.name}</p>
+                <small class="text-muted">Cantidad: ${item.quantity}</small>
             </div>
         `;
     });
     
-    document.getElementById('summary-total').textContent = `$${total}`;
+    document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
     document.getElementById('amount').value = total;
-    document.getElementById('description').value = `Entradas China con África - ${cart.length} producto(s)`;
+    document.getElementById('description').value = `Termotanques Millenium - ${cart.length} producto(s)`;
 }
 </script>
 </body>
