@@ -30,11 +30,17 @@ public class CardPaymentService {
     @Value("${mercado_pago_sample_access_token}")
     private String mercadoPagoAccessToken;
 
+    @Value("${app.base.url:http://localhost:8080}") // Configura tu URL base
+    private String appBaseUrl;
+
     public PaymentResponseDTO processPayment(CardPaymentDTO cardPaymentDTO) {
         try {
             MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
 
             PaymentClient client = new PaymentClient();
+
+            // AGREGAR NOTIFICATION URL
+            String notificationUrl = appBaseUrl + "/webhooks/mercadopago";
 
             PaymentCreateRequest paymentCreateRequest =
                     PaymentCreateRequest.builder()
@@ -43,10 +49,11 @@ public class CardPaymentService {
                             .description(cardPaymentDTO.getProductDescription())
                             .installments(cardPaymentDTO.getInstallments())
                             .paymentMethodId(cardPaymentDTO.getPaymentMethodId())
+                            .notificationUrl(notificationUrl) // ← AGREGADO
                             .payer(
                                     PaymentPayerRequest.builder()
                                             .email(cardPaymentDTO.getPayer().getEmail())
-                                            .firstName(cardPaymentDTO.getPayer().getIdentification().getType())
+                                            .firstName(cardPaymentDTO.getPayer().getFirstName())
                                             .identification(
                                                     IdentificationRequest.builder()
                                                             .type(cardPaymentDTO.getPayer().getIdentification().getType())
@@ -55,24 +62,24 @@ public class CardPaymentService {
                                             .build())
                             .build();
 
-            Payment payment= client.create(paymentCreateRequest);
+            Payment payment = client.create(paymentCreateRequest);
 
-
-
+            LOGGER.info("Pago creado exitosamente - ID: {}, Estado: {}", 
+                       payment.getId(), payment.getStatus());
+            LOGGER.info("URL de notificación configurada: {}", notificationUrl);
 
             return new PaymentResponseDTO(
                     payment.getId(),
                     String.valueOf(payment.getStatus()),
                     payment.getStatusDetail());
         } catch (MPApiException apiException) {
-            System.out.println(apiException.getApiResponse().getContent());
+            LOGGER.error("Error API Mercado Pago: {}", apiException.getApiResponse().getContent());
             throw new MercadoPagoException(apiException.getApiResponse().getContent());
         } catch (MPException exception) {
-            System.out.println(exception.getMessage());
+            LOGGER.error("Error Mercado Pago: {}", exception.getMessage());
             throw new MercadoPagoException(exception.getMessage());
         }
     }
-
 
     public Payment getPaymentById(Long paymentId) throws MPException, MPApiException {
         MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
@@ -86,21 +93,20 @@ public class CardPaymentService {
         PdfDocument pdfDocument = new PdfDocument(writer);
         Document document = new Document(pdfDocument);
 
-        document.add(new Paragraph("Payment Receipt")
+        document.add(new Paragraph("Comprobante de Pago - Millenium Termotanques")
                 .setFontSize(18)
                 .setBold());
-        document.add(new Paragraph("ID de operacion: " + payment.getId()));
-        document.add(new Paragraph("Fecha de transaccion: " + payment.getDateCreated()));
-        document.add(new Paragraph("Precio: " + payment.getTransactionAmount()));
-        document.add(new Paragraph("Status: " + payment.getStatus()));
-        document.add(new Paragraph("Descripcion : " + payment.getDescription()));
-        document.add(new Paragraph(" Nombre : " + payment.getPayer().getFirstName()));
-        document.add(new Paragraph(" Apellido : " + payment.getPayer().getLastName()));
-        document.add(new Paragraph(" Email : " + payment.getPayer().getEmail()));
-        document.add(new Paragraph(" Tipo de identificacion del pagador : " + payment.getPayer().getIdentification().getType()));
+        document.add(new Paragraph("ID de operación: " + payment.getId()));
+        document.add(new Paragraph("Fecha de transacción: " + payment.getDateCreated()));
+        document.add(new Paragraph("Monto: $" + payment.getTransactionAmount()));
+        document.add(new Paragraph("Estado: " + payment.getStatus()));
+        document.add(new Paragraph("Descripción: " + payment.getDescription()));
+        document.add(new Paragraph("Nombre: " + payment.getPayer().getFirstName()));
+        document.add(new Paragraph("Apellido: " + payment.getPayer().getLastName()));
+        document.add(new Paragraph("Email: " + payment.getPayer().getEmail()));
+        document.add(new Paragraph("Tipo de identificación: " + payment.getPayer().getIdentification().getType()));
 
         document.close();
         return baos.toByteArray();
     }
-    }
-
+}
