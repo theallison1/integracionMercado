@@ -14,6 +14,7 @@
             padding: 15px;
             margin-bottom: 20px;
             transition: transform 0.3s;
+            background: white;
         }
         .product-card:hover {
             transform: translateY(-5px);
@@ -23,9 +24,17 @@
             max-height: 200px;
             object-fit: cover;
             border-radius: 5px;
+            width: 100%;
         }
         .quantity-control {
             max-width: 100px;
+        }
+        .event-theme {
+            background: linear-gradient(135deg, #ff0000, #ff9900);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -36,8 +45,8 @@
     <section class="shopping-cart dark">
         <div class="container container__cart">
             <div class="block-heading">
-                <h2>Entradas - China con África</h2>
-                <p>Eventos Culturales y Musicales</p>
+                <h2><span class="event-theme">China con África</span></h2>
+                <p>Festival Cultural - Entradas Disponibles</p>
             </div>
             <div class="content">
                 <div class="row">
@@ -66,7 +75,7 @@
         <div class="container__payment">
             <div class="block-heading">
                 <h2>Medios de Pago</h2>
-                <p>CHINA CON AFRICA</p>
+                <p>CHINA CON ÁFRICA</p>
             </div>
             <div class="form-payment">
                 <div class="products">
@@ -116,57 +125,62 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 <script type="text/javascript" src="js/index.js" defer></script>
 <script>
-// Catálogo de entradas para el evento
+// Catálogo de entradas para el evento CHINA CON ÁFRICA
 const eventTickets = [
     {
         id: 1,
-        name: "Entrada General - Miércoles",
-        description: "Acceso general para el día Miércoles 5 de Abril. Incluye acceso a todas las actividades culturales.",
-        price: 2000,
-        image: "img/entrada-general.jpg",
-        category: "General",
+        name: "Entrada SMART - Día 1",
+        description: "Entrada SMART con tecnología avanzada. Acceso al evento principal del primer día con sonido de última generación.",
+        price: 2500,
+        image: "img/smart-1_orig.jpg.jpeg",
+        category: "SMART",
         date: "2024-04-05",
-        stock: 150
+        stock: 80,
+        features: ["Tecnología SMART AI", "Sonido premium", "Acceso prioritario"]
     },
     {
         id: 2,
-        name: "Entrada VIP - Jueves",
-        description: "Entrada VIP con acceso preferencial, catering y meet & greet con artistas.",
-        price: 5000,
-        image: "img/entrada-vip.jpg",
-        category: "VIP",
-        date: "2024-04-06",
-        stock: 50
+        name: "Entrada Eléctrica - Todo el Evento",
+        description: "Entrada con acceso a todas las zonas eléctricas del evento. Incluye áreas techadas y servicio de catering.",
+        price: 3500,
+        image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-24-56_orig.png",
+        category: "Eléctrica",
+        date: "2024-04-05 al 07",
+        stock: 60,
+        features: ["Acceso completo", "Zonas techadas", "Catering incluido"]
     },
     {
         id: 3,
-        name: "Pase 3 Días - Completo",
-        description: "Acceso para los 3 días del evento. Incluye souvenir exclusivo.",
-        price: 4500,
-        image: "img/pase-completo.jpg",
-        category: "Completo",
-        date: "2024-04-05 al 07",
-        stock: 75
+        name: "Entrada Caldera Mixta - VIP",
+        description: "Entrada VIP con acceso a zonas exclusivas. Combina lo mejor de ambos mundos: electricidad y gas con servicios premium.",
+        price: 6000,
+        image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-24-23_orig.png",
+        category: "VIP Mixta",
+        date: "Todos los días",
+        stock: 40,
+        features: ["Zona VIP", "Meet & greet", "Souvenir exclusivo"]
     },
     {
         id: 4,
-        name: "Entrada Estudiantes",
-        description: "Descuento especial para estudiantes con credencial válida.",
-        price: 1500,
-        image: "img/entrada-estudiantes.jpg",
-        category: "Estudiantes",
+        name: "Entrada Multigas - Grupal",
+        description: "Entrada ideal para grupos. Acceso múltiple con beneficios especiales para disfrutar en compañía.",
+        price: 8000,
+        image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-25-23_orig.png",
+        category: "Grupal",
         date: "Todos los días",
-        stock: 100
+        stock: 25,
+        features: ["Para 4 personas", "Descuento grupal", "Área social"]
     },
     {
         id: 5,
-        name: "Entrada Familiar (4 personas)",
-        description: "Pack familiar para 4 personas. Ideal para disfrutar en grupo.",
-        price: 6000,
-        image: "img/entrada-familiar.jpg",
-        category: "Familiar",
-        date: "Todos los días",
-        stock: 30
+        name: "Entrada Estándar - Día 2",
+        description: "Entrada estándar para el segundo día del evento. Acceso a todas las actividades culturales y musicales.",
+        price: 1800,
+        image: "img/smart-1_orig.jpg.jpeg", // Puedes usar otra imagen
+        category: "Estándar",
+        date: "2024-04-06",
+        stock: 120,
+        features: ["Acceso general", "Actividades culturales", "Precio económico"]
     }
 ];
 
@@ -184,7 +198,7 @@ function renderProducts() {
                 <div class="product">
                     <div class="info">
                         <div class="product-details">
-                            <div class="row">
+                            <div class="row align-items-center">
                                 <div class="col-md-3">
                                     <img class="img-fluid mx-auto d-block image product-image" 
                                          src="${product.image}" 
@@ -192,28 +206,34 @@ function renderProducts() {
                                          onerror="this.src='img/placeholder-event.jpg'">
                                 </div>
                                 <div class="col-md-5 product-detail">
-                                    <h5>${product.name}</h5>
+                                    <h5 class="text-primary">${product.name}</h5>
                                     <div class="product-info">
                                         <p><b>Descripción:</b> ${product.description}</p>
                                         <p><b>Fecha:</b> ${product.date}</p>
-                                        <p><b>Categoría:</b> ${product.category}</p>
+                                        <p><b>Categoría:</b> <span class="badge badge-info">${product.category}</span></p>
                                         <p><b>Disponibles:</b> ${product.stock}</p>
-                                        <p><b>Precio:</b> $<span class="unit-price">${product.price}</span></p>
+                                        <p><b>Precio:</b> $<span class="unit-price font-weight-bold">${product.price}</span></p>
+                                        <small class="text-muted">
+                                            <b>Incluye:</b> ${product.features.join(', ')}
+                                        </small>
                                     </div>
                                 </div>
-                                <div class="col-md-4 product-detail">
-                                    <label for="quantity-${product.id}"><h5>Cantidad</h5></label>
+                                <div class="col-md-4 product-detail text-center">
+                                    <label for="quantity-${product.id}"><h6>Cantidad</h6></label>
                                     <input type="number" 
                                            id="quantity-${product.id}" 
                                            value="0" 
                                            min="0" 
                                            max="${product.stock}"
-                                           class="form-control quantity-control"
+                                           class="form-control quantity-control mx-auto"
                                            onchange="updateCart(${product.id}, this.value)">
                                     <button class="btn btn-outline-primary btn-sm mt-2" 
                                             onclick="addToCart(${product.id})">
-                                        Agregar al Carrito
+                                        🛒 Agregar
                                     </button>
+                                    <div class="mt-2">
+                                        <small class="text-success" id="feedback-${product.id}"></small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -229,9 +249,15 @@ function renderProducts() {
 function addToCart(productId) {
     const quantityInput = document.getElementById(`quantity-${productId}`);
     const quantity = parseInt(quantityInput.value);
+    const feedback = document.getElementById(`feedback-${productId}`);
     
     if (quantity > 0) {
         updateCart(productId, quantity);
+        feedback.textContent = "✓ Agregado al carrito";
+        setTimeout(() => feedback.textContent = "", 2000);
+    } else {
+        feedback.textContent = "Selecciona una cantidad";
+        setTimeout(() => feedback.textContent = "", 2000);
     }
 }
 
@@ -240,10 +266,8 @@ function updateCart(productId, quantity) {
     const product = eventTickets.find(p => p.id === productId);
     
     if (quantityNum === 0) {
-        // Remover del carrito
         cart = cart.filter(item => item.id !== productId);
     } else {
-        // Actualizar o agregar al carrito
         const existingItem = cart.find(item => item.id === productId);
         
         if (existingItem) {
@@ -270,7 +294,7 @@ function updateCartDisplay() {
     let total = 0;
     
     if (cart.length === 0) {
-        cartItemsContainer.innerHTML = '<p class="text-muted">No hay productos en el carrito</p>';
+        cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
         checkoutBtn.disabled = true;
     } else {
         cart.forEach(item => {
@@ -279,9 +303,12 @@ function updateCartDisplay() {
             
             const cartItemElement = `
                 <div class="cart-item mb-2 p-2 border-bottom">
-                    <div class="d-flex justify-content-between">
-                        <span>${item.name} x${item.quantity}</span>
-                        <span>$${itemTotal}</span>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="font-weight-bold">${item.name}</small><br>
+                            <small class="text-muted">${item.quantity} x $${item.price}</small>
+                        </div>
+                        <span class="font-weight-bold">$${itemTotal}</span>
                     </div>
                 </div>
             `;
@@ -298,8 +325,42 @@ document.addEventListener('DOMContentLoaded', function() {
     renderProducts();
     updateCartDisplay();
     
-    // Aquí iría el resto de tu lógica de Mercado Pago...
+    // Navegación entre secciones (simplificada)
+    document.getElementById('checkout-btn').addEventListener('click', function() {
+        if (cart.length > 0) {
+            document.querySelector('.shopping-cart').style.display = 'none';
+            document.querySelector('.payment-form').style.display = 'block';
+            updatePaymentSummary();
+        }
+    });
+    
+    document.getElementById('go-back').addEventListener('click', function() {
+        document.querySelector('.payment-form').style.display = 'none';
+        document.querySelector('.shopping-cart').style.display = 'block';
+    });
 });
+
+function updatePaymentSummary() {
+    const summaryContainer = document.getElementById('summary-items');
+    let total = 0;
+    
+    summaryContainer.innerHTML = '';
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
+        
+        summaryContainer.innerHTML += `
+            <div class="item">
+                <span class="price">$${itemTotal}</span>
+                <p class="item-name">${item.name} x ${item.quantity}</p>
+            </div>
+        `;
+    });
+    
+    document.getElementById('summary-total').textContent = `$${total}`;
+    document.getElementById('amount').value = total;
+    document.getElementById('description').value = `Entradas China con África - ${cart.length} producto(s)`;
+}
 </script>
 </body>
 </html>
