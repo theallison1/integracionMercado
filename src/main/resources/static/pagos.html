@@ -1,12 +1,33 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>Medios de pago China Con africa</title>
+    <title>Entradas China con África</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="css/index.css">
     <script src="https://sdk.mercadopago.com/js/v2"></script>
+    <style>
+        .product-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .product-image {
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+        .quantity-control {
+            max-width: 100px;
+        }
+    </style>
 </head>
 <body>
 <input id="mercado-pago-public-key" value="APP_USR-6246c93e-e7ac-4b22-b983-89228a9485ff" type="hidden" />
@@ -15,49 +36,32 @@
     <section class="shopping-cart dark">
         <div class="container container__cart">
             <div class="block-heading">
-                <h2>Entradas</h2>
-                <p>Eventos China con africa</p>
+                <h2>Entradas - China con África</h2>
+                <p>Eventos Culturales y Musicales</p>
             </div>
             <div class="content">
                 <div class="row">
                     <div class="col-md-12 col-lg-8">
-                        <div class="items">
-                            <div class="product">
-                                <div class="info">
-                                    <div class="product-details">
-                                        <div class="row justify-content-md-center">
-                                            <div class="col-md-3">
-                                                <img class="img-fluid mx-auto d-block image" src="img/IMG-20230309-WA0010.jpg">
-                                            </div>
-                                            <div class="col-md-4 product-detail">
-                                                <h5>Entrada</h5>
-                                                <div class="product-info">
-                                                    <p><b>Descripcion: </b><span>Entrada dia Miercoles 5 Abril</span><br>
-                                                        <b>Precio:</b> $ <span id="unit-price">2000</span></p>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-3 product-detail">
-                                                <label for="quantity"><h5>Cantidad</h5></label>
-                                                <input type="number" id="quantity" value="1" min="1" class="form-control">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="items" id="products-container">
+                            <!-- Los productos se cargan dinámicamente aquí -->
                         </div>
                     </div>
                     <div class="col-md-12 col-lg-4">
                         <div class="summary">
-                            <h3>Entradas</h3>
-                            <div class="summary-item"><span class="text">Subtotal</span><span class="price" id="cart-total"></span></div>
-                            <button class="btn btn-primary btn-lg btn-block" id="checkout-btn">Ir a Pagar</button>
+                            <h3>Tu Carrito</h3>
+                            <div id="cart-items">
+                                <!-- Ítems del carrito se cargan aquí -->
+                            </div>
+                            <div class="summary-item"><span class="text">Subtotal</span><span class="price" id="cart-total">$0</span></div>
+                            <button class="btn btn-primary btn-lg btn-block" id="checkout-btn" disabled>Ir a Pagar</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
-    <!-- Payment -->
+
+    <!-- Las secciones de Payment y Result se mantienen igual -->
     <section class="payment-form dark">
         <div class="container__payment">
             <div class="block-heading">
@@ -66,31 +70,30 @@
             </div>
             <div class="form-payment">
                 <div class="products">
-                    <h2 class="title">Summary</h2>
-                    <div class="item">
-                        <span class="price" id="summary-price"></span>
-                        <p class="item-name">Entrada x <span id="summary-quantity"></span></p>
+                    <h2 class="title">Resumen</h2>
+                    <div id="summary-items">
+                        <!-- Resumen de productos para pago -->
                     </div>
-                    <div class="total">Total<span class="price" id="summary-total"></span></div>
+                    <div class="total">Total<span class="price" id="summary-total">$0</span></div>
                     <input type="hidden" id="amount" />
                     <input type="hidden" id="description" />
                 </div>
                 <div id="mercadopago-bricks-contaner__PaymentCard"></div>
                 <a id="go-back">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 10 10" class="chevron-left">
-                        <path fill="#009EE3" fill-rule="nonzero"id="chevron_left" d="M7.05 1.4L6.2.552 1.756 4.997l4.449 4.448.849-.848-3.6-3.6z"></path>
+                        <path fill="#009EE3" fill-rule="nonzero" id="chevron_left" d="M7.05 1.4L6.2.552 1.756 4.997l4.449 4.448.849-.848-3.6-3.6z"></path>
                     </svg>
-                    Ir al menu anterior
+                    Volver al catálogo
                 </a>
             </div>
         </div>
     </section>
-    <!-- Result -->
+
     <section class="shopping-cart dark">
         <div class="container container__result">
             <div class="block-heading">
-                <h2>Payment Result</h2>
-                <p>This is an example of Mercado Pago Card Payment Brick Integration</p>
+                <h2>Resultado del Pago</h2>
+                <p>China con África - Entradas</p>
             </div>
             <div class="content">
                 <div class="row">
@@ -109,10 +112,194 @@
         </div>
     </section>
 </main>
-<footer>
-    <div class="footer_logo"><img id="horizontal_logo" src="img/horizontal_logo.png" alt=""></div>
-</footer>
+
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 <script type="text/javascript" src="js/index.js" defer></script>
+<script>
+// Catálogo de entradas para el evento
+const eventTickets = [
+    {
+        id: 1,
+        name: "Entrada General - Miércoles",
+        description: "Acceso general para el día Miércoles 5 de Abril. Incluye acceso a todas las actividades culturales.",
+        price: 2000,
+        image: "img/entrada-general.jpg",
+        category: "General",
+        date: "2024-04-05",
+        stock: 150
+    },
+    {
+        id: 2,
+        name: "Entrada VIP - Jueves",
+        description: "Entrada VIP con acceso preferencial, catering y meet & greet con artistas.",
+        price: 5000,
+        image: "img/entrada-vip.jpg",
+        category: "VIP",
+        date: "2024-04-06",
+        stock: 50
+    },
+    {
+        id: 3,
+        name: "Pase 3 Días - Completo",
+        description: "Acceso para los 3 días del evento. Incluye souvenir exclusivo.",
+        price: 4500,
+        image: "img/pase-completo.jpg",
+        category: "Completo",
+        date: "2024-04-05 al 07",
+        stock: 75
+    },
+    {
+        id: 4,
+        name: "Entrada Estudiantes",
+        description: "Descuento especial para estudiantes con credencial válida.",
+        price: 1500,
+        image: "img/entrada-estudiantes.jpg",
+        category: "Estudiantes",
+        date: "Todos los días",
+        stock: 100
+    },
+    {
+        id: 5,
+        name: "Entrada Familiar (4 personas)",
+        description: "Pack familiar para 4 personas. Ideal para disfrutar en grupo.",
+        price: 6000,
+        image: "img/entrada-familiar.jpg",
+        category: "Familiar",
+        date: "Todos los días",
+        stock: 30
+    }
+];
+
+// Carrito de compras
+let cart = [];
+
+// Función para renderizar productos
+function renderProducts() {
+    const container = document.getElementById('products-container');
+    container.innerHTML = '';
+
+    eventTickets.forEach(product => {
+        const productElement = `
+            <div class="product-card">
+                <div class="product">
+                    <div class="info">
+                        <div class="product-details">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <img class="img-fluid mx-auto d-block image product-image" 
+                                         src="${product.image}" 
+                                         alt="${product.name}"
+                                         onerror="this.src='img/placeholder-event.jpg'">
+                                </div>
+                                <div class="col-md-5 product-detail">
+                                    <h5>${product.name}</h5>
+                                    <div class="product-info">
+                                        <p><b>Descripción:</b> ${product.description}</p>
+                                        <p><b>Fecha:</b> ${product.date}</p>
+                                        <p><b>Categoría:</b> ${product.category}</p>
+                                        <p><b>Disponibles:</b> ${product.stock}</p>
+                                        <p><b>Precio:</b> $<span class="unit-price">${product.price}</span></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 product-detail">
+                                    <label for="quantity-${product.id}"><h5>Cantidad</h5></label>
+                                    <input type="number" 
+                                           id="quantity-${product.id}" 
+                                           value="0" 
+                                           min="0" 
+                                           max="${product.stock}"
+                                           class="form-control quantity-control"
+                                           onchange="updateCart(${product.id}, this.value)">
+                                    <button class="btn btn-outline-primary btn-sm mt-2" 
+                                            onclick="addToCart(${product.id})">
+                                        Agregar al Carrito
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.innerHTML += productElement;
+    });
+}
+
+// Funciones del carrito
+function addToCart(productId) {
+    const quantityInput = document.getElementById(`quantity-${productId}`);
+    const quantity = parseInt(quantityInput.value);
+    
+    if (quantity > 0) {
+        updateCart(productId, quantity);
+    }
+}
+
+function updateCart(productId, quantity) {
+    const quantityNum = parseInt(quantity);
+    const product = eventTickets.find(p => p.id === productId);
+    
+    if (quantityNum === 0) {
+        // Remover del carrito
+        cart = cart.filter(item => item.id !== productId);
+    } else {
+        // Actualizar o agregar al carrito
+        const existingItem = cart.find(item => item.id === productId);
+        
+        if (existingItem) {
+            existingItem.quantity = quantityNum;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: quantityNum,
+                image: product.image
+            });
+        }
+    }
+    
+    updateCartDisplay();
+}
+
+function updateCartDisplay() {
+    const cartItemsContainer = document.getElementById('cart-items');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    
+    cartItemsContainer.innerHTML = '';
+    let total = 0;
+    
+    if (cart.length === 0) {
+        cartItemsContainer.innerHTML = '<p class="text-muted">No hay productos en el carrito</p>';
+        checkoutBtn.disabled = true;
+    } else {
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            
+            const cartItemElement = `
+                <div class="cart-item mb-2 p-2 border-bottom">
+                    <div class="d-flex justify-content-between">
+                        <span>${item.name} x${item.quantity}</span>
+                        <span>$${itemTotal}</span>
+                    </div>
+                </div>
+            `;
+            cartItemsContainer.innerHTML += cartItemElement;
+        });
+        checkoutBtn.disabled = false;
+    }
+    
+    document.getElementById('cart-total').textContent = `$${total}`;
+}
+
+// Inicializar la página
+document.addEventListener('DOMContentLoaded', function() {
+    renderProducts();
+    updateCartDisplay();
+    
+    // Aquí iría el resto de tu lógica de Mercado Pago...
+});
+</script>
 </body>
 </html>
