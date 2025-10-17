@@ -1,5 +1,5 @@
 const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key").value;
-const mercadopago = new MercadoPago('APP_USR-6246c93e-e7ac-4b22-b983-89228a9485ff');
+const mercadopago = new MercadoPago('TEST-d3652cb4-2ab1-46e8-bbf4-a352936b2125');
 let cardPaymentBrickController;
 const bricksBuilder = mercadopago.bricks();
 let paymentId;
