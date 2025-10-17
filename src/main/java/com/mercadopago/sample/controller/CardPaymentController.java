@@ -28,7 +28,42 @@ public class CardPaymentController {
     public CardPaymentController(CardPaymentService cardPaymentService) {
         this.cardPaymentService = cardPaymentService;
     }
+   private static final Logger LOGGER = LoggerFactory.getLogger(WebhookController.class);
 
+    @PostMapping("/webhooks/mercadopago")
+    public ResponseEntity<String> handleMercadoPagoNotification(
+            @RequestParam("data.id") String paymentId,
+            @RequestParam("type") String eventType) {
+        
+        LOGGER.info("Notificación recibida de Mercado Pago - ID: {}, Tipo: {}", paymentId, eventType);
+        
+        // Procesar la notificación según el tipo de evento
+        switch (eventType) {
+            case "payment":
+                LOGGER.info("Actualización de pago recibida - ID: {}", paymentId);
+                // Aquí puedes actualizar tu base de datos, enviar emails, etc.
+                break;
+            case "plan":
+                LOGGER.info("Notificación de plan recibida");
+                break;
+            case "subscription":
+                LOGGER.info("Notificación de suscripción recibida");
+                break;
+            case "invoice":
+                LOGGER.info("Notificación de factura recibida");
+                break;
+            default:
+                LOGGER.warn("Tipo de evento no reconocido: {}", eventType);
+        }
+        
+        return ResponseEntity.ok("Notificación recibida");
+    }
+
+    @GetMapping("/mercadopago")
+    public ResponseEntity<String> verifyWebhook(@RequestParam("topic") String topic) {
+        LOGGER.info("Verificación de webhook recibida - Tópico: {}", topic);
+        return ResponseEntity.ok("Webhook verificado");
+    }
     @CrossOrigin(origins = "http://localhost:8080")
     @PostMapping
     public ResponseEntity<PaymentResponseDTO> processPayment(@RequestBody  CardPaymentDTO cardPaymentDTO) {
