@@ -1,5 +1,6 @@
 package com.mercadopago.sample.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.validation.constraints.NotNull;
 
 public class PayerDTO {
@@ -9,8 +10,10 @@ public class PayerDTO {
     @NotNull
     private PayerIdentificationDTO identification;
 
+    @JsonProperty("first_name")  // ✅ AGREGAR
     private String firstName;
     
+    @JsonProperty("last_name")   // ✅ AGREGAR  
     private String lastName;
 
     public PayerDTO() {
