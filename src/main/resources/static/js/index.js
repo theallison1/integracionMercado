@@ -34,7 +34,6 @@ const renderPaymentBrick = async (bricksBuilder) => {
                 creditCard: "all",
                 debitCard: "all",
                 ticket: "all",
-                bankTransfer: "all",
                 maxInstallments: 12
             },
         },
