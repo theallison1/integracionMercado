@@ -22,12 +22,83 @@ public class CardPaymentDTO {
     @NotNull
     private Integer installments;
 
-    @NotNull // ✅ AGREGAR ESTO
+    @NotNull
     @JsonProperty("product_description")
     private String productDescription;
 
     @NotNull
     private PayerDTO payer;
 
-    // ... getters y setters igual
+    public CardPaymentDTO() {
+    }
+
+    // GETTERS Y SETTERS
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public String getIssuerId() {
+        return issuerId;
+    }
+
+    public void setIssuerId(String issuerId) {
+        this.issuerId = issuerId;
+    }
+
+    public String getPaymentMethodId() {
+        return paymentMethodId;
+    }
+
+    public void setPaymentMethodId(String paymentMethodId) {
+        this.paymentMethodId = paymentMethodId;
+    }
+
+    public BigDecimal getTransactionAmount() {
+        return transactionAmount;
+    }
+
+    public void setTransactionAmount(BigDecimal transactionAmount) {
+        this.transactionAmount = transactionAmount;
+    }
+
+    public Integer getInstallments() {
+        return installments;
+    }
+
+    public void setInstallments(Integer installments) {
+        this.installments = installments;
+    }
+
+    public String getProductDescription() {
+        return productDescription;
+    }
+
+    public void setProductDescription(String productDescription) {
+        this.productDescription = productDescription;
+    }
+
+    public PayerDTO getPayer() {
+        return payer;
+    }
+
+    public void setPayer(PayerDTO payer) {
+        this.payer = payer;
+    }
+
+    @Override
+    public String toString() {
+        return "CardPaymentDTO{" +
+                "token='" + token + '\'' +
+                ", issuerId='" + issuerId + '\'' +
+                ", paymentMethodId='" + paymentMethodId + '\'' +
+                ", transactionAmount=" + transactionAmount +
+                ", installments=" + installments +
+                ", productDescription='" + productDescription + '\'' +
+                ", payer=" + payer +
+                '}';
+    }
 }
