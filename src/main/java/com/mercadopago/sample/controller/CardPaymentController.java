@@ -62,41 +62,41 @@ public class CardPaymentController {
         LOGGER.info("Verificación de webhook recibida - Tópico: {}", topic);
         return ResponseEntity.ok("Webhook verificado");
     }
+@CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
+@PostMapping
+public ResponseEntity<PaymentResponseDTO> processPayment(@RequestBody CardPaymentDTO cardPaymentDTO) {
+    LOGGER.info("=== SOLICITUD DE PAGO RECIBIDA ===");
+    LOGGER.info("Token: {}", cardPaymentDTO.getToken());
+    LOGGER.info("PaymentMethodId: {}", cardPaymentDTO.getPaymentMethodId());
+    LOGGER.info("Installments: {}", cardPaymentDTO.getInstallments());
+    LOGGER.info("Amount: {}", cardPaymentDTO.getTransactionAmount());
+    LOGGER.info("Description: {}", cardPaymentDTO.getProductDescription());
+    LOGGER.info("Email: {}", cardPaymentDTO.getPayer().getEmail());
 
-    // Procesar pago principal
-    @CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
-    @PostMapping
-    public ResponseEntity<PaymentResponseDTO> processPayment(@RequestBody @Valid CardPaymentDTO cardPaymentDTO) {
-        LOGGER.info("=== SOLICITUD DE PAGO RECIBIDA ===");
-        LOGGER.info("Token: {}", cardPaymentDTO.getToken());
-        LOGGER.info("PaymentMethodId: {}", cardPaymentDTO.getPaymentMethodId());
-        LOGGER.info("Installments: {}", cardPaymentDTO.getInstallments());
-        LOGGER.info("Amount: {}", cardPaymentDTO.getTransactionAmount());
-        LOGGER.info("Description: {}", cardPaymentDTO.getProductDescription());
-        LOGGER.info("Email: {}", cardPaymentDTO.getPayer().getEmail());
-
-        // Validar y completar datos faltantes
-        if (cardPaymentDTO.getProductDescription() == null || cardPaymentDTO.getProductDescription().isEmpty()) {
-            cardPaymentDTO.setProductDescription("Compra de termotanques Millenium");
-        }
-        
-        if (cardPaymentDTO.getPayer().getFirstName() == null) {
-            cardPaymentDTO.getPayer().setFirstName("Cliente");
-        }
-        
-        if (cardPaymentDTO.getPayer().getLastName() == null) {
-            cardPaymentDTO.getPayer().setLastName("Millenium");
-        }
-
-        try {
-            PaymentResponseDTO payment = cardPaymentService.processPayment(cardPaymentDTO);
-            LOGGER.info("✅ Pago exitoso - ID: {}", payment.getId());
-            return ResponseEntity.status(HttpStatus.CREATED).body(payment);
-        } catch (Exception e) {
-            LOGGER.error("❌ Error en pago: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+    // ✅ CORRECCIÓN CRÍTICA: El Brick NO envía productDescription
+    if (cardPaymentDTO.getProductDescription() == null) {
+        cardPaymentDTO.setProductDescription("Compra de termotanques Millenium");
+        LOGGER.info("✅ Product description asignado por defecto");
     }
+
+    // ✅ También completar firstName y lastName si faltan
+    if (cardPaymentDTO.getPayer().getFirstName() == null) {
+        cardPaymentDTO.getPayer().setFirstName("Cliente");
+    }
+    
+    if (cardPaymentDTO.getPayer().getLastName() == null) {
+        cardPaymentDTO.getPayer().setLastName("Millenium");
+    }
+
+    try {
+        PaymentResponseDTO payment = cardPaymentService.processPayment(cardPaymentDTO);
+        LOGGER.info("✅ Pago exitoso - ID: {}", payment.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(payment);
+    } catch (Exception e) {
+        LOGGER.error("❌ Error en pago: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+}
 
     // Método para obtener el comprobante del pago
     @CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
