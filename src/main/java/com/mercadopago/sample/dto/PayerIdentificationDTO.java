@@ -12,6 +12,7 @@ public class PayerIdentificationDTO {
     public PayerIdentificationDTO() {
     }
 
+    // GETTERS Y SETTERS
     public String getType() {
         return type;
     }
@@ -26,5 +27,13 @@ public class PayerIdentificationDTO {
 
     public void setNumber(String number) {
         this.number = number;
+    }
+
+    @Override
+    public String toString() {
+        return "PayerIdentificationDTO{" +
+                "type='" + type + '\'' +
+                ", number='" + number + '\'' +
+                '}';
     }
 }
