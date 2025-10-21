@@ -12,6 +12,7 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.validation.Valid;
 import java.math.BigDecimal;
 
 @RestController
@@ -35,11 +36,9 @@ public class CardPaymentController {
         
         LOGGER.info("Notificación recibida de Mercado Pago - ID: {}, Tipo: {}", paymentId, eventType);
         
-        // Procesar la notificación según el tipo de evento
         switch (eventType) {
             case "payment":
                 LOGGER.info("Actualización de pago recibida - ID: {}", paymentId);
-                // Aquí puedes actualizar tu base de datos, enviar emails, etc.
                 break;
             case "plan":
                 LOGGER.info("Notificación de plan recibida");
@@ -65,22 +64,42 @@ public class CardPaymentController {
     }
 
     // Procesar pago principal
-    @CrossOrigin(origins = "http://localhost:8080")
+    @CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
     @PostMapping
-    public ResponseEntity<PaymentResponseDTO> processPayment(@RequestBody CardPaymentDTO cardPaymentDTO) {
-        LOGGER.info("Solicitud de pago recibida: {}", cardPaymentDTO.toString());
+    public ResponseEntity<PaymentResponseDTO> processPayment(@RequestBody @Valid CardPaymentDTO cardPaymentDTO) {
+        LOGGER.info("=== SOLICITUD DE PAGO RECIBIDA ===");
+        LOGGER.info("Token: {}", cardPaymentDTO.getToken());
+        LOGGER.info("PaymentMethodId: {}", cardPaymentDTO.getPaymentMethodId());
+        LOGGER.info("Installments: {}", cardPaymentDTO.getInstallments());
+        LOGGER.info("Amount: {}", cardPaymentDTO.getTransactionAmount());
+        LOGGER.info("Description: {}", cardPaymentDTO.getProductDescription());
+        LOGGER.info("Email: {}", cardPaymentDTO.getPayer().getEmail());
+
+        // Validar y completar datos faltantes
+        if (cardPaymentDTO.getProductDescription() == null || cardPaymentDTO.getProductDescription().isEmpty()) {
+            cardPaymentDTO.setProductDescription("Compra de termotanques Millenium");
+        }
+        
+        if (cardPaymentDTO.getPayer().getFirstName() == null) {
+            cardPaymentDTO.getPayer().setFirstName("Cliente");
+        }
+        
+        if (cardPaymentDTO.getPayer().getLastName() == null) {
+            cardPaymentDTO.getPayer().setLastName("Millenium");
+        }
 
         try {
             PaymentResponseDTO payment = cardPaymentService.processPayment(cardPaymentDTO);
-            LOGGER.info("Pago procesado exitosamente - ID: {}", payment.getId());
+            LOGGER.info("✅ Pago exitoso - ID: {}", payment.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(payment);
         } catch (Exception e) {
-            LOGGER.error("Error al procesar el pago: {}", e.getMessage());
+            LOGGER.error("❌ Error en pago: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    // Método para obtener el comprobante del pago y devolverlo como archivo PDF
+    // Método para obtener el comprobante del pago
+    @CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
     @GetMapping("/download_receipt/{paymentId}")
     public ResponseEntity<byte[]> downloadReceipt(@PathVariable Long paymentId) {
         try {
@@ -99,6 +118,7 @@ public class CardPaymentController {
     }
 
     // Endpoint de prueba
+    @CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
     @GetMapping("/holis")
     public ResponseEntity<String> getAuthenticationRequest() {
         LOGGER.info("Entro al endpoint de prueba ----------------------");
@@ -112,17 +132,17 @@ public class CardPaymentController {
             cardPaymentDTO1.setProductDescription("Pago de prueba Millenium Termotanques");
 
             PayerDTO payerDTO = new PayerDTO();
-            payerDTO.setEmail("nicoo.2011.pr@gmail.com");
-            payerDTO.setFirstName("Nicolás"); // Agregado
-            payerDTO.setLastName("Pérez");    // Agregado
+            payerDTO.setEmail("test@test.com");
+            payerDTO.setFirstName("Test");
+            payerDTO.setLastName("User");
             
             PayerIdentificationDTO payerIdentificationDTO = new PayerIdentificationDTO();
             payerIdentificationDTO.setType("DNI");
-            payerIdentificationDTO.setNumber("35418288");
+            payerIdentificationDTO.setNumber("12345678");
             payerDTO.setIdentification(payerIdentificationDTO);
             
             cardPaymentDTO1.setPayer(payerDTO);
-            cardPaymentDTO1.setPaymentMethodId("amex");
+            cardPaymentDTO1.setPaymentMethodId("visa");
 
             PaymentResponseDTO payment = cardPaymentService.processPayment(cardPaymentDTO1);
             LOGGER.info("Pago de prueba procesado - Estado: {}", payment.getStatus());
