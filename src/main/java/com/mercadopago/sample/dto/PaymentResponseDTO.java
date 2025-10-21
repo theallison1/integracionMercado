@@ -3,14 +3,18 @@ package com.mercadopago.sample.dto;
 public class PaymentResponseDTO {
     private Long id;
     private String status;
-    private String detail;
+    private String statusDetail;
 
-    public PaymentResponseDTO(Long id, String status, String detail) {
-        this.id = id;
-        this.status = status;
-        this.detail = detail;
+    public PaymentResponseDTO() {
     }
 
+    public PaymentResponseDTO(Long id, String status, String statusDetail) {
+        this.id = id;
+        this.status = status;
+        this.statusDetail = statusDetail;
+    }
+
+    // GETTERS Y SETTERS
     public Long getId() {
         return id;
     }
@@ -27,11 +31,11 @@ public class PaymentResponseDTO {
         this.status = status;
     }
 
-    public String getDetail() {
-        return detail;
+    public String getStatusDetail() {
+        return statusDetail;
     }
 
-    public void setDetail(String detail) {
-        this.detail = detail;
+    public void setStatusDetail(String statusDetail) {
+        this.statusDetail = statusDetail;
     }
 }
