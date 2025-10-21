@@ -1,23 +1,132 @@
-// ========== SOLUCIÓN ESPECÍFICA PARA EL STATUS SCREEN ==========
+// ========== MERCADO PAGO INTEGRATION ==========
+const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key").value;
+const mp = new MercadoPago(mercadoPagoPublicKey, {
+    locale: 'es-AR'
+});
 
-// 3. FUNCIÓN COMPLETAMENTE REESCRITA PARA STATUS SCREEN
+let paymentBrickController;
+let paymentId;
+
+const renderPaymentBrick = async (bricksBuilder) => {
+    console.log('🔧 Iniciando renderizado de Payment Brick...');
+    
+    const settings = {
+        initialization: {
+            amount: parseFloat(document.getElementById('amount').value),
+            payer: {
+                email: "cliente@millenium.com",
+            },
+        },
+        callbacks: {
+            onReady: () => {
+                console.log('✅ Payment Brick listo y visible');
+            },
+            onSubmit: ({ selectedPaymentMethod, formData }) => {
+                console.log('=== 🚀 INICIANDO ENVÍO DE PAGO ===');
+                console.log('📋 Datos del Brick:', formData);
+
+                return new Promise((resolve, reject) => {
+                    const paymentData = {
+                        token: formData.token,
+                        issuer_id: formData.issuer_id || null,
+                        payment_method_id: formData.payment_method_id,
+                        transaction_amount: parseFloat(formData.transaction_amount),
+                        installments: parseInt(formData.installments),
+                        product_description: document.getElementById('description').value,
+                        payer: {
+                            email: formData.payer.email,
+                            first_name: formData.payer.first_name || "Cliente",
+                            last_name: formData.payer.last_name || "Millenium",
+                            identification: {
+                                type: formData.payer.identification.type,
+                                number: formData.payer.identification.number
+                            }
+                        }
+                    };
+
+                    console.log('📤 Enviando a backend Spring:', JSON.stringify(paymentData, null, 2));
+
+                    fetch("https://integracionmercado.onrender.com/process_payment", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(paymentData),
+                    })
+                    .then(async (response) => {
+                        console.log('=== 📨 RESPUESTA HTTP RECIBIDA ===');
+                        console.log('📊 Status:', response.status);
+                        
+                        const responseText = await response.text();
+                        console.log('📝 Response Text (RAW):', responseText);
+
+                        if (!response.ok) {
+                            console.error('❌ Error HTTP del backend:', responseText);
+                            throw new Error(`HTTP ${response.status}: ${responseText}`);
+                        }
+
+                        try {
+                            const result = JSON.parse(responseText);
+                            console.log('✅ Respuesta JSON del backend:', result);
+
+                            if (result.status === 'approved' || result.status === 'pending' || result.status === 'in_process') {
+                                console.log('🎉 Pago exitoso - Procediendo...');
+                                resolve();
+                                setTimeout(() => {
+                                    showPaymentResult(result);
+                                }, 100);
+                            } else {
+                                console.log('❌ Pago rechazado:', result.status);
+                                reject(new Error(`Pago rechazado: ${result.status}`));
+                            }
+                        } catch (jsonError) {
+                            console.error('❌ Error parseando JSON del backend:', jsonError);
+                            reject(jsonError);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('=== 💥 ERROR EN FETCH ===', error);
+                        reject(error);
+                    });
+                });
+            },
+            onError: (error) => {
+                console.error('❌ Error en Payment Brick:', error);
+            },
+        },
+    };
+
+    try {
+        window.paymentBrickController = await bricksBuilder.create(
+            "payment",
+            "mercadopago-bricks-contaner__PaymentCard",
+            settings
+        );
+        console.log('✅ Payment Brick creado exitosamente');
+    } catch (error) {
+        console.error('❌ Error creando Payment Brick:', error);
+        showBrickError();
+    }
+};
+
+// FUNCIÓN MEJORADA PARA STATUS SCREEN
 async function renderStatusScreenBrick(result) {
     console.log('=== 📱 RENDERIZANDO STATUS SCREEN ===');
     paymentId = result.id;
     
-    // ✅ 1. PRIMERO FORZAR QUE LA SECCIÓN SEA VISIBLE
+    // 1. FORZAR VISIBILIDAD DE LA SECCIÓN
     const resultSection = document.querySelector('.container__result').closest('section');
     resultSection.style.display = 'block';
     resultSection.style.opacity = '1';
     resultSection.style.visibility = 'visible';
     
-    // ✅ 2. ESPERAR UN FRAME PARA QUE EL DOM SE ACTUALICE
-    await new Promise(resolve => setTimeout(resolve, 50));
+    // 2. ESPERAR PARA ACTUALIZACIÓN DEL DOM
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     const container = document.getElementById('statusScreenBrick_container');
     
-    // ✅ 3. LIMPIAR COMPLETAMENTE EL CONTENEDOR
-    container.innerHTML = '';
+    // 3. PREPARAR CONTENEDOR
+    container.innerHTML = '<div class="text-center p-4" style="color: white;">Cargando estado del pago...</div>';
     container.style.cssText = `
         width: 100% !important;
         min-height: 500px !important;
@@ -31,13 +140,12 @@ async function renderStatusScreenBrick(result) {
         border: 1px solid #444 !important;
     `;
 
-    console.log('✅ Contenedor preparado con estilos forzados');
+    console.log('✅ Contenedor preparado');
 
     try {
         const bricksBuilder = await mp.bricks();
         console.log('🔧 Creando Status Screen Brick...');
         
-        // ✅ 4. CREAR EL STATUS SCREEN CON MÁS CONFIGURACIÓN
         window.statusScreenBrickController = await bricksBuilder.create(
             'statusScreen', 
             'statusScreenBrick_container', 
@@ -45,39 +153,24 @@ async function renderStatusScreenBrick(result) {
                 initialization: {
                     paymentId: paymentId
                 },
-                customization: {
-                    visual: {
-                        style: {
-                            theme: 'dark',
-                            customVariables: {
-                                formBackgroundColor: '#2d2d2d',
-                                baseColor: 'aquamarine'
-                            }
-                        }
-                    }
-                },
                 callbacks: {
                     onReady: () => {
                         console.log('✅ Status Screen listo y visible');
-                        // ✅ FORZAR ACTUALIZACIÓN VISUAL
-                        container.style.display = 'block';
-                        container.style.visibility = 'visible';
-                        
-                        // ✅ VERIFICAR SI REALMENTE SE VE
+                        // VERIFICAR SI SE RENDERIZÓ
                         setTimeout(() => {
                             const hasContent = container.children.length > 0;
                             const hasIframe = container.querySelector('iframe');
-                            console.log('🔍 Verificando renderizado:', {
+                            console.log('🔍 Verificación renderizado:', {
                                 hasChildren: hasContent,
                                 hasIframe: !!hasIframe,
-                                containerHTML: container.innerHTML.length
+                                childrenCount: container.children.length
                             });
                             
                             if (!hasContent || !hasIframe) {
                                 console.log('⚠️ Status Screen no se renderizó visualmente');
                                 showFallbackResult(result);
                             }
-                        }, 1000);
+                        }, 1500);
                     },
                     onError: (error) => {
                         console.error('❌ Error en Status Screen:', error);
@@ -89,15 +182,15 @@ async function renderStatusScreenBrick(result) {
         
         console.log('✅ Status Screen Brick creado exitosamente');
         
-        // ✅ 5. FALLBACK AUTOMÁTICO SI NO SE RENDERIZA EN 2 SEGUNDOS
+        // FALLBACK AUTOMÁTICO
         setTimeout(() => {
             const hasVisibleContent = container.children.length > 0 && 
                                     container.offsetHeight > 100;
             if (!hasVisibleContent) {
-                console.log('⏰ Timeout: Status Screen no se mostró, usando fallback');
+                console.log('⏰ Timeout: Status Screen no visible, usando fallback');
                 showFallbackResult(result);
             }
-        }, 2000);
+        }, 3000);
         
     } catch (error) {
         console.error('❌ Error creando Status Screen:', error);
@@ -105,17 +198,16 @@ async function renderStatusScreenBrick(result) {
     }
 }
 
-// 6. FALLBACK MEJORADO - ESTE SÍ SE VA A VER
+// FALLBACK GARANTIZADO
 function showFallbackResult(result) {
-    console.log('🔄 Mostrando fallback para resultado de pago...');
+    console.log('🔄 Mostrando fallback garantizado...');
     
     const container = document.getElementById('statusScreenBrick_container');
     const amount = document.getElementById('summary-total')?.textContent || '0';
     
-    // ✅ ESTILOS MUY EXPLÍCITOS PARA GARANTIZAR VISIBILIDAD
     container.style.cssText = `
         width: 100% !important;
-        min-height: 400px !important;
+        min-height: 500px !important;
         background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%) !important;
         border-radius: 15px !important;
         padding: 40px 30px !important;
@@ -129,141 +221,294 @@ function showFallbackResult(result) {
     
     container.innerHTML = `
         <div style="text-align: center; color: white;">
-            <!-- ICONO GRANDE -->
-            <div style="font-size: 100px; color: #28a745; margin-bottom: 20px;">
-                ✅
+            <div style="font-size: 80px; color: #28a745; margin-bottom: 20px;">✅</div>
+            <h2 style="color: #28a745; margin: 20px 0;">¡Pago Exitoso!</h2>
+            
+            <div style="background: rgba(40, 167, 69, 0.1); border: 2px solid #28a745; border-radius: 10px; padding: 25px; margin: 25px 0; text-align: left;">
+                <p style="margin: 10px 0;"><strong>📋 ID de Transacción:</strong> ${result.id}</p>
+                <p style="margin: 10px 0;"><strong>📊 Estado:</strong> <span style="background: #28a745; color: white; padding: 8px 16px; border-radius: 20px;">${result.status}</span></p>
+                <p style="margin: 10px 0;"><strong>💰 Monto:</strong> $${amount}</p>
+                <p style="margin: 10px 0;"><strong>🔍 Detalle:</strong> ${result.statusDetail || 'accredited'}</p>
             </div>
             
-            <!-- TÍTULO -->
-            <h1 style="color: #28a745; font-size: 2.5rem; margin-bottom: 30px; font-weight: bold;">
-                ¡PAGO EXITOSO!
-            </h1>
+            <p style="margin: 20px 0; font-size: 18px;">🎉 ¡Gracias por tu compra en Millenium Termotanques!</p>
             
-            <!-- TARJETA DE INFORMACIÓN -->
-            <div style="
-                background: rgba(40, 167, 69, 0.1);
-                border: 2px solid #28a745;
-                border-radius: 10px;
-                padding: 25px;
-                margin: 25px 0;
-                text-align: left;
-            ">
-                <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
-                    <div>
-                        <strong>📋 ID de Transacción:</strong>
-                        <div style="color: #aquamarine; font-family: monospace; font-size: 1.1rem;">
-                            ${result.id}
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <strong>📊 Estado:</strong>
-                        <div>
-                            <span style="
-                                background: #28a745;
-                                color: white;
-                                padding: 8px 16px;
-                                border-radius: 20px;
-                                font-weight: bold;
-                                font-size: 1rem;
-                            ">
-                                ${result.status.toUpperCase()}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <strong>💰 Monto Total:</strong>
-                        <div style="color: #aquamarine; font-size: 1.3rem; font-weight: bold;">
-                            $${amount}
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <strong>🔍 Detalle:</strong>
-                        <div style="color: #b0b0b0;">
-                            ${result.statusDetail || 'Pago acreditado exitosamente'}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- MENSAJE DE AGRADECIMIENTO -->
-            <div style="margin: 30px 0;">
-                <p style="font-size: 1.3rem; margin-bottom: 10px;">
-                    🎉 ¡Gracias por tu compra en Millenium Termotanques!
-                </p>
-                <p style="color: #b0b0b0; font-size: 1rem;">
-                    Tu pedido ha sido procesado exitosamente. Recibirás un correo de confirmación shortly.
-                </p>
-            </div>
-            
-            <!-- BOTONES DE ACCIÓN -->
-            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 40px;">
-                <button 
-                    class="btn btn-primary btn-lg" 
-                    onclick="volverAlCarrito()"
-                    style="
-                        padding: 12px 30px;
-                        font-size: 1.1rem;
-                        border-radius: 25px;
-                        min-width: 200px;
-                    "
-                >
+            <div style="margin-top: 30px;">
+                <button class="btn btn-primary btn-lg" onclick="volverAlCarrito()" style="margin: 5px; padding: 12px 30px;">
                     🛒 Continuar Comprando
                 </button>
-                
-                <button 
-                    class="btn btn-outline-light btn-lg" 
-                    onclick="downloadReceipt()"
-                    style="
-                        padding: 12px 30px;
-                        font-size: 1.1rem;
-                        border-radius: 25px;
-                        min-width: 200px;
-                    "
-                >
+                <button class="btn btn-outline-light btn-lg" onclick="downloadReceipt()" style="margin: 5px; padding: 12px 30px;">
                     📄 Descargar Comprobante
                 </button>
-            </div>
-            
-            <!-- INFORMACIÓN ADICIONAL -->
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #444;">
-                <small style="color: #888;">
-                    ¿Necesitas ayuda? Contacta a nuestro soporte: 
-                    <a href="mailto:soporte@milleniumtermotanques.com" style="color: aquamarine;">
-                        soporte@milleniumtermotanques.com
-                    </a>
-                </small>
             </div>
         </div>
     `;
     
-    console.log('✅ Fallback renderizado con estilos garantizados');
+    console.log('✅ Fallback renderizado exitosamente');
 }
 
-// 5. FUNCIÓN PARA MOSTRAR RESULTADO - MÁS ROBUSTA
+function showBrickError() {
+    const container = document.getElementById('mercadopago-bricks-contaner__PaymentCard');
+    container.innerHTML = `
+        <div class="alert alert-danger text-center">
+            <h5>❌ Error al cargar el formulario de pago</h5>
+            <p>No se pudo cargar el sistema de pagos.</p>
+            <button class="btn btn-warning mt-2" onclick="volverAlCarrito()">← Volver al Carrito</button>
+        </div>
+    `;
+}
+
 function showPaymentResult(result) {
     console.log('=== 🎯 MOSTRANDO RESULTADO ===');
-    
-    // ✅ OCULTAR PAGO CON TRANSICIÓN
     document.querySelector('.payment-form').style.display = 'none';
-    
-    // ✅ MOSTRAR RESULTADO CON ESTILOS FORZADOS
     const resultSection = document.querySelector('.container__result').closest('section');
-    resultSection.style.cssText = `
-        display: block !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-        position: relative !important;
-        z-index: 1000 !important;
-    `;
-    
-    // ✅ SCROLLEAR A LA SECCIÓN DE RESULTADOS
-    resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    
-    console.log('🎯 Sección de resultados forzada a ser visible');
-    
-    // ✅ RENDERIZAR STATUS SCREEN
+    resultSection.style.display = 'block';
+    resultSection.scrollIntoView({ behavior: 'smooth' });
     renderStatusScreenBrick(result);
 }
+
+async function loadPaymentForm() {
+    console.log('💰 Cargando formulario de pago...');
+    const brickContainer = document.getElementById('mercadopago-bricks-contaner__PaymentCard');
+    brickContainer.innerHTML = '<div class="text-center p-4" style="color: white;">Cargando opciones de pago...</div>';
+
+    try {
+        const bricksBuilder = await mp.bricks();
+        console.log('✅ Bricks Builder obtenido');
+        await renderPaymentBrick(bricksBuilder);
+    } catch (error) {
+        console.error('❌ Error cargando formulario:', error);
+        showBrickError();
+    }
+}
+
+function volverAlCarrito() {
+    console.log('🔙 Volviendo al carrito...');
+    document.querySelector('.payment-form').style.display = 'none';
+    document.querySelector('.container__result').closest('section').style.display = 'none';
+    document.querySelector('.container__cart').closest('section').style.display = 'block';
+    
+    if (paymentId) {
+        cart = [];
+        updateCartDisplay();
+        document.querySelectorAll('.quantity-control').forEach(input => {
+            input.value = 0;
+        });
+        paymentId = null;
+    }
+}
+
+function downloadReceipt() {
+    if (!paymentId) {
+        alert('No hay un ID de pago disponible');
+        return;
+    }
+
+    console.log('📄 Descargando comprobante para pago:', paymentId);
+    const url = `https://integracionmercado.onrender.com/process_payment/download_receipt/${paymentId}`;
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Error descargando comprobante');
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `comprobante-millenium-${paymentId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            console.log('✅ Comprobante descargado exitosamente');
+        })
+        .catch(error => {
+            console.error('❌ Error downloading receipt:', error);
+            alert('Error al descargar el comprobante: ' + error.message);
+        });
+}
+
+// EVENT LISTENERS
+document.getElementById('checkout-btn').addEventListener('click', function() {
+    console.log('🛒 Click en botón "Pagar"');
+    if (cart.length > 0) {
+        document.querySelector('.container__cart').closest('section').style.display = 'none';
+        document.querySelector('.payment-form').style.display = 'block';
+        updatePaymentSummary();
+        loadPaymentForm();
+    }
+});
+
+document.getElementById('go-back').addEventListener('click', function() {
+    volverAlCarrito();
+});
+
+// ========== SISTEMA DE CARRITO ==========
+const products = [
+    {
+        id: 1,
+        name: "Termotanque SMART AI",
+        description: "Termotanque inteligente con tecnología SMART AI. Máxima eficiencia energética y control digital avanzado.",
+        price: 85000,
+        image: "img/smart-1_orig.jpg.jpeg",
+        category: "SMART",
+        features: ["Tecnología SMART AI", "Control digital", "Eficiencia energética", "Garantía 5 años"],
+        stock: 15
+    },
+    {
+        id: 2,
+        name: "Termotanque Eléctrico Premium",
+        description: "Termotanque eléctrico de alto rendimiento. Ideal para hogares con consumo moderado de agua caliente.",
+        price: 45000,
+        image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-24-56_orig.png",
+        category: "Eléctrico",
+        features: ["Alto rendimiento", "Bajo consumo", "Fácil instalación", "Garantía 3 años"],
+        stock: 25
+    }
+];
+
+let cart = [];
+
+function renderProducts() {
+    const container = document.getElementById('products-container');
+    container.innerHTML = '';
+    products.forEach(product => {
+        const productElement = `
+            <div class="product-card">
+                <div class="product">
+                    <div class="info">
+                        <div class="product-details">
+                            <div class="row align-items-center">
+                                <div class="col-md-3">
+                                    <img class="img-fluid mx-auto d-block image product-image" 
+                                         src="${product.image}" 
+                                         alt="${product.name}"
+                                         onerror="this.src='https://via.placeholder.com/200x150/2d2d2d/ffffff?text=Producto'">
+                                </div>
+                                <div class="col-md-5 product-detail">
+                                    <h5 class="text-primary">${product.name}</h5>
+                                    <div class="product-info">
+                                        <p class="mb-2">${product.description}</p>
+                                        <p class="mb-1"><b>Categoría:</b> <span class="badge badge-info">${product.category}</span></p>
+                                        <p class="mb-1"><b>Disponibles:</b> ${product.stock} unidades</p>
+                                        <p class="mb-2"><b>Precio:</b> $<span class="unit-price">${product.price.toLocaleString()}</span></p>
+                                        <small class="text-muted"><b>Características:</b> ${product.features.join(', ')}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 product-detail text-center">
+                                    <label for="quantity-${product.id}"><h6>Cantidad</h6></label>
+                                    <input type="number" id="quantity-${product.id}" value="0" min="0" max="${product.stock}" class="form-control quantity-control mx-auto mb-2" onchange="updateCart(${product.id}, this.value)">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="addToCart(${product.id})">🛒 Agregar al Carrito</button>
+                                    <div class="mt-2"><small class="text-success feedback-message" id="feedback-${product.id}"></small></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.innerHTML += productElement;
+    });
+}
+
+function addToCart(productId) {
+    const quantityInput = document.getElementById(`quantity-${productId}`);
+    const quantity = parseInt(quantityInput.value);
+    const feedback = document.getElementById(`feedback-${productId}`);
+    
+    if (quantity > 0) {
+        updateCart(productId, quantity);
+        feedback.textContent = "✓ Agregado al carrito";
+        feedback.style.color = "#28a745";
+        setTimeout(() => feedback.textContent = "", 2000);
+    } else {
+        feedback.textContent = "Selecciona una cantidad";
+        feedback.style.color = "#dc3545";
+        setTimeout(() => feedback.textContent = "", 2000);
+    }
+}
+
+function updateCart(productId, quantity) {
+    const quantityNum = parseInt(quantity);
+    const product = products.find(p => p.id === productId);
+    
+    if (quantityNum === 0) {
+        cart = cart.filter(item => item.id !== productId);
+    } else {
+        const existingItem = cart.find(item => item.id === productId);
+        if (existingItem) {
+            existingItem.quantity = quantityNum;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: quantityNum,
+                image: product.image
+            });
+        }
+    }
+    updateCartDisplay();
+}
+
+function updateCartDisplay() {
+    const cartItemsContainer = document.getElementById('cart-items');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    cartItemsContainer.innerHTML = '';
+    let total = 0;
+    
+    if (cart.length === 0) {
+        cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
+        checkoutBtn.disabled = true;
+        checkoutBtn.innerHTML = '💳 Ir a Pagar';
+    } else {
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            cartItemsContainer.innerHTML += `
+                <div class="cart-item p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="font-weight-bold">${item.name}</small><br>
+                            <small class="text-muted">${item.quantity} x $${item.price.toLocaleString()}</small>
+                        </div>
+                        <span class="font-weight-bold price">$${itemTotal.toLocaleString()}</span>
+                    </div>
+                </div>
+            `;
+        });
+        checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
+    }
+    document.getElementById('cart-total').textContent = `$${total.toLocaleString()}`;
+}
+
+function updatePaymentSummary() {
+    const summaryContainer = document.getElementById('summary-items');
+    let total = 0;
+    summaryContainer.innerHTML = '';
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
+        summaryContainer.innerHTML += `
+            <div class="item mb-3 p-2 border-bottom">
+                <span class="price">$${itemTotal.toLocaleString()}</span>
+                <p class="item-name mb-1">${item.name}</p>
+                <small class="text-muted">Cantidad: ${item.quantity}</small>
+            </div>
+        `;
+    });
+    document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
+    document.getElementById('amount').value = total;
+    document.getElementById('description').value = `Termotanques Millenium - ${cart.length} producto(s)`;
+}
+
+// INICIALIZAR LA PÁGINA
+document.addEventListener('DOMContentLoaded', function() {
+    renderProducts();
+    updateCartDisplay();
+    console.log('=== 🚀 SISTEMA INICIALIZADO ===');
+    console.log('🔑 Public Key:', mercadoPagoPublicKey);
+    console.log('🌐 Entorno:', mercadoPagoPublicKey.startsWith('TEST-') ? 'PRUEBAS' : 'PRODUCCIÓN');
+});
