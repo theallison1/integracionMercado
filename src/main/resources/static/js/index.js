@@ -1,3 +1,4 @@
+// ========== MERCADO PAGO INTEGRATION ==========
 const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key").value;
 const mercadopago = new MercadoPago(mercadoPagoPublicKey);
 let cardPaymentBrickController;
@@ -67,99 +68,68 @@ function loadPaymentForm() {
             onSubmit: ({ selectedPaymentMethod, formData }) => {
                 console.log('=== 🚀 INICIANDO ENVÍO DE PAGO ===');
                 console.log('📋 Datos del Brick:', formData);
-                console.log('🔑 Public Key usada:', mercadoPagoPublicKey);
 
-                const paymentUrl = 'https://integracionmercado.onrender.com/process_payment';
-                console.log('🌐 URL del backend:', paymentUrl);
-                
-                fetch(paymentUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(formData)
-                })
-                .then(async (response) => {
-                    console.log('=== 📨 RESPUESTA HTTP RECIBIDA ===');
-                    console.log('📊 Status:', response.status);
-                    console.log('✅ OK:', response.ok);
-                    console.log('🔗 URL:', response.url);
+                // ✅ RETORNAR PROMESA como el ejemplo de Mercado Pago
+                return new Promise((resolve, reject) => {
+                    const paymentUrl = 'https://integracionmercado.onrender.com/process_payment';
                     
-                    // Obtener el texto completo de la respuesta
-                    const responseText = await response.text();
-                    console.log('📝 Response Text (RAW):', responseText);
-                    
-                    if (!response.ok) {
-                        console.error('❌ Error HTTP:', response.status);
-                        console.error('📋 Error Details:', responseText);
-                        volverAlCarrito();
-                        return null;
-                    }
-                    
-                    try {
-                        const result = JSON.parse(responseText);
-                        console.log('✅ Respuesta JSON parseada correctamente:', result);
-                        return result;
-                    } catch (jsonError) {
-                        console.error('❌ Error parseando JSON:', jsonError);
-                        console.error('📋 Texto que causó el error:', responseText);
-                        volverAlCarrito();
-                        return null;
-                    }
-                })
-                .then(result => {
-                    console.log('=== 🔄 PROCESANDO RESULTADO ===');
-                    console.log('📦 Result completo:', result);
-                    
-                    if (!result) {
-                        console.error('❌ Result es null o undefined - No hay datos del pago');
-                        volverAlCarrito();
-                        return;
-                    }
-
-                    // Verificar estructura del resultado
-                    console.log('🔍 ID del pago:', result.id);
-                    console.log('🔍 Estado del pago:', result.status);
-                    console.log('🔍 Status Detail:', result.statusDetail);
-                    console.log('🔍 Tipo de resultado:', typeof result);
-                    console.log('🔍 Keys del resultado:', Object.keys(result));
-                    
-                    if (result.status === 'approved' || result.status === 'pending') {
-                        console.log('🎉 Pago exitoso/pendiente - Procediendo con flujo de éxito');
+                    fetch(paymentUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(formData)
+                    })
+                    .then(async (response) => {
+                        console.log('=== 📨 RESPUESTA HTTP RECIBIDA ===');
+                        console.log('📊 Status:', response.status);
                         
-                        // PASO 1: Ocultar formulario de pago
-                        console.log('👁️‍🗨️ Ocultando formulario de pago...');
-                        $('.container__payment').fadeOut(500);
+                        const responseText = await response.text();
+                        console.log('📝 Response Text (RAW):', responseText);
                         
-                        // PASO 2: Renderizar Status Screen Brick
-                        console.log('🎬 Renderizando Status Screen Brick...');
-                        renderStatusScreenBrick(bricksBuilder, result);
+                        if (!response.ok) {
+                            console.error('❌ Error HTTP:', response.status, responseText);
+                            reject(new Error(`HTTP ${response.status}: ${responseText}`));
+                            return;
+                        }
                         
-                        // PASO 3: Mostrar pantalla de resultado después de un delay
-                        setTimeout(() => {
-                            console.log('🖥️ Mostrando pantalla de resultado...');
-                            $('.container__result').show(500).fadeIn();
-                            console.log('✅ Pantalla de resultado debería estar visible ahora');
+                        try {
+                            const result = JSON.parse(responseText);
+                            console.log('✅ Respuesta JSON:', result);
                             
-                            // Verificar visibilidad
-                            setTimeout(() => {
-                                const isResultVisible = $('.container__result').is(':visible');
-                                console.log('👀 Pantalla de resultado visible:', isResultVisible);
-                            }, 600);
-                        }, 1000);
-                        
-                    } else {
-                        console.log('❌ Pago rechazado - Estado:', result.status);
-                        console.log('📋 Detalles:', result.statusDetail);
-                        volverAlCarrito();
-                    }
-                })
-                .catch((error) => {
-                    console.error('=== 💥 ERROR EN FETCH ===');
-                    console.error('❌ Error name:', error.name);
-                    console.error('❌ Error message:', error.message);
-                    console.error('❌ Error stack:', error.stack);
-                    volverAlCarrito();
+                            // ✅ PROCESAR RESULTADO Y LUEGO RESOLVER
+                            if (result.status === 'approved' || result.status === 'pending') {
+                                console.log('🎉 Pago exitoso - Renderizando...');
+                                
+                                // 1. Ocultar formulario
+                                $('.container__payment').fadeOut(500);
+                                
+                                // 2. Renderizar Status Screen
+                                renderStatusScreenBrick(bricksBuilder, result);
+                                
+                                // 3. Mostrar resultado
+                                setTimeout(() => {
+                                    $('.container__result').show(500).fadeIn();
+                                    console.log('✅ Pantalla de resultado visible');
+                                }, 1000);
+                                
+                                // ✅ RESOLVER LA PROMESA
+                                resolve();
+                                
+                            } else {
+                                console.log('❌ Pago rechazado');
+                                reject(new Error(`Pago rechazado: ${result.status}`));
+                            }
+                            
+                        } catch (jsonError) {
+                            console.error('❌ Error parseando JSON:', jsonError);
+                            reject(jsonError);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('=== 💥 ERROR EN FETCH ===', error);
+                        reject(error);
+                    });
                 });
             }
         },
@@ -168,8 +138,7 @@ function loadPaymentForm() {
             paymentMethods: {
                 creditCard: 'all',
                 debitCard: 'all',
-                ticket: 'all',
-                walletPurchase: 'all'
+                ticket: 'all'
             },
             visual: {
                 style: {
@@ -196,7 +165,6 @@ function loadPaymentForm() {
 // Handle transitions
 document.getElementById('checkout-btn').addEventListener('click', function() {
     console.log('🛒 Click en botón "Pagar"');
-    console.log('📦 Productos en carrito:', cart);
     
     $('.container__cart').fadeOut(500);
     setTimeout(() => {
@@ -224,21 +192,16 @@ if (downloadReceiptBtn) {
             return;
         }
 
-        console.log('🔍 Payment ID para descarga:', paymentId);
         const url = `https://integracionmercado.onrender.com/process_payment/download_receipt/${paymentId}`;
-        console.log('🌐 URL de descarga:', url);
         
         fetch(url)
             .then(response => {
-                console.log('📨 Respuesta de descarga:', response.status);
-                
                 if (!response.ok) {
-                    throw new Error(`Error ${response.status} descargando comprobante`);
+                    throw new Error('Error descargando comprobante');
                 }
                 return response.blob();
             })
             .then(blob => {
-                console.log('✅ Comprobante descargado, creando enlace...');
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -251,12 +214,219 @@ if (downloadReceiptBtn) {
             })
             .catch(error => {
                 console.error('❌ Error downloading receipt:', error);
-                alert('Error al descargar el comprobante: ' + error.message);
+                alert('Error al descargar el comprobante');
             });
     });
 } else {
     console.error('❌ Elemento "download-receipt" no encontrado');
 }
+
+// ========== SISTEMA DE CARRITO ==========
+// Catálogo de termotanques Millenium
+const products = [
+    {
+        id: 1,
+        name: "Termotanque SMART AI",
+        description: "Termotanque inteligente con tecnología SMART AI. Máxima eficiencia energética y control digital avanzado.",
+        price: 85000,
+        image: "img/smart-1_orig.jpg.jpeg",
+        category: "SMART",
+        features: ["Tecnología SMART AI", "Control digital", "Eficiencia energética", "Garantía 5 años"],
+        stock: 15
+    },
+    {
+        id: 2,
+        name: "Termotanque Eléctrico Premium",
+        description: "Termotanque eléctrico de alto rendimiento. Ideal para hogares con consumo moderado de agua caliente.",
+        price: 45000,
+        image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-24-56_orig.png",
+        category: "Eléctrico",
+        features: ["Alto rendimiento", "Bajo consumo", "Fácil instalación", "Garantía 3 años"],
+        stock: 25
+    }
+];
+
+// Carrito de compras
+let cart = [];
+
+// Función para renderizar productos
+function renderProducts() {
+    const container = document.getElementById('products-container');
+    container.innerHTML = '';
+
+    products.forEach(product => {
+        const productElement = `
+            <div class="product-card">
+                <div class="product">
+                    <div class="info">
+                        <div class="product-details">
+                            <div class="row align-items-center">
+                                <div class="col-md-3">
+                                    <img class="img-fluid mx-auto d-block image product-image" 
+                                         src="${product.image}" 
+                                         alt="${product.name}"
+                                         onerror="this.src='https://via.placeholder.com/200x150/2d2d2d/ffffff?text=Producto'">
+                                </div>
+                                <div class="col-md-5 product-detail">
+                                    <h5 class="text-primary">${product.name}</h5>
+                                    <div class="product-info">
+                                        <p class="mb-2">${product.description}</p>
+                                        <p class="mb-1"><b>Categoría:</b> <span class="badge badge-info">${product.category}</span></p>
+                                        <p class="mb-1"><b>Disponibles:</b> ${product.stock} unidades</p>
+                                        <p class="mb-2"><b>Precio:</b> $<span class="unit-price">${product.price.toLocaleString()}</span></p>
+                                        <small class="text-muted">
+                                            <b>Características:</b> ${product.features.join(', ')}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 product-detail text-center">
+                                    <label for="quantity-${product.id}"><h6>Cantidad</h6></label>
+                                    <input type="number" 
+                                           id="quantity-${product.id}" 
+                                           value="0" 
+                                           min="0" 
+                                           max="${product.stock}"
+                                           class="form-control quantity-control mx-auto mb-2"
+                                           onchange="updateCart(${product.id}, this.value)">
+                                    <button class="btn btn-outline-primary btn-sm" 
+                                            onclick="addToCart(${product.id})">
+                                        🛒 Agregar al Carrito
+                                    </button>
+                                    <div class="mt-2">
+                                        <small class="text-success feedback-message" id="feedback-${product.id}"></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.innerHTML += productElement;
+    });
+}
+
+// Funciones del carrito
+function addToCart(productId) {
+    const quantityInput = document.getElementById(`quantity-${productId}`);
+    const quantity = parseInt(quantityInput.value);
+    const feedback = document.getElementById(`feedback-${productId}`);
+    
+    if (quantity > 0) {
+        updateCart(productId, quantity);
+        feedback.textContent = "✓ Agregado al carrito";
+        feedback.style.color = "#28a745";
+        setTimeout(() => feedback.textContent = "", 2000);
+    } else {
+        feedback.textContent = "Selecciona una cantidad";
+        feedback.style.color = "#dc3545";
+        setTimeout(() => feedback.textContent = "", 2000);
+    }
+}
+
+function updateCart(productId, quantity) {
+    const quantityNum = parseInt(quantity);
+    const product = products.find(p => p.id === productId);
+    
+    if (quantityNum === 0) {
+        cart = cart.filter(item => item.id !== productId);
+    } else {
+        const existingItem = cart.find(item => item.id === productId);
+        
+        if (existingItem) {
+            existingItem.quantity = quantityNum;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: quantityNum,
+                image: product.image
+            });
+        }
+    }
+    
+    updateCartDisplay();
+}
+
+function updateCartDisplay() {
+    const cartItemsContainer = document.getElementById('cart-items');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    
+    cartItemsContainer.innerHTML = '';
+    let total = 0;
+    
+    if (cart.length === 0) {
+        cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
+        checkoutBtn.disabled = true;
+        checkoutBtn.innerHTML = '💳 Ir a Pagar';
+    } else {
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            
+            const cartItemElement = `
+                <div class="cart-item p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="font-weight-bold">${item.name}</small><br>
+                            <small class="text-muted">${item.quantity} x $${item.price.toLocaleString()}</small>
+                        </div>
+                        <span class="font-weight-bold price">$${itemTotal.toLocaleString()}</span>
+                    </div>
+                </div>
+            `;
+            cartItemsContainer.innerHTML += cartItemElement;
+        });
+        checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
+    }
+    
+    document.getElementById('cart-total').textContent = `$${total.toLocaleString()}`;
+}
+
+function updatePaymentSummary() {
+    const summaryContainer = document.getElementById('summary-items');
+    let total = 0;
+    
+    summaryContainer.innerHTML = '';
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
+        
+        summaryContainer.innerHTML += `
+            <div class="item mb-3 p-2 border-bottom">
+                <span class="price">$${itemTotal.toLocaleString()}</span>
+                <p class="item-name mb-1">${item.name}</p>
+                <small class="text-muted">Cantidad: ${item.quantity}</small>
+            </div>
+        `;
+    });
+    
+    document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
+    document.getElementById('amount').value = total;
+    document.getElementById('description').value = `Termotanques Millenium - ${cart.length} producto(s)`;
+}
+
+// Inicializar la página
+document.addEventListener('DOMContentLoaded', function() {
+    renderProducts();
+    updateCartDisplay();
+    
+    // Navegación entre secciones
+    document.getElementById('checkout-btn').addEventListener('click', function() {
+        if (cart.length > 0) {
+            document.querySelector('.shopping-cart').style.display = 'none';
+            document.querySelector('.payment-form').style.display = 'block';
+            updatePaymentSummary();
+        }
+    });
+    
+    document.getElementById('go-back').addEventListener('click', function() {
+        document.querySelector('.payment-form').style.display = 'none';
+        document.querySelector('.shopping-cart').style.display = 'block';
+    });
+});
 
 // Log inicial
 console.log('=== 🚀 SISTEMA INICIALIZADO ===');
