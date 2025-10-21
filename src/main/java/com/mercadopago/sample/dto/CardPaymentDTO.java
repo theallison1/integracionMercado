@@ -22,7 +22,7 @@ public class CardPaymentDTO {
     @NotNull
     private Integer installments;
 
-    @NotNull
+    
     @JsonProperty("product_description")
     private String productDescription;
 
