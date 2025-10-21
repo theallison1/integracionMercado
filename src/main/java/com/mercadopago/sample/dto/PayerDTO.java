@@ -10,16 +10,16 @@ public class PayerDTO {
     @NotNull
     private PayerIdentificationDTO identification;
 
-    @JsonProperty("first_name")  // ✅ AGREGAR
+    @JsonProperty("first_name")
     private String firstName;
     
-    @JsonProperty("last_name")   // ✅ AGREGAR  
+    @JsonProperty("last_name")  
     private String lastName;
 
     public PayerDTO() {
     }
 
-    // Getters y Setters
+    // GETTERS Y SETTERS
     public String getEmail() {
         return email;
     }
@@ -50,5 +50,15 @@ public class PayerDTO {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
+    }
+
+    @Override
+    public String toString() {
+        return "PayerDTO{" +
+                "email='" + email + '\'' +
+                ", identification=" + identification +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                '}';
     }
 }
