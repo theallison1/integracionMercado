@@ -165,7 +165,7 @@ function updatePaymentSummary() {
 const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key").value;
 const mercadopago = new MercadoPago(mercadoPagoPublicKey);
 
-// ✅ CONFIGURACIÓN SIMPLIFICADA Y ROBUSTA
+// ✅ CONFIGURACIÓN CORREGIDA CON PAYMENT METHODS
 async function loadPaymentForm() {
     console.log('💰 Cargando formulario de pago...');
     const productCost = document.getElementById('amount').value;
@@ -174,33 +174,45 @@ async function loadPaymentForm() {
     const brickContainer = document.getElementById('mercadopago-bricks-contaner__PaymentCard');
     
     // ✅ LIMPIAR CONTENEDOR DE FORMA SEGURA
-    while (brickContainer.firstChild) {
-        brickContainer.removeChild(brickContainer.firstChild);
-    }
-    
     brickContainer.innerHTML = '<div class="text-center p-4">Cargando formulario de pago...</div>';
 
     try {
         const bricksBuilder = await mercadopago.bricks();
         
-        // ✅ CONFIGURACIÓN MÍNIMA Y COMPATIBLE
+        // ✅ CONFIGURACIÓN COMPLETA CON PAYMENT METHODS
         const settings = {
             initialization: {
                 amount: parseFloat(productCost),
             },
+            // ✅ AGREGAR CONFIGURACIÓN DE MÉTODOS DE PAGO
+            customization: {
+                paymentMethods: {
+                    creditCard: 'all',
+                    debitCard: 'all', 
+                    ticket: 'all',
+                    bankTransfer: 'all',
+                    maxInstallments: 12
+                }
+            },
             callbacks: {
                 onReady: () => {
                     console.log('✅ Brick de pago listo');
-                    // Limpiar mensaje de carga de forma segura
+                    // Limpiar mensaje de carga
                     const loadingMsg = brickContainer.querySelector('.text-center');
-                    if (loadingMsg && loadingMsg.parentNode === brickContainer) {
-                        brickContainer.removeChild(loadingMsg);
+                    if (loadingMsg) {
+                        loadingMsg.remove();
                     }
                 },
                 onError: (error) => {
                     console.error('❌ Error en Brick:', error);
-                    // Mostrar error específico
-                    showBrickError('Error en el formulario de pago: ' + (error.message || 'Error desconocido'));
+                    console.error('Detalles del error:', error.cause, error.message);
+                    
+                    // Manejar error específico de initialization
+                    if (error.cause === 'payment_brick_initialization_failed') {
+                        showBrickError('Error al inicializar el formulario de pago. Verifica el monto y los métodos de pago.');
+                    } else {
+                        showBrickError('Error en el formulario de pago: ' + (error.message || 'Error desconocido'));
+                    }
                 },
                 onSubmit: (cardFormData) => {
                     console.log('=== 🚀 INICIANDO ENVÍO DE PAGO ===');
