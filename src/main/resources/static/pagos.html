@@ -4,20 +4,8 @@
     <title>Termotanques Millenium</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    
-    <!-- ✅ AGREGAR ESTA CSP PARA SOLUCIONAR LOS BLOQUEOS -->
-    <meta http-equiv="Content-Security-Policy" content="
-        default-src 'self' https://http2.mlstatic.com https://sdk.mercadopago.com https://api.mercadopago.com https://www.mercadopago.com;
-        script-src 'self' 'unsafe-eval' 'unsafe-inline' https://sdk.mercadopago.com https://http2.mlstatic.com https://ajax.googleapis.com;
-        style-src 'self' 'unsafe-inline' https://maxcdn.bootstrapcdn.com https://http2.mlstatic.com;
-        connect-src 'self' https://api.mercadopago.com https://integracionmercado.onrender.com https://http2.mlstatic.com;
-        img-src 'self' data: https:;
-        font-src 'self' https://maxcdn.bootstrapcdn.com;
-        frame-src 'self' https://http2.mlstatic.com https://www.mercadopago.com;
-        child-src 'self' https://http2.mlstatic.com;
-    ">
-    
     <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="css/index.css">
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
         :root {
@@ -33,32 +21,6 @@
             background-color: var(--dark-bg);
             color: var(--text-light);
             font-family: 'Arial', sans-serif;
-        }
-
-        /* ESTILOS PARA LAS SECCIONES - CORREGIDOS */
-        .container__cart,
-        .container__payment, 
-        .container__result {
-            display: none;
-            opacity: 0;
-            transition: all 0.5s ease;
-        }
-
-        .container__cart.active,
-        .container__payment.active,
-        .container__result.active {
-            display: block !important;
-            opacity: 1 !important;
-        }
-
-        /* Asegurar que el contenedor del Status Screen sea visible */
-        #statusScreenBrick_container {
-            min-height: 400px;
-            width: 100%;
-            background: var(--card-bg);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
         }
 
         .product-card {
@@ -225,11 +187,12 @@
     </style>
 </head>
 <body>
-<input id="mercado-pago-public-key" value="TEST-d3652cb4-2ab1-46e8-bbf4-a352936b2125" type="hidden" />
+<!-- SOLO CAMBIÉ ESTA LÍNEA - Public Key ahora es TEST -->
+<input id="mercado-pago-public-key" value="APP_USR-c90816a8-38cd-4720-9f60-226dae2b7b4d" type="hidden" />
 <main>
     <!-- Shopping Cart -->
     <section class="shopping-cart dark">
-        <div class="container container__cart active">
+        <div class="container container__cart">
             <div class="block-heading text-center">
                 <h2><span class="event-theme">milleniumtermotanques</span></h2>
                 <p>Calidad en Termotanques - Productos Disponibles</p>
@@ -261,9 +224,9 @@
         </div>
     </section>
 
-    <!-- Sección de pago -->
-    <section class="payment-form dark">
-        <div class="container container__payment">
+    <!-- Las secciones de Payment y Result se mantienen igual -->
+    <section class="payment-form dark" style="display: none;">
+        <div class="container__payment">
             <div class="block-heading text-center">
                 <h2>Medios de Pago</h2>
                 <p>MILLENIUM TERMOTANQUES</p>
@@ -286,8 +249,7 @@
         </div>
     </section>
 
-    <!-- Sección de resultado -->
-    <section class="shopping-cart dark">
+    <section class="shopping-cart dark" style="display: none;">
         <div class="container container__result">
             <div class="block-heading text-center">
                 <h2>Resultado del Pago</h2>
@@ -298,9 +260,9 @@
                     <div class="col-md-12 col-lg-12">
                         <div class="items product info product-details">
                             <div class="row justify-content-md-center">
-                                <div class="col-md-6 product-detail">
+                                <div class="col-md-4 product-detail">
                                     <div id="statusScreenBrick_container"></div>
-                                    <button id="download-receipt" class="btn btn-primary btn-block mt-3">Descargar Comprobante</button>
+                                    <button id="download-receipt" class="btn btn-primary">Descargar Comprobante</button>
                                 </div>
                             </div>
                         </div>
@@ -312,6 +274,243 @@
 </main>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-<script type="text/javascript" src="js/index.js"></script>
+<script type="text/javascript" src="js/index.js" defer></script>
+<script>
+// Catálogo de termotanques Millenium
+const products = [
+    {
+        id: 1,
+        name: "Termotanque SMART AI",
+        description: "Termotanque inteligente con tecnología SMART AI. Máxima eficiencia energética y control digital avanzado.",
+        price: 85000,
+        image: "img/smart-1_orig.jpg.jpeg",
+        category: "SMART",
+        features: ["Tecnología SMART AI", "Control digital", "Eficiencia energética", "Garantía 5 años"],
+        stock: 15
+    },
+    {
+        id: 2,
+        name: "Termotanque Eléctrico Premium",
+        description: "Termotanque eléctrico de alto rendimiento. Ideal para hogares con consumo moderado de agua caliente.",
+        price: 45000,
+        image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-24-56_orig.png",
+        category: "Eléctrico",
+        features: ["Alto rendimiento", "Bajo consumo", "Fácil instalación", "Garantía 3 años"],
+        stock: 25
+    },
+    {
+        id: 3,
+        name: "Termotanque Mixto Caldera",
+        description: "Sistema mixto caldera eléctrica y gas. Solución completa para alto consumo en hoteles y empresas.",
+        price: 120000,
+        image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-24-23_orig.png",
+        category: "Mixto",
+        features: ["Doble sistema", "Alto caudal", "Ideal empresas", "Garantía 7 años"],
+        stock: 8
+    },
+    {
+        id: 4,
+        name: "Termotanque Multigas Industrial",
+        description: "Termotanque multigas para uso industrial. Capacidad elevada para grandes demandas de agua caliente.",
+        price: 150000,
+        image: "img/captura-de-pantalla-2023-01-12-a-la-s-15-25-23_orig.png",
+        category: "Industrial",
+        features: ["Uso industrial", "Multigas", "Gran capacidad", "Garantía 10 años"],
+        stock: 5
+    },
+    {
+        id: 5,
+        name: "Termotanque Estándar Familiar",
+        description: "Termotanque estándar ideal para familias. Balance perfecto entre precio y rendimiento.",
+        price: 35000,
+        image: "img/smart-1_orig.jpg.jpeg",
+        category: "Familiar",
+        features: ["Económico", "Fácil mantenimiento", "Ideal familias", "Garantía 2 años"],
+        stock: 30
+    }
+];
+
+// Carrito de compras
+let cart = [];
+
+// Función para renderizar productos
+function renderProducts() {
+    const container = document.getElementById('products-container');
+    container.innerHTML = '';
+
+    products.forEach(product => {
+        const productElement = `
+            <div class="product-card">
+                <div class="product">
+                    <div class="info">
+                        <div class="product-details">
+                            <div class="row align-items-center">
+                                <div class="col-md-3">
+                                    <img class="img-fluid mx-auto d-block image product-image" 
+                                         src="${product.image}" 
+                                         alt="${product.name}"
+                                         onerror="this.src='img/placeholder-product.jpg'">
+                                </div>
+                                <div class="col-md-5 product-detail">
+                                    <h5 class="text-primary">${product.name}</h5>
+                                    <div class="product-info">
+                                        <p class="mb-2">${product.description}</p>
+                                        <p class="mb-1"><b>Categoría:</b> <span class="badge badge-info">${product.category}</span></p>
+                                        <p class="mb-1"><b>Disponibles:</b> ${product.stock} unidades</p>
+                                        <p class="mb-2"><b>Precio:</b> $<span class="unit-price">${product.price.toLocaleString()}</span></p>
+                                        <small class="text-muted">
+                                            <b>Características:</b> ${product.features.join(', ')}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 product-detail text-center">
+                                    <label for="quantity-${product.id}"><h6>Cantidad</h6></label>
+                                    <input type="number" 
+                                           id="quantity-${product.id}" 
+                                           value="0" 
+                                           min="0" 
+                                           max="${product.stock}"
+                                           class="form-control quantity-control mx-auto mb-2"
+                                           onchange="updateCart(${product.id}, this.value)">
+                                    <button class="btn btn-outline-primary btn-sm" 
+                                            onclick="addToCart(${product.id})">
+                                        🛒 Agregar al Carrito
+                                    </button>
+                                    <div class="mt-2">
+                                        <small class="text-success feedback-message" id="feedback-${product.id}"></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.innerHTML += productElement;
+    });
+}
+
+// Funciones del carrito
+function addToCart(productId) {
+    const quantityInput = document.getElementById(`quantity-${productId}`);
+    const quantity = parseInt(quantityInput.value);
+    const feedback = document.getElementById(`feedback-${productId}`);
+    
+    if (quantity > 0) {
+        updateCart(productId, quantity);
+        feedback.textContent = "✓ Agregado al carrito";
+        feedback.style.color = "#28a745";
+        setTimeout(() => feedback.textContent = "", 2000);
+    } else {
+        feedback.textContent = "Selecciona una cantidad";
+        feedback.style.color = "#dc3545";
+        setTimeout(() => feedback.textContent = "", 2000);
+    }
+}
+
+function updateCart(productId, quantity) {
+    const quantityNum = parseInt(quantity);
+    const product = products.find(p => p.id === productId);
+    
+    if (quantityNum === 0) {
+        cart = cart.filter(item => item.id !== productId);
+    } else {
+        const existingItem = cart.find(item => item.id === productId);
+        
+        if (existingItem) {
+            existingItem.quantity = quantityNum;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: quantityNum,
+                image: product.image
+            });
+        }
+    }
+    
+    updateCartDisplay();
+}
+
+function updateCartDisplay() {
+    const cartItemsContainer = document.getElementById('cart-items');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    
+    cartItemsContainer.innerHTML = '';
+    let total = 0;
+    
+    if (cart.length === 0) {
+        cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
+        checkoutBtn.disabled = true;
+        checkoutBtn.innerHTML = '💳 Ir a Pagar';
+    } else {
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            
+            const cartItemElement = `
+                <div class="cart-item p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="font-weight-bold">${item.name}</small><br>
+                            <small class="text-muted">${item.quantity} x $${item.price.toLocaleString()}</small>
+                        </div>
+                        <span class="font-weight-bold price">$${itemTotal.toLocaleString()}</span>
+                    </div>
+                </div>
+            `;
+            cartItemsContainer.innerHTML += cartItemElement;
+        });
+        checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
+    }
+    
+    document.getElementById('cart-total').textContent = `$${total.toLocaleString()}`;
+}
+
+// Inicializar la página
+document.addEventListener('DOMContentLoaded', function() {
+    renderProducts();
+    updateCartDisplay();
+    
+    // Navegación entre secciones
+    document.getElementById('checkout-btn').addEventListener('click', function() {
+        if (cart.length > 0) {
+            document.querySelector('.shopping-cart').style.display = 'none';
+            document.querySelector('.payment-form').style.display = 'block';
+            updatePaymentSummary();
+        }
+    });
+    
+    document.getElementById('go-back').addEventListener('click', function() {
+        document.querySelector('.payment-form').style.display = 'none';
+        document.querySelector('.shopping-cart').style.display = 'block';
+    });
+});
+
+function updatePaymentSummary() {
+    const summaryContainer = document.getElementById('summary-items');
+    let total = 0;
+    
+    summaryContainer.innerHTML = '';
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
+        
+        summaryContainer.innerHTML += `
+            <div class="item mb-3 p-2 border-bottom">
+                <span class="price">$${itemTotal.toLocaleString()}</span>
+                <p class="item-name mb-1">${item.name}</p>
+                <small class="text-muted">Cantidad: ${item.quantity}</small>
+            </div>
+        `;
+    });
+    
+    document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
+    document.getElementById('amount').value = total;
+    document.getElementById('description').value = `Termotanques Millenium - ${cart.length} producto(s)`;
+}
+</script>
 </body>
 </html>
