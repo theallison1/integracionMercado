@@ -5,8 +5,6 @@ const bricksBuilder = mercadopago.bricks();
 let paymentId;
 
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
-    var message = "";
-    message = result.id;
     paymentId = result.id;
     alert(paymentId);
 
@@ -99,32 +97,42 @@ function loadPaymentForm() {
     cardPaymentBrickController = bricks.create('payment', 'mercadopago-bricks-contaner__PaymentCard', settings);
 }
 
-// CORRECCIÓN: Verificar que el elemento existe antes de agregar el event listener
-const checkoutBtn = document.getElementById('checkout-btn');
-if (checkoutBtn) {
-    checkoutBtn.addEventListener('click', function() {
-        $('.container__cart').fadeOut(500);
-        setTimeout(() => {
-            loadPaymentForm();
-            $('.container__payment').show(500).fadeIn();
-        }, 500);
-    });
-} else {
-    console.error('Elemento "checkout-btn" no encontrado');
-}
+// CORREGIDO: Usar jQuery y verificar que el elemento existe
+$(document).ready(function() {
+    const checkoutBtn = $('#checkout-btn');
+    if (checkoutBtn.length) {
+        checkoutBtn.on('click', function() {
+            $('.container__cart').fadeOut(500);
+            setTimeout(() => {
+                loadPaymentForm();
+                $('.container__payment').show(500).fadeIn();
+            }, 500);
+        });
+    } else {
+        console.error('Elemento "checkout-btn" no encontrado');
+    }
 
-// CORRECCIÓN: Verificar que el elemento existe antes de agregar el event listener
-const goBackBtn = document.getElementById('go-back');
-if (goBackBtn) {
-    goBackBtn.addEventListener('click', function() {
-        $('.container__payment').fadeOut(500);
-        setTimeout(() => {
-            $('.container__cart').show(500).fadeIn();
-        }, 500);
-    });
-} else {
-    console.error('Elemento "go-back" no encontrado');
-}
+    // CORREGIDO: Para el botón "go-back"
+    const goBackBtn = $('#go-back');
+    if (goBackBtn.length) {
+        goBackBtn.on('click', function() {
+            $('.container__payment').fadeOut(500);
+            setTimeout(() => {
+                $('.container__cart').show(500).fadeIn();
+            }, 500);
+        });
+    } else {
+        console.error('Elemento "go-back" no encontrado');
+    }
+
+    // CORREGIDO: Para el input de cantidad
+    const quantityInput = $('#quantity');
+    if (quantityInput.length) {
+        quantityInput.on('change', updatePrice);
+    } else {
+        console.error('Elemento "quantity" no encontrado');
+    }
+});
 
 // Handle price update
 function updatePrice() {
@@ -139,47 +147,40 @@ function updatePrice() {
     document.getElementById('amount').value = amount;
 };
 
-// CORRECCIÓN: Verificar que el elemento existe antes de agregar el event listener
-const quantityInput = document.getElementById('quantity');
-if (quantityInput) {
-    quantityInput.addEventListener('change', updatePrice);
-} else {
-    console.error('Elemento "quantity" no encontrado');
-}
-
 updatePrice();
 
 // Verifica la existencia del botón "download-receipt" antes de añadir el event listener
-const downloadReceiptBtn = document.getElementById('download-receipt');
-if (downloadReceiptBtn) {
-    downloadReceiptBtn.addEventListener('click', function() {
-        alert(paymentId);
-        
-        // CORRECCIÓN: Obtener el amount actualizado
-        const amount = document.getElementById('amount').value;
+$(document).ready(function() {
+    const downloadReceiptBtn = $('#download-receipt');
+    if (downloadReceiptBtn.length) {
+        downloadReceiptBtn.on('click', function() {
+            alert(paymentId);
+            
+            const amount = document.getElementById('amount').value;
 
-        if (!paymentId) {
-            console.error('Payment ID not found');
-            return;
-        }
+            if (!paymentId) {
+                console.error('Payment ID not found');
+                return;
+            }
 
-        const url = `/process_payment/download_receipt/${paymentId}`;
-        fetch(url)
-            .then(response => response.blob())
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'comprobante.pdf';
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(error => {
-                console.error('Error downloading receipt:', error);
-            });
-    });
-} else {
-    console.error('Elemento "download-receipt" no encontrado');
-}
+            const url = `/process_payment/download_receipt/${paymentId}`;
+            fetch(url)
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'comprobante.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    console.error('Error downloading receipt:', error);
+                });
+        });
+    } else {
+        console.error('Elemento "download-receipt" no encontrado');
+    }
+});
