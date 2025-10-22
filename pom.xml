@@ -55,8 +55,7 @@
 <!-- Dependencia para Thymeleaf (si no la tienes) -->
 <dependency>
     <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-thymeleaf</groupId>
-</dependency>
+<artifactId>spring-boot-starter-thymeleaf</artifactId></dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
