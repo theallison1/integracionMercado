@@ -97,7 +97,7 @@ function loadPaymentForm() {
     cardPaymentBrickController = bricks.create('payment', 'mercadopago-bricks-contaner__PaymentCard', settings);
 }
 
-// CORREGIDO: Usar jQuery y verificar que el elemento existe
+// CORREGIDO: Solo los event listeners necesarios
 $(document).ready(function() {
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
@@ -112,7 +112,6 @@ $(document).ready(function() {
         console.error('Elemento "checkout-btn" no encontrado');
     }
 
-    // CORREGIDO: Para el botón "go-back"
     const goBackBtn = $('#go-back');
     if (goBackBtn.length) {
         goBackBtn.on('click', function() {
@@ -125,31 +124,32 @@ $(document).ready(function() {
         console.error('Elemento "go-back" no encontrado');
     }
 
-    // CORREGIDO: Para el input de cantidad
-    const quantityInput = $('#quantity');
-    if (quantityInput.length) {
-        quantityInput.on('change', updatePrice);
-    } else {
-        console.error('Elemento "quantity" no encontrado');
-    }
+    // ❌ ELIMINADO: No hay elemento 'quantity' individual
+    // const quantityInput = $('#quantity');
+    // if (quantityInput.length) {
+    //     quantityInput.on('change', updatePrice);
+    // } else {
+    //     console.error('Elemento "quantity" no encontrado');
+    // }
 });
 
-// Handle price update
-function updatePrice() {
-    let quantity = document.getElementById('quantity').value;
-    let unitPrice = document.getElementById('unit-price').innerText;
-    let amount = parseInt(unitPrice) * parseInt(quantity);
+// ❌ ELIMINADO: Esta función no es necesaria
+// function updatePrice() {
+//     let quantity = document.getElementById('quantity').value;
+//     let unitPrice = document.getElementById('unit-price').innerText;
+//     let amount = parseInt(unitPrice) * parseInt(quantity);
+//
+//     document.getElementById('cart-total').innerText = '$ ' + amount;
+//     document.getElementById('summary-price').innerText = '$ ' + unitPrice;
+//     document.getElementById('summary-quantity').innerText = quantity;
+//     document.getElementById('summary-total').innerText = '$ ' + amount;
+//     document.getElementById('amount').value = amount;
+// };
 
-    document.getElementById('cart-total').innerText = '$ ' + amount;
-    document.getElementById('summary-price').innerText = '$ ' + unitPrice;
-    document.getElementById('summary-quantity').innerText = quantity;
-    document.getElementById('summary-total').innerText = '$ ' + amount;
-    document.getElementById('amount').value = amount;
-};
+// ❌ ELIMINADO: Esta llamada ya no es necesaria
+// updatePrice();
 
-updatePrice();
-
-// Verifica la existencia del botón "download-receipt" antes de añadir el event listener
+// Verifica la existencia del botón "download-receipt"
 $(document).ready(function() {
     const downloadReceiptBtn = $('#download-receipt');
     if (downloadReceiptBtn.length) {
