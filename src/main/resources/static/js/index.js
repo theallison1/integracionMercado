@@ -6,7 +6,7 @@ let paymentId;
 
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
     paymentId = result.id;
-    alert(paymentId);
+    console.log('Payment ID:', paymentId);
 
     window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
         initialization: {
@@ -14,34 +14,48 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
         },
         callbacks: {
             onReady: () => {
-                // handle form ready
+                console.log('Status Screen Brick ready');
             },
             onError: (error) => {
-                // handle error
+                console.error('Error en Status Screen Brick:', error);
             }
         }
     });
 };
 
 function loadPaymentForm() {
-    const productCost = document.getElementById('amount').value;
+    // Obtener el amount del campo hidden en tu HTML actual
+    const amountInput = document.getElementById('amount');
+    
+    if (!amountInput || !amountInput.value || amountInput.value === '0') {
+        alert('Error: El carrito está vacío. Agrega productos antes de pagar.');
+        return;
+    }
+    
+    const productCost = parseFloat(amountInput.value);
+    
+    if (isNaN(productCost) || productCost <= 0) {
+        alert('Error: El monto debe ser mayor a 0.');
+        return;
+    }
+
+    console.log('Monto a pagar:', productCost);
+
     const settings = {
         initialization: {
             amount: productCost,
         },
         callbacks: {
             onReady: () => {
-                console.log('brick ready')
+                console.log('Payment Brick ready');
             },
             onError: (error) => {
-                alert(JSON.stringify("errorlllllll"))
+                console.error('Error en Payment Brick:', error);
+                alert('Error al cargar el formulario de pago');
             },
-            onSubmit: ({
-                selectedPaymentMethod,
-                formData
-            }) => {
-                alert("entra ala funcion");
-                alert(JSON.stringify(formData));
+            onSubmit: ({ selectedPaymentMethod, formData }) => {
+                console.log('Datos del formulario enviados:', formData);
+                
                 fetch('/process_payment', {
                     method: "POST",
                     headers: {
@@ -50,27 +64,28 @@ function loadPaymentForm() {
                     body: JSON.stringify(formData)
                 })
                 .then((response) => {
-                    alert(JSON.stringify(response));
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta del servidor');
+                    }
                     return response.json();
                 })
                 .then(result => {
+                    console.log('Respuesta del servidor:', result);
+                    
                     if (!result.hasOwnProperty("error_message")) {
                         renderStatusScreenBrick(bricksBuilder, result);
-                        alert("deberia renderisar");
-
+                        
                         $('.container__payment').fadeOut(500);
                         setTimeout(() => {
                             $('.container__result').show(500).fadeIn();
                         }, 500);
                     } else {
-                        alert(JSON.stringify({
-                            status: result.status,
-                            message: result.error_message
-                        }))
+                        alert('Error en el pago: ' + result.error_message);
                     }
                 })
                 .catch((error) => {
-                    alert(JSON.stringify(error.status));
+                    console.error('Error en la petición:', error);
+                    alert('Error al procesar el pago: ' + error.message);
                 });
             }
         },
@@ -93,15 +108,29 @@ function loadPaymentForm() {
         },
     }
 
+    // Limpiar el contenedor antes de crear el nuevo Brick
+    const container = document.getElementById('mercadopago-bricks-contaner__PaymentCard');
+    if (container) {
+        container.innerHTML = '';
+    }
+
     const bricks = mercadopago.bricks();
     cardPaymentBrickController = bricks.create('payment', 'mercadopago-bricks-contaner__PaymentCard', settings);
 }
 
-// CORREGIDO: Solo los event listeners necesarios
+// Event listeners usando jQuery
 $(document).ready(function() {
+    // Botón "Ir a Pagar"
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
         checkoutBtn.on('click', function() {
+            // Verificar que el carrito no esté vacío
+            const amountInput = document.getElementById('amount');
+            if (!amountInput || !amountInput.value || amountInput.value === '0') {
+                alert('El carrito está vacío. Agrega productos antes de pagar.');
+                return;
+            }
+            
             $('.container__cart').fadeOut(500);
             setTimeout(() => {
                 loadPaymentForm();
@@ -112,6 +141,7 @@ $(document).ready(function() {
         console.error('Elemento "checkout-btn" no encontrado');
     }
 
+    // Botón "Volver al catálogo"
     const goBackBtn = $('#go-back');
     if (goBackBtn.length) {
         goBackBtn.on('click', function() {
@@ -124,60 +154,40 @@ $(document).ready(function() {
         console.error('Elemento "go-back" no encontrado');
     }
 
-    // ❌ ELIMINADO: No hay elemento 'quantity' individual
-    // const quantityInput = $('#quantity');
-    // if (quantityInput.length) {
-    //     quantityInput.on('change', updatePrice);
-    // } else {
-    //     console.error('Elemento "quantity" no encontrado');
-    // }
-});
-
-// ❌ ELIMINADO: Esta función no es necesaria
-// function updatePrice() {
-//     let quantity = document.getElementById('quantity').value;
-//     let unitPrice = document.getElementById('unit-price').innerText;
-//     let amount = parseInt(unitPrice) * parseInt(quantity);
-//
-//     document.getElementById('cart-total').innerText = '$ ' + amount;
-//     document.getElementById('summary-price').innerText = '$ ' + unitPrice;
-//     document.getElementById('summary-quantity').innerText = quantity;
-//     document.getElementById('summary-total').innerText = '$ ' + amount;
-//     document.getElementById('amount').value = amount;
-// };
-
-// ❌ ELIMINADO: Esta llamada ya no es necesaria
-// updatePrice();
-
-// Verifica la existencia del botón "download-receipt"
-$(document).ready(function() {
+    // Botón "Descargar Comprobante"
     const downloadReceiptBtn = $('#download-receipt');
     if (downloadReceiptBtn.length) {
         downloadReceiptBtn.on('click', function() {
-            alert(paymentId);
+            console.log('Payment ID para descarga:', paymentId);
             
-            const amount = document.getElementById('amount').value;
-
             if (!paymentId) {
+                alert('No hay un ID de pago disponible para descargar el comprobante.');
                 console.error('Payment ID not found');
                 return;
             }
 
             const url = `/process_payment/download_receipt/${paymentId}`;
             fetch(url)
-                .then(response => response.blob())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error al descargar el comprobante');
+                    }
+                    return response.blob();
+                })
                 .then(blob => {
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = 'comprobante.pdf';
+                    a.download = `comprobante-pago-${paymentId}.pdf`;
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
                     window.URL.revokeObjectURL(url);
+                    console.log('Comprobante descargado exitosamente');
                 })
                 .catch(error => {
                     console.error('Error downloading receipt:', error);
+                    alert('Error al descargar el comprobante: ' + error.message);
                 });
         });
     } else {
