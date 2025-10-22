@@ -88,8 +88,7 @@ function loadPaymentForm() {
             paymentMethods: {
                 creditCard: 'all',
                 debitCard: 'all',
-                ticket: 'all',
-                walletPurchase: 'all'
+                ticket: 'all'
             },
             visual: {
                 style: {
