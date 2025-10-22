@@ -300,6 +300,7 @@ async function loadPaymentForm() {
         bricksBuilder = await mercadopago.bricks();
     }
 
+    // ✅ CONFIGURACIÓN SIMPLIFICADA SIN wallet_purchase
     const settings = {
         initialization: {
             amount: parseFloat(productCost),
@@ -373,23 +374,8 @@ async function loadPaymentForm() {
                 });
             }
         },
-        locale: 'es-AR',
-        customization: {
-            paymentMethods: {
-                creditCard: 'all',
-                debitCard: 'all',
-                ticket: 'all'
-            },
-            visual: {
-                style: {
-                    theme: 'dark',
-                    customVariables: {
-                        formBackgroundColor: '#1d2431',
-                        baseColor: 'aquamarine'
-                    }
-                }
-            }
-        },
+        locale: 'es-AR'
+        // ✅ ELIMINADO customization completo para evitar el error de wallet_purchase
     };
 
     try {
