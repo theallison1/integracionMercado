@@ -184,10 +184,20 @@
         .feedback-message {
             transition: all 0.3s ease;
         }
+
+        /* Estilos para las secciones de pago y resultado */
+        .container__payment,
+        .container__result {
+            display: none;
+        }
+
+        .payment-form {
+            padding: 20px 0;
+        }
     </style>
 </head>
 <body>
-<!-- SOLO CAMBIÉ ESTA LÍNEA - Public Key ahora es TEST -->
+<!-- Public Key de Mercado Pago -->
 <input id="mercado-pago-public-key" value="APP_USR-c90816a8-38cd-4720-9f60-226dae2b7b4d" type="hidden" />
 <main>
     <!-- Shopping Cart -->
@@ -224,9 +234,9 @@
         </div>
     </section>
 
-    <!-- Las secciones de Payment y Result se mantienen igual -->
-    <section class="payment-form dark" style="display: none;">
-        <div class="container__payment">
+    <!-- Sección de Pago -->
+    <section class="payment-form dark">
+        <div class="container container__payment">
             <div class="block-heading text-center">
                 <h2>Medios de Pago</h2>
                 <p>MILLENIUM TERMOTANQUES</p>
@@ -238,7 +248,7 @@
                         <!-- Resumen de productos para pago -->
                     </div>
                     <div class="total">Total<span class="price" id="summary-total">$0</span></div>
-                    <input type="hidden" id="amount" />
+                    <input type="hidden" id="amount" value="0" />
                     <input type="hidden" id="description" />
                 </div>
                 <div id="mercadopago-bricks-contaner__PaymentCard"></div>
@@ -249,7 +259,8 @@
         </div>
     </section>
 
-    <section class="shopping-cart dark" style="display: none;">
+    <!-- Sección de Resultado -->
+    <section class="shopping-cart dark">
         <div class="container container__result">
             <div class="block-heading text-center">
                 <h2>Resultado del Pago</h2>
@@ -262,7 +273,7 @@
                             <div class="row justify-content-md-center">
                                 <div class="col-md-4 product-detail">
                                     <div id="statusScreenBrick_container"></div>
-                                    <button id="download-receipt" class="btn btn-primary">Descargar Comprobante</button>
+                                    <button id="download-receipt" class="btn btn-primary mt-3">Descargar Comprobante</button>
                                 </div>
                             </div>
                         </div>
@@ -436,6 +447,7 @@ function updateCart(productId, quantity) {
 function updateCartDisplay() {
     const cartItemsContainer = document.getElementById('cart-items');
     const checkoutBtn = document.getElementById('checkout-btn');
+    const amountInput = document.getElementById('amount');
     
     cartItemsContainer.innerHTML = '';
     let total = 0;
@@ -444,6 +456,7 @@ function updateCartDisplay() {
         cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
         checkoutBtn.disabled = true;
         checkoutBtn.innerHTML = '💳 Ir a Pagar';
+        if (amountInput) amountInput.value = '0';
     } else {
         cart.forEach(item => {
             const itemTotal = item.price * item.quantity;
@@ -464,9 +477,44 @@ function updateCartDisplay() {
         });
         checkoutBtn.disabled = false;
         checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
+        if (amountInput) amountInput.value = total;
     }
     
     document.getElementById('cart-total').textContent = `$${total.toLocaleString()}`;
+}
+
+function updatePaymentSummary() {
+    const summaryContainer = document.getElementById('summary-items');
+    const amountInput = document.getElementById('amount');
+    let total = 0;
+    
+    summaryContainer.innerHTML = '';
+    
+    if (cart.length === 0) {
+        summaryContainer.innerHTML = '<p class="text-muted text-center">No hay productos en el carrito</p>';
+        if (amountInput) amountInput.value = '0';
+    } else {
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            
+            summaryContainer.innerHTML += `
+                <div class="item mb-3 p-2 border-bottom">
+                    <span class="price">$${itemTotal.toLocaleString()}</span>
+                    <p class="item-name mb-1">${item.name}</p>
+                    <small class="text-muted">Cantidad: ${item.quantity}</small>
+                </div>
+            `;
+        });
+        
+        // ✅ Asegurar que el amount tenga el valor correcto
+        if (amountInput) {
+            amountInput.value = total;
+            console.log('Amount actualizado para pago:', amountInput.value);
+        }
+    }
+    
+    document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
 }
 
 // Inicializar la página
@@ -474,35 +522,8 @@ document.addEventListener('DOMContentLoaded', function() {
     renderProducts();
     updateCartDisplay();
     
-
-    document.getElementById('go-back').addEventListener('click', function() {
-        document.querySelector('.payment-form').style.display = 'none';
-        document.querySelector('.shopping-cart').style.display = 'block';
-    });
+    // ✅ ELIMINADOS los event listeners duplicados - ahora están en index.js
 });
-
-function updatePaymentSummary() {
-    const summaryContainer = document.getElementById('summary-items');
-    let total = 0;
-    
-    summaryContainer.innerHTML = '';
-    cart.forEach(item => {
-        const itemTotal = item.price * item.quantity;
-        total += itemTotal;
-        
-        summaryContainer.innerHTML += `
-            <div class="item mb-3 p-2 border-bottom">
-                <span class="price">$${itemTotal.toLocaleString()}</span>
-                <p class="item-name mb-1">${item.name}</p>
-                <small class="text-muted">Cantidad: ${item.quantity}</small>
-            </div>
-        `;
-    });
-    
-    document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
-    document.getElementById('amount').value = total;
-    document.getElementById('description').value = `Termotanques Millenium - ${cart.length} producto(s)`;
-}
 </script>
 </body>
 </html>
