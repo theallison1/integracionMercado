@@ -474,15 +474,7 @@ document.addEventListener('DOMContentLoaded', function() {
     renderProducts();
     updateCartDisplay();
     
-    // Navegación entre secciones
-    document.getElementById('checkout-btn').addEventListener('click', function() {
-        if (cart.length > 0) {
-            document.querySelector('.shopping-cart').style.display = 'none';
-            document.querySelector('.payment-form').style.display = 'block';
-            updatePaymentSummary();
-        }
-    });
-    
+
     document.getElementById('go-back').addEventListener('click', function() {
         document.querySelector('.payment-form').style.display = 'none';
         document.querySelector('.shopping-cart').style.display = 'block';
