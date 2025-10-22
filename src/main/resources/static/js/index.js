@@ -1,5 +1,4 @@
 // ========== SISTEMA DE CARRITO ==========
-// Catálogo de termotanques Millenium
 const products = [
     {
         id: 1,
@@ -23,10 +22,10 @@ const products = [
     }
 ];
 
-// Carrito de compras
 let cart = [];
+let paymentId;
 
-// Función para renderizar productos
+// Funciones del carrito
 function renderProducts() {
     const container = document.getElementById('products-container');
     container.innerHTML = '';
@@ -51,27 +50,14 @@ function renderProducts() {
                                         <p class="mb-1"><b>Categoría:</b> <span class="badge badge-info">${product.category}</span></p>
                                         <p class="mb-1"><b>Disponibles:</b> ${product.stock} unidades</p>
                                         <p class="mb-2"><b>Precio:</b> $<span class="unit-price">${product.price.toLocaleString()}</span></p>
-                                        <small class="text-muted">
-                                            <b>Características:</b> ${product.features.join(', ')}
-                                        </small>
+                                        <small class="text-muted"><b>Características:</b> ${product.features.join(', ')}</small>
                                     </div>
                                 </div>
                                 <div class="col-md-4 product-detail text-center">
                                     <label for="quantity-${product.id}"><h6>Cantidad</h6></label>
-                                    <input type="number" 
-                                           id="quantity-${product.id}" 
-                                           value="0" 
-                                           min="0" 
-                                           max="${product.stock}"
-                                           class="form-control quantity-control mx-auto mb-2"
-                                           onchange="updateCart(${product.id}, this.value)">
-                                    <button class="btn btn-outline-primary btn-sm" 
-                                            onclick="addToCart(${product.id})">
-                                        🛒 Agregar al Carrito
-                                    </button>
-                                    <div class="mt-2">
-                                        <small class="text-success feedback-message" id="feedback-${product.id}"></small>
-                                    </div>
+                                    <input type="number" id="quantity-${product.id}" value="0" min="0" max="${product.stock}" class="form-control quantity-control mx-auto mb-2" onchange="updateCart(${product.id}, this.value)">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="addToCart(${product.id})">🛒 Agregar al Carrito</button>
+                                    <div class="mt-2"><small class="text-success feedback-message" id="feedback-${product.id}"></small></div>
                                 </div>
                             </div>
                         </div>
@@ -83,7 +69,6 @@ function renderProducts() {
     });
 }
 
-// Funciones del carrito
 function addToCart(productId) {
     const quantityInput = document.getElementById(`quantity-${productId}`);
     const quantity = parseInt(quantityInput.value);
@@ -109,7 +94,6 @@ function updateCart(productId, quantity) {
         cart = cart.filter(item => item.id !== productId);
     } else {
         const existingItem = cart.find(item => item.id === productId);
-        
         if (existingItem) {
             existingItem.quantity = quantityNum;
         } else {
@@ -122,14 +106,12 @@ function updateCart(productId, quantity) {
             });
         }
     }
-    
     updateCartDisplay();
 }
 
 function updateCartDisplay() {
     const cartItemsContainer = document.getElementById('cart-items');
     const checkoutBtn = document.getElementById('checkout-btn');
-    
     cartItemsContainer.innerHTML = '';
     let total = 0;
     
@@ -141,8 +123,7 @@ function updateCartDisplay() {
         cart.forEach(item => {
             const itemTotal = item.price * item.quantity;
             total += itemTotal;
-            
-            const cartItemElement = `
+            cartItemsContainer.innerHTML += `
                 <div class="cart-item p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -153,24 +134,20 @@ function updateCartDisplay() {
                     </div>
                 </div>
             `;
-            cartItemsContainer.innerHTML += cartItemElement;
         });
         checkoutBtn.disabled = false;
         checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
     }
-    
     document.getElementById('cart-total').textContent = `$${total.toLocaleString()}`;
 }
 
 function updatePaymentSummary() {
     const summaryContainer = document.getElementById('summary-items');
     let total = 0;
-    
     summaryContainer.innerHTML = '';
     cart.forEach(item => {
         const itemTotal = item.price * item.quantity;
         total += itemTotal;
-        
         summaryContainer.innerHTML += `
             <div class="item mb-3 p-2 border-bottom">
                 <span class="price">$${itemTotal.toLocaleString()}</span>
@@ -179,7 +156,6 @@ function updatePaymentSummary() {
             </div>
         `;
     });
-    
     document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
     document.getElementById('amount').value = total;
     document.getElementById('description').value = `Termotanques Millenium - ${cart.length} producto(s)`;
@@ -188,21 +164,26 @@ function updatePaymentSummary() {
 // ========== MERCADO PAGO INTEGRATION ==========
 const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key").value;
 const mercadopago = new MercadoPago(mercadoPagoPublicKey);
-let paymentId;
 
-// ✅ CONFIGURACIÓN MÍNIMA DEL PAYMENT BRICK
+// ✅ CONFIGURACIÓN SIMPLIFICADA Y ROBUSTA
 async function loadPaymentForm() {
+    console.log('💰 Cargando formulario de pago...');
     const productCost = document.getElementById('amount').value;
-    console.log('💰 Monto a pagar:', productCost);
+    console.log('Monto a pagar:', productCost);
     
-    // Limpiar contenedor
     const brickContainer = document.getElementById('mercadopago-bricks-contaner__PaymentCard');
+    
+    // ✅ LIMPIAR CONTENEDOR DE FORMA SEGURA
+    while (brickContainer.firstChild) {
+        brickContainer.removeChild(brickContainer.firstChild);
+    }
+    
     brickContainer.innerHTML = '<div class="text-center p-4">Cargando formulario de pago...</div>';
 
     try {
         const bricksBuilder = await mercadopago.bricks();
         
-        // ✅ CONFIGURACIÓN MÍNIMA SIN customization
+        // ✅ CONFIGURACIÓN MÍNIMA Y COMPATIBLE
         const settings = {
             initialization: {
                 amount: parseFloat(productCost),
@@ -210,14 +191,16 @@ async function loadPaymentForm() {
             callbacks: {
                 onReady: () => {
                     console.log('✅ Brick de pago listo');
-                    brickContainer.querySelector('.text-center')?.remove();
+                    // Limpiar mensaje de carga de forma segura
+                    const loadingMsg = brickContainer.querySelector('.text-center');
+                    if (loadingMsg && loadingMsg.parentNode === brickContainer) {
+                        brickContainer.removeChild(loadingMsg);
+                    }
                 },
                 onError: (error) => {
                     console.error('❌ Error en Brick:', error);
-                    // Ignorar error de wallet_purchase si no es crítico
-                    if (!error.message?.includes('wallet_purchase')) {
-                        showBrickError();
-                    }
+                    // Mostrar error específico
+                    showBrickError('Error en el formulario de pago: ' + (error.message || 'Error desconocido'));
                 },
                 onSubmit: (cardFormData) => {
                     console.log('=== 🚀 INICIANDO ENVÍO DE PAGO ===');
@@ -226,11 +209,11 @@ async function loadPaymentForm() {
                     return new Promise((resolve, reject) => {
                         processPaymentToBackend(cardFormData)
                             .then(result => {
-                                resolve(); // Resolver la promesa del Brick
-                                handlePaymentResult(result); // Manejar el resultado
+                                resolve();
+                                handlePaymentResult(result);
                             })
                             .catch(error => {
-                                reject(error); // Rechazar la promesa del Brick
+                                reject(error);
                             });
                     });
                 }
@@ -243,11 +226,11 @@ async function loadPaymentForm() {
         
     } catch (error) {
         console.error('❌ Error cargando formulario:', error);
-        showBrickError();
+        showBrickError('No se pudo cargar el formulario de pago. Recarga la página.');
     }
 }
 
-// ✅ FUNCIÓN SEPARADA PARA PROCESAR PAGO
+// ✅ PROCESAR PAGO AL BACKEND
 async function processPaymentToBackend(formData) {
     const paymentData = {
         token: formData.token,
@@ -290,7 +273,7 @@ async function processPaymentToBackend(formData) {
     return JSON.parse(responseText);
 }
 
-// ✅ FUNCIÓN PARA MANEJAR RESULTADO
+// ✅ MANEJAR RESULTADO DEL PAGO
 function handlePaymentResult(result) {
     console.log('✅ Respuesta JSON:', result);
 
@@ -304,28 +287,26 @@ function handlePaymentResult(result) {
     }
 }
 
-// ✅ FUNCIÓN MEJORADA PARA MOSTRAR RESULTADO
+// ✅ MOSTRAR RESULTADO
 function showPaymentResult(result) {
     console.log('=== 🎯 MOSTRANDO RESULTADO ===');
     
-    // Ocultar pago inmediatamente
     $('.container__payment').removeClass('active').fadeOut(300);
     
-    // Mostrar resultado después de un breve delay
     setTimeout(() => {
         $('.container__result').addClass('active').fadeIn(300);
         renderStatusScreen(result);
     }, 400);
 }
 
-// ✅ FUNCIÓN MEJORADA PARA STATUS SCREEN
+// ✅ RENDERIZAR STATUS SCREEN CON FALLBACK
 async function renderStatusScreen(result) {
     console.log('=== 📱 RENDERIZANDO STATUS SCREEN ===');
     paymentId = result.id;
     
     const container = document.getElementById('statusScreenBrick_container');
     
-    // Limpiar y preparar contenedor
+    // Preparar contenedor
     container.innerHTML = '<div class="text-center p-4">Cargando estado del pago...</div>';
     container.style.cssText = `
         width: 100% !important;
@@ -343,38 +324,22 @@ async function renderStatusScreen(result) {
         const bricksBuilder = await mercadopago.bricks();
         console.log('🔧 Creando Status Screen Brick...');
         
-        window.statusScreenBrickController = await bricksBuilder.create(
-            'statusScreen', 
-            'statusScreenBrick_container', 
-            {
-                initialization: {
-                    paymentId: paymentId
+        await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
+            initialization: {
+                paymentId: paymentId
+            },
+            callbacks: {
+                onReady: () => {
+                    console.log('✅ Status Screen listo y visible');
                 },
-                callbacks: {
-                    onReady: () => {
-                        console.log('✅ Status Screen listo y visible');
-                    },
-                    onError: (error) => {
-                        console.error('❌ Error en Status Screen:', error);
-                        // Si falla el Status Screen, mostrar fallback inmediatamente
-                        showPaymentFallback(result);
-                    }
+                onError: (error) => {
+                    console.error('❌ Error en Status Screen:', error);
+                    showPaymentFallback(result);
                 }
             }
-        );
+        });
         
         console.log('✅ Status Screen Brick creado exitosamente');
-        
-        // ✅ FALLBACK AUTOMÁTICO SI NO SE RENDERIZA EN 3 SEGUNDOS
-        setTimeout(() => {
-            const hasContent = container.children.length > 0;
-            const hasIframe = container.querySelector('iframe');
-            
-            if (!hasContent || !hasIframe) {
-                console.log('⚠️ Status Screen no se renderizó, usando fallback');
-                showPaymentFallback(result);
-            }
-        }, 3000);
         
     } catch (error) {
         console.error('❌ Error creando Status Screen:', error);
@@ -415,21 +380,21 @@ function showPaymentFallback(result) {
             </div>
         </div>
     `;
-    
-    console.log('✅ Fallback renderizado exitosamente');
 }
 
-function showBrickError() {
+// ✅ MOSTRAR ERROR
+function showBrickError(message) {
     const container = document.getElementById('mercadopago-bricks-contaner__PaymentCard');
     container.innerHTML = `
         <div class="alert alert-danger text-center">
-            <h5>❌ Error al cargar el formulario de pago</h5>
-            <p>No se pudo cargar el sistema de pagos.</p>
+            <h5>❌ Error</h5>
+            <p>${message}</p>
             <button class="btn btn-warning mt-2" onclick="volverAlCarrito()">← Volver al Carrito</button>
         </div>
     `;
 }
 
+// ✅ VOLVER AL CARRITO
 function volverAlCarrito() {
     console.log('🔙 Volviendo al carrito...');
     
@@ -450,6 +415,7 @@ function volverAlCarrito() {
     }, 500);
 }
 
+// ✅ DESCARGAR COMPROBANTE
 function downloadReceipt() {
     if (!paymentId) {
         alert('No hay un ID de pago disponible');
@@ -481,7 +447,7 @@ function downloadReceipt() {
         });
 }
 
-// Event Listeners
+// ✅ EVENT LISTENERS
 document.getElementById('checkout-btn').addEventListener('click', function() {
     console.log('🛒 Click en botón "Pagar"');
     if (cart.length > 0) {
@@ -499,7 +465,7 @@ document.getElementById('go-back').addEventListener('click', function() {
     volverAlCarrito();
 });
 
-// Inicializar la página
+// ✅ INICIALIZAR
 document.addEventListener('DOMContentLoaded', function() {
     renderProducts();
     updateCartDisplay();
