@@ -188,34 +188,165 @@ function updatePaymentSummary() {
 // ========== MERCADO PAGO INTEGRATION ==========
 const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key").value;
 const mercadopago = new MercadoPago(mercadoPagoPublicKey);
-let cardPaymentBrickController;
-let bricksBuilder;
 let paymentId;
 
-// ✅ FUNCIÓN MEJORADA PARA STATUS SCREEN
-const renderStatusScreenBrick = async (result) => {
+// ✅ CONFIGURACIÓN MÍNIMA DEL PAYMENT BRICK
+async function loadPaymentForm() {
+    const productCost = document.getElementById('amount').value;
+    console.log('💰 Monto a pagar:', productCost);
+    
+    // Limpiar contenedor
+    const brickContainer = document.getElementById('mercadopago-bricks-contaner__PaymentCard');
+    brickContainer.innerHTML = '<div class="text-center p-4">Cargando formulario de pago...</div>';
+
     try {
-        console.log('=== INICIANDO RENDER STATUS SCREEN ===');
-        paymentId = result.id;
-        console.log('Payment ID para Status Screen:', paymentId);
-
-        // Obtener bricksBuilder si no existe
-        if (!bricksBuilder) {
-            bricksBuilder = await mercadopago.bricks();
-        }
-
-        // Ocultar pago y mostrar resultado
-        $('.container__payment').removeClass('active').fadeOut(500);
+        const bricksBuilder = await mercadopago.bricks();
         
-        setTimeout(async () => {
-            $('.container__result').addClass('active').fadeIn(500);
-            
-            const container = document.getElementById('statusScreenBrick_container');
-            container.innerHTML = '<div class="text-center p-4">Cargando estado del pago...</div>';
-            
-            console.log('🔧 Creando Status Screen Brick...');
+        // ✅ CONFIGURACIÓN MÍNIMA SIN customization
+        const settings = {
+            initialization: {
+                amount: parseFloat(productCost),
+            },
+            callbacks: {
+                onReady: () => {
+                    console.log('✅ Brick de pago listo');
+                    brickContainer.querySelector('.text-center')?.remove();
+                },
+                onError: (error) => {
+                    console.error('❌ Error en Brick:', error);
+                    // Ignorar error de wallet_purchase si no es crítico
+                    if (!error.message?.includes('wallet_purchase')) {
+                        showBrickError();
+                    }
+                },
+                onSubmit: (cardFormData) => {
+                    console.log('=== 🚀 INICIANDO ENVÍO DE PAGO ===');
+                    console.log('📋 Datos del Brick:', cardFormData);
 
-            window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
+                    return new Promise((resolve, reject) => {
+                        processPaymentToBackend(cardFormData)
+                            .then(result => {
+                                resolve(); // Resolver la promesa del Brick
+                                handlePaymentResult(result); // Manejar el resultado
+                            })
+                            .catch(error => {
+                                reject(error); // Rechazar la promesa del Brick
+                            });
+                    });
+                }
+            }
+        };
+
+        console.log('🔧 Creando Brick de pago...');
+        await bricksBuilder.create('payment', 'mercadopago-bricks-contaner__PaymentCard', settings);
+        console.log('✅ Brick de pago creado exitosamente');
+        
+    } catch (error) {
+        console.error('❌ Error cargando formulario:', error);
+        showBrickError();
+    }
+}
+
+// ✅ FUNCIÓN SEPARADA PARA PROCESAR PAGO
+async function processPaymentToBackend(formData) {
+    const paymentData = {
+        token: formData.token,
+        issuer_id: formData.issuer_id || null,
+        payment_method_id: formData.payment_method_id,
+        transaction_amount: parseFloat(formData.transaction_amount),
+        installments: parseInt(formData.installments),
+        product_description: document.getElementById('description').value,
+        payer: {
+            email: formData.payer.email,
+            first_name: formData.payer.first_name || "Cliente",
+            last_name: formData.payer.last_name || "Millenium",
+            identification: {
+                type: formData.payer.identification.type,
+                number: formData.payer.identification.number
+            }
+        }
+    };
+
+    console.log('📤 Enviando a backend:', paymentData);
+
+    const response = await fetch("https://integracionmercado.onrender.com/process_payment", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(paymentData)
+    });
+
+    console.log('=== 📨 RESPUESTA HTTP RECIBIDA ===');
+    console.log('📊 Status:', response.status);
+    
+    const responseText = await response.text();
+    console.log('📝 Response Text (RAW):', responseText);
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${responseText}`);
+    }
+
+    return JSON.parse(responseText);
+}
+
+// ✅ FUNCIÓN PARA MANEJAR RESULTADO
+function handlePaymentResult(result) {
+    console.log('✅ Respuesta JSON:', result);
+
+    if (result.status === 'approved' || result.status === 'pending') {
+        console.log('🎉 Pago exitoso - Mostrando resultado...');
+        showPaymentResult(result);
+    } else {
+        console.log('❌ Pago rechazado:', result.status);
+        alert(`Pago rechazado: ${result.status}`);
+        volverAlCarrito();
+    }
+}
+
+// ✅ FUNCIÓN MEJORADA PARA MOSTRAR RESULTADO
+function showPaymentResult(result) {
+    console.log('=== 🎯 MOSTRANDO RESULTADO ===');
+    
+    // Ocultar pago inmediatamente
+    $('.container__payment').removeClass('active').fadeOut(300);
+    
+    // Mostrar resultado después de un breve delay
+    setTimeout(() => {
+        $('.container__result').addClass('active').fadeIn(300);
+        renderStatusScreen(result);
+    }, 400);
+}
+
+// ✅ FUNCIÓN MEJORADA PARA STATUS SCREEN
+async function renderStatusScreen(result) {
+    console.log('=== 📱 RENDERIZANDO STATUS SCREEN ===');
+    paymentId = result.id;
+    
+    const container = document.getElementById('statusScreenBrick_container');
+    
+    // Limpiar y preparar contenedor
+    container.innerHTML = '<div class="text-center p-4">Cargando estado del pago...</div>';
+    container.style.cssText = `
+        width: 100% !important;
+        min-height: 400px !important;
+        background: var(--card-bg) !important;
+        border-radius: 10px !important;
+        padding: 20px !important;
+        margin: 20px 0 !important;
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    `;
+
+    try {
+        const bricksBuilder = await mercadopago.bricks();
+        console.log('🔧 Creando Status Screen Brick...');
+        
+        window.statusScreenBrickController = await bricksBuilder.create(
+            'statusScreen', 
+            'statusScreenBrick_container', 
+            {
                 initialization: {
                     paymentId: paymentId
                 },
@@ -225,58 +356,91 @@ const renderStatusScreenBrick = async (result) => {
                     },
                     onError: (error) => {
                         console.error('❌ Error en Status Screen:', error);
+                        // Si falla el Status Screen, mostrar fallback inmediatamente
                         showPaymentFallback(result);
                     }
                 }
-            });
+            }
+        );
+        
+        console.log('✅ Status Screen Brick creado exitosamente');
+        
+        // ✅ FALLBACK AUTOMÁTICO SI NO SE RENDERIZA EN 3 SEGUNDOS
+        setTimeout(() => {
+            const hasContent = container.children.length > 0;
+            const hasIframe = container.querySelector('iframe');
             
-            console.log('✅ Status Screen Brick creado exitosamente');
-            console.log('✅ Pantalla de resultado visible');
-
-        }, 500);
-
+            if (!hasContent || !hasIframe) {
+                console.log('⚠️ Status Screen no se renderizó, usando fallback');
+                showPaymentFallback(result);
+            }
+        }, 3000);
+        
     } catch (error) {
-        console.error('❌ Error rendering status screen:', error);
+        console.error('❌ Error creando Status Screen:', error);
         showPaymentFallback(result);
     }
-};
+}
 
-// ✅ FALLBACK MEJORADO
+// ✅ FALLBACK GARANTIZADO
 function showPaymentFallback(result) {
+    console.log('🔄 Mostrando fallback garantizado...');
+    
     const container = document.getElementById('statusScreenBrick_container');
     const amount = document.getElementById('summary-total')?.textContent || '0';
     
     container.innerHTML = `
-        <div class="alert alert-success text-center">
-            <h4>✅ Pago Aprobado</h4>
-            <p><strong>ID de transacción:</strong> ${result.id}</p>
-            <p><strong>Estado:</strong> ${result.status}</p>
-            <p><strong>Monto:</strong> $${amount}</p>
-            <p><strong>Detalle:</strong> ${result.statusDetail || 'accredited'}</p>
-            <p class="mt-3">Gracias por tu compra en Millenium Termotanques</p>
-            <button class="btn btn-primary mt-3" onclick="volverAlCarrito()">Continuar Comprando</button>
+        <div class="text-center" style="color: white; padding: 40px 20px;">
+            <div class="mb-4">
+                <div style="font-size: 80px; color: #28a745;">✅</div>
+                <h2 style="color: #28a745; margin: 20px 0;">¡Pago Exitoso!</h2>
+            </div>
+            
+            <div style="background: #2d2d2d; padding: 25px; border-radius: 10px; margin: 20px 0; text-align: left;">
+                <p style="margin: 10px 0;"><strong>📋 ID de Transacción:</strong> ${result.id}</p>
+                <p style="margin: 10px 0;"><strong>📊 Estado:</strong> <span style="background: #28a745; color: white; padding: 8px 16px; border-radius: 20px;">${result.status}</span></p>
+                <p style="margin: 10px 0;"><strong>💰 Monto:</strong> $${amount}</p>
+                <p style="margin: 10px 0;"><strong>🔍 Detalle:</strong> ${result.statusDetail || 'accredited'}</p>
+            </div>
+            
+            <p style="margin: 20px 0; font-size: 18px;">🎉 ¡Gracias por tu compra en Millenium Termotanques!</p>
+            
+            <div style="margin-top: 30px;">
+                <button class="btn btn-primary btn-lg" onclick="volverAlCarrito()" style="margin: 5px; padding: 12px 30px;">
+                    🛒 Continuar Comprando
+                </button>
+                <button class="btn btn-outline-light btn-lg" onclick="downloadReceipt()" style="margin: 5px; padding: 12px 30px;">
+                    📄 Descargar Comprobante
+                </button>
+            </div>
         </div>
     `;
     
-    console.log('✅ Fallback mostrado correctamente');
+    console.log('✅ Fallback renderizado exitosamente');
 }
 
-// Función para volver al carrito
+function showBrickError() {
+    const container = document.getElementById('mercadopago-bricks-contaner__PaymentCard');
+    container.innerHTML = `
+        <div class="alert alert-danger text-center">
+            <h5>❌ Error al cargar el formulario de pago</h5>
+            <p>No se pudo cargar el sistema de pagos.</p>
+            <button class="btn btn-warning mt-2" onclick="volverAlCarrito()">← Volver al Carrito</button>
+        </div>
+    `;
+}
+
 function volverAlCarrito() {
     console.log('🔙 Volviendo al carrito...');
     
-    // Ocultar todas las secciones
     $('.container__payment, .container__result').removeClass('active').fadeOut(500);
     
     setTimeout(() => {
-        // Mostrar solo el carrito
         $('.container__cart').addClass('active').fadeIn(500);
         
-        // Resetear carrito después de pago exitoso
         if (paymentId) {
             cart = [];
             updateCartDisplay();
-            // Resetear inputs de cantidad
             document.querySelectorAll('.quantity-control').forEach(input => {
                 input.value = 0;
             });
@@ -286,167 +450,54 @@ function volverAlCarrito() {
     }, 500);
 }
 
-async function loadPaymentForm() {
-    const productCost = document.getElementById('amount').value;
-    console.log('💰 Monto a pagar:', productCost);
+function downloadReceipt() {
+    if (!paymentId) {
+        alert('No hay un ID de pago disponible');
+        return;
+    }
+
+    console.log('📄 Descargando comprobante para pago:', paymentId);
+    const url = `https://integracionmercado.onrender.com/process_payment/download_receipt/${paymentId}`;
     
-    // Limpiar contenedor anterior si existe
-    const brickContainer = document.getElementById('mercadopago-bricks-contaner__PaymentCard');
-    brickContainer.innerHTML = '';
-    console.log('🧹 Contenedor de Brick limpiado');
-
-    // Obtener bricksBuilder
-    if (!bricksBuilder) {
-        bricksBuilder = await mercadopago.bricks();
-    }
-
-    // ✅ CONFIGURACIÓN SIMPLIFICADA SIN wallet_purchase
-    const settings = {
-        initialization: {
-            amount: parseFloat(productCost),
-        },
-        callbacks: {
-            onReady: () => {
-                console.log('✅ Brick de pago listo');
-            },
-            onError: (error) => {
-                console.error('❌ Error en Brick:', error);
-                volverAlCarrito();
-            },
-            onSubmit: ({ selectedPaymentMethod, formData }) => {
-                console.log('=== 🚀 INICIANDO ENVÍO DE PAGO ===');
-                console.log('📋 Datos del Brick:', formData);
-
-                // ✅ RETORNAR PROMESA como indica la documentación
-                return new Promise((resolve, reject) => {
-                    const paymentUrl = 'https://integracionmercado.onrender.com/process_payment';
-                    
-                    fetch(paymentUrl, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify(formData)
-                    })
-                    .then(async (response) => {
-                        console.log('=== 📨 RESPUESTA HTTP RECIBIDA ===');
-                        console.log('📊 Status:', response.status);
-                        
-                        const responseText = await response.text();
-                        console.log('📝 Response Text (RAW):', responseText);
-                        
-                        if (!response.ok) {
-                            console.error('❌ Error HTTP:', response.status, responseText);
-                            reject(new Error(`HTTP ${response.status}: ${responseText}`));
-                            return;
-                        }
-                        
-                        try {
-                            const result = JSON.parse(responseText);
-                            console.log('✅ Respuesta JSON:', result);
-                            
-                            // ✅ PROCESAR RESULTADO Y LUEGO RESOLVER
-                            if (result.status === 'approved' || result.status === 'pending') {
-                                console.log('🎉 Pago exitoso - Renderizando...');
-                                
-                                // ✅ RESOLVER LA PROMESA PRIMERO
-                                resolve();
-                                
-                                // ✅ LUEGO Renderizar Status Screen
-                                setTimeout(() => {
-                                    renderStatusScreenBrick(result);
-                                }, 100);
-                                
-                            } else {
-                                console.log('❌ Pago rechazado');
-                                reject(new Error(`Pago rechazado: ${result.status}`));
-                            }
-                            
-                        } catch (jsonError) {
-                            console.error('❌ Error parseando JSON:', jsonError);
-                            reject(jsonError);
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('=== 💥 ERROR EN FETCH ===', error);
-                        reject(error);
-                    });
-                });
-            }
-        },
-        locale: 'es-AR'
-        // ✅ ELIMINADO customization completo para evitar el error de wallet_purchase
-    };
-
-    try {
-        console.log('🔧 Creando Brick de pago...');
-        cardPaymentBrickController = await bricksBuilder.create('payment', 'mercadopago-bricks-contaner__PaymentCard', settings);
-        console.log('✅ Brick de pago creado exitosamente');
-    } catch (error) {
-        console.error('❌ Error al crear Brick:', error);
-        volverAlCarrito();
-    }
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Error descargando comprobante');
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `comprobante-millenium-${paymentId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            console.log('✅ Comprobante descargado exitosamente');
+        })
+        .catch(error => {
+            console.error('❌ Error downloading receipt:', error);
+            alert('Error al descargar el comprobante: ' + error.message);
+        });
 }
 
-// Handle transitions
+// Event Listeners
 document.getElementById('checkout-btn').addEventListener('click', function() {
     console.log('🛒 Click en botón "Pagar"');
-    
-    $('.container__cart').removeClass('active').fadeOut(500);
-    setTimeout(() => {
-        console.log('💳 Cargando formulario de pago...');
-        updatePaymentSummary();
-        loadPaymentForm();
-        $('.container__payment').addClass('active').fadeIn(500);
-        console.log('✅ Formulario de pago visible');
-    }, 500);
+    if (cart.length > 0) {
+        $('.container__cart').removeClass('active').fadeOut(500);
+        setTimeout(() => {
+            updatePaymentSummary();
+            loadPaymentForm();
+            $('.container__payment').addClass('active').fadeIn(500);
+            console.log('✅ Formulario de pago visible');
+        }, 500);
+    }
 });
 
 document.getElementById('go-back').addEventListener('click', function() {
-    console.log('🔙 Click en botón "Volver"');
     volverAlCarrito();
 });
-
-// Verifica la existencia del botón "download-receipt"
-const downloadReceiptBtn = document.getElementById('download-receipt');
-if (downloadReceiptBtn) {
-    downloadReceiptBtn.addEventListener('click', function() {
-        console.log('📄 Click en botón "Descargar Comprobante"');
-        
-        if (!paymentId) {
-            console.error('❌ Payment ID not found');
-            alert('No hay un ID de pago disponible');
-            return;
-        }
-
-        const url = `https://integracionmercado.onrender.com/process_payment/download_receipt/${paymentId}`;
-        
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Error descargando comprobante');
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `comprobante-millenium-${paymentId}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-                console.log('✅ Comprobante descargado exitosamente');
-            })
-            .catch(error => {
-                console.error('❌ Error downloading receipt:', error);
-                alert('Error al descargar el comprobante: ' + error.message);
-            });
-    });
-} else {
-    console.error('❌ Elemento "download-receipt" no encontrado');
-}
 
 // Inicializar la página
 document.addEventListener('DOMContentLoaded', function() {
