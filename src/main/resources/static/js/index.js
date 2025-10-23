@@ -4,6 +4,21 @@ let cardPaymentBrickController;
 const bricksBuilder = mercadopago.bricks();
 let paymentId;
 
+// FUNCIÓN PARA ACTUALIZAR EL MONTO VISIBLE
+function updateSummaryTotal() {
+    const amountInput = document.getElementById('amount');
+    const summaryTotal = document.getElementById('summary-total');
+    
+    if (amountInput && summaryTotal) {
+        const amount = parseFloat(amountInput.value);
+        if (!isNaN(amount) && amount > 0) {
+            summaryTotal.textContent = '$' + amount.toLocaleString('es-AR');
+        } else {
+            summaryTotal.textContent = '$0';
+        }
+    }
+}
+
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
     paymentId = result.id;
     console.log('Payment ID:', paymentId);
@@ -120,6 +135,9 @@ function loadPaymentForm() {
 
 // Event listeners usando jQuery
 $(document).ready(function() {
+    // ACTUALIZAR EL MONTO VISIBLE AL CARGAR LA PÁGINA
+    updateSummaryTotal();
+    
     // Botón "Ir a Pagar"
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
@@ -130,6 +148,9 @@ $(document).ready(function() {
                 alert('El carrito está vacío. Agrega productos antes de pagar.');
                 return;
             }
+            
+            // ACTUALIZAR EL MONTO VISIBLE ANTES DE MOSTRAR EL FORMULARIO
+            updateSummaryTotal();
             
             $('.container__cart').fadeOut(500);
             setTimeout(() => {
