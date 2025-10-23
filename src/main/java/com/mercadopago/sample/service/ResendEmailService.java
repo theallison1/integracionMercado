@@ -1,4 +1,3 @@
-
 package com.mercadopago.sample.service;
 
 import com.mercadopago.resources.payment.Payment;
@@ -16,8 +15,7 @@ import java.util.Map;
 @Service
 public class ResendEmailService {
     
-  
-    private static final Logger LOGGER = LoggerFactory.getLogger(MailSenderEmailService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ResendEmailService.class);
     
     @Value("${mailsender.api.key}")
     private String mailSenderApiKey;
@@ -33,7 +31,7 @@ public class ResendEmailService {
     
     private final RestTemplate restTemplate;
     
-    public MailSenderEmailService() {
+    public ResendEmailService() {
         this.restTemplate = new RestTemplate();
     }
     
@@ -88,7 +86,6 @@ public class ResendEmailService {
             
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(emailRequest, headers);
             
-            // ✅ URL específica para MailSender
             String endpoint = mailSenderApiUrl + "/send";
             LOGGER.info("🔗 Usando endpoint: {}", endpoint);
             
@@ -119,7 +116,6 @@ public class ResendEmailService {
                email.contains(".");
     }
     
-    // Los métodos build... se mantienen IGUAL
     private String buildApprovalEmailText(String name, Payment payment) {
         return "Hola " + name + ",\n\n" +
                "¡Excelente noticia! Tu pago ha sido aprobado exitosamente.\n\n" +
@@ -182,5 +178,5 @@ public class ResendEmailService {
                "Gracias por elegir Millenium Termotanques!\n\n" +
                "📞 Contacto: +54 11 1234-5678\n" +
                "📧 Email: info@milleniumtermotanques.com";
-    }    
+    }
 }
