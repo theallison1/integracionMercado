@@ -102,12 +102,12 @@ public class EmailService {
     }
     
     private String buildReceivedEmailText(String name, PaymentResponseDTO payment) {
+        // ✅ CORRECCIÓN: PaymentResponseDTO no tiene transactionAmount
         return "Hola " + name + ",\n\n" +
                "Hemos recibido tu solicitud de pago correctamente.\n\n" +
                "Detalles:\n" +
                "ID de Transacción: " + payment.getId() + "\n" +
-               "Monto: $" + payment.getTransactionAmount() + "\n" +
-               "Estado: RECIBIDO 📋\n\n" +
+               "Estado: " + (payment.getStatus() != null ? payment.getStatus().toUpperCase() : "RECIBIDO") + " 📋\n\n" +
                "Estamos procesando tu pago. Te notificaremos cuando se complete la transacción.\n\n" +
                "Gracias por elegir Millenium Termotanques!\n\n" +
                "📞 Contacto: +54 11 1234-5678\n" +
