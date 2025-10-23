@@ -6,7 +6,7 @@ import com.mercadopago.sample.dto.PayerDTO;
 import com.mercadopago.sample.dto.PayerIdentificationDTO;
 import com.mercadopago.sample.dto.PaymentResponseDTO;
 import com.mercadopago.sample.service.CardPaymentService;
-import com.mercadopago.sample.service.EmailService;
+import com.mercadopago.sample.service.ResendEmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -23,16 +23,16 @@ public class CardPaymentController {
     private CardPaymentService cardPaymentService;
     
     @Resource
-    private EmailService emailService;
+    private ResendEmailService resendEmailService; // ✅ NUEVO servicio Resend
     
     private static final Logger LOGGER = LoggerFactory.getLogger(CardPaymentController.class);
 
-    public CardPaymentController(CardPaymentService cardPaymentService, EmailService emailService) {
+    public CardPaymentController(CardPaymentService cardPaymentService, ResendEmailService resendEmailService) {
         this.cardPaymentService = cardPaymentService;
-        this.emailService = emailService;
+        this.resendEmailService = resendEmailService;
     }
 
-    // Webhook para notificaciones de Mercado Pago - MEJORADO
+    // Webhook para notificaciones de Mercado Pago
     @PostMapping("/webhooks/mercadopago")
     public ResponseEntity<String> handleMercadoPagoNotification(
             @RequestParam("data.id") String paymentId,
@@ -81,33 +81,46 @@ public class CardPaymentController {
             }
             
             String status = payment.getStatus();
-            String customerEmail = payment.getPayer().getEmail();
-            String customerName = payment.getPayer().getFirstName() + " " + 
-                                 (payment.getPayer().getLastName() != null ? payment.getPayer().getLastName() : "");
+            
+            // ✅ CORRECCIÓN: Manejar caso cuando payer es null
+            String customerEmail = null;
+            String customerName = "Cliente";
+            
+            if (payment.getPayer() != null) {
+                customerEmail = payment.getPayer().getEmail();
+                customerName = (payment.getPayer().getFirstName() != null ? payment.getPayer().getFirstName() : "Cliente") + " " + 
+                              (payment.getPayer().getLastName() != null ? payment.getPayer().getLastName() : "");
+            }
+            
+            // ✅ CORRECCIÓN: Si no hay email, usar email de respaldo
+            if (customerEmail == null || customerEmail.trim().isEmpty()) {
+                LOGGER.warn("⚠️ Email del cliente no disponible para pago ID: {}. Usando email de respaldo.", paymentId);
+                customerEmail = "nicolas.espinosa.ok@gmail.com"; // Email de respaldo para testing
+            }
             
             LOGGER.info("📊 Estado del pago {}: {}", paymentId, status);
             LOGGER.info("👤 Cliente: {} ({})", customerName, customerEmail);
             
-            // Enviar email según el estado del pago
+            // Enviar email según el estado del pago usando el NUEVO servicio
             switch (status) {
                 case "approved":
                     LOGGER.info("✅ Pago aprobado - Enviando email de confirmación");
-                    emailService.sendPaymentApprovalEmail(customerEmail, customerName, payment);
+                    resendEmailService.sendPaymentApprovalEmail(customerEmail, customerName, payment);
                     break;
                     
                 case "rejected":
                     LOGGER.info("❌ Pago rechazado - Enviando email de rechazo");
-                    emailService.sendPaymentRejectionEmail(customerEmail, customerName, payment);
+                    resendEmailService.sendPaymentRejectionEmail(customerEmail, customerName, payment);
                     break;
                     
                 case "in_process":
                     LOGGER.info("⏳ Pago pendiente - Enviando email de procesamiento");
-                    emailService.sendPaymentPendingEmail(customerEmail, customerName, payment);
+                    resendEmailService.sendPaymentPendingEmail(customerEmail, customerName, payment);
                     break;
                     
                 case "cancelled":
                     LOGGER.info("🚫 Pago cancelado - Enviando email de cancelación");
-                    emailService.sendPaymentCancellationEmail(customerEmail, customerName, payment);
+                    resendEmailService.sendPaymentCancellationEmail(customerEmail, customerName, payment);
                     break;
                     
                 default:
@@ -156,9 +169,9 @@ public class CardPaymentController {
             PaymentResponseDTO payment = cardPaymentService.processPayment(cardPaymentDTO);
             LOGGER.info("✅ Pago exitoso - ID: {}", payment.getId());
             
-            // ✅ Enviar email inmediato de confirmación de recepción
+            // ✅ Enviar email inmediato de confirmación de recepción usando el NUEVO servicio
             try {
-                emailService.sendPaymentReceivedEmail(
+                resendEmailService.sendPaymentReceivedEmail(
                     cardPaymentDTO.getPayer().getEmail(),
                     cardPaymentDTO.getPayer().getFirstName() + " " + cardPaymentDTO.getPayer().getLastName(),
                     payment
