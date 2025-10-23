@@ -6,7 +6,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>2.5.15</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
     <groupId>com.mercadopago.sample</groupId>
     <artifactId>card-payment-sample-java</artifactId>
@@ -15,6 +15,7 @@
     <description>Card payment Bricks sample written in Java</description>
     <properties>
         <java.version>11</java.version>
+        <mercadopago.sdk.version>2.1.10</mercadopago.sdk.version>
     </properties>
     <dependencies>
         <dependency>
@@ -25,14 +26,18 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+        
+        <!-- Thymeleaf (SOLO UNA VEZ) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
+
+        <!-- Mercado Pago SDK ACTUALIZADO -->
         <dependency>
             <groupId>com.mercadopago</groupId>
             <artifactId>sdk-java</artifactId>
-            <version>2.0.1</version>
+            <version>${mercadopago.sdk.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>junit</groupId>
@@ -40,22 +45,20 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
         <dependency>
             <groupId>com.itextpdf</groupId>
             <artifactId>itext7-core</artifactId>
             <version>8.0.5</version>
             <type>pom</type>
         </dependency>
-             <!-- Dependencia para envío de emails -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-mail</artifactId>
-</dependency>
 
-<!-- Dependencia para Thymeleaf (si no la tienes) -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-<artifactId>spring-boot-starter-thymeleaf</artifactId></dependency>
+        <!-- ELIMINAR: spring-boot-starter-mail (NO LO USAS) -->
+        <!-- <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency> -->
+
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
