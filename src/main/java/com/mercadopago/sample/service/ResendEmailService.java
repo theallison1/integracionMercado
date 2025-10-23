@@ -16,17 +16,24 @@ import java.util.Map;
 @Service
 public class ResendEmailService {
     
-    private static final Logger LOGGER = LoggerFactory.getLogger(ResendEmailService.class);
+  
+    private static final Logger LOGGER = LoggerFactory.getLogger(MailSenderEmailService.class);
     
-    @Value("${resend.api.key}")
-    private String resendApiKey;
+    @Value("${mailsender.api.key}")
+    private String mailSenderApiKey;
     
-    @Value("${resend.api.url}")
-    private String resendApiUrl;
+    @Value("${mailsender.api.url}")
+    private String mailSenderApiUrl;
+    
+    @Value("${mailsender.from.email}")
+    private String fromEmail;
+    
+    @Value("${mailsender.from.name}")
+    private String fromName;
     
     private final RestTemplate restTemplate;
     
-    public ResendEmailService() {
+    public MailSenderEmailService() {
         this.restTemplate = new RestTemplate();
     }
     
@@ -70,28 +77,34 @@ public class ResendEmailService {
             LOGGER.info("📧 Enviando email de {} a: {}", tipo, to);
             
             Map<String, Object> emailRequest = new HashMap<>();
-            emailRequest.put("from", "Millenium Termotanques <onboarding@resend.dev>");
-            emailRequest.put("to", to);
+            emailRequest.put("from", Map.of("email", fromEmail, "name", fromName));
+            emailRequest.put("to", new Object[]{Map.of("email", to)});
             emailRequest.put("subject", subject);
             emailRequest.put("text", text);
             
             HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + resendApiKey);
+            headers.set("X-MailSender-API-Key", mailSenderApiKey);
             headers.set("Content-Type", "application/json");
             
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(emailRequest, headers);
             
+            // ✅ URL específica para MailSender
+            String endpoint = mailSenderApiUrl + "/send";
+            LOGGER.info("🔗 Usando endpoint: {}", endpoint);
+            
             ResponseEntity<String> response = restTemplate.exchange(
-                resendApiUrl, 
+                endpoint, 
                 HttpMethod.POST, 
                 request, 
                 String.class
             );
             
+            LOGGER.info("📥 Respuesta de MailSender: {}", response.getStatusCode());
+            
             if (response.getStatusCode().is2xxSuccessful()) {
                 LOGGER.info("✅ Email de {} enviado exitosamente a: {}", tipo, to);
             } else {
-                LOGGER.error("❌ Error API enviando email de {} a {}: {}", tipo, to, response.getBody());
+                LOGGER.error("❌ Error MailSender ({}): {}", response.getStatusCode(), response.getBody());
             }
             
         } catch (Exception e) {
@@ -106,6 +119,7 @@ public class ResendEmailService {
                email.contains(".");
     }
     
+    // Los métodos build... se mantienen IGUAL
     private String buildApprovalEmailText(String name, Payment payment) {
         return "Hola " + name + ",\n\n" +
                "¡Excelente noticia! Tu pago ha sido aprobado exitosamente.\n\n" +
@@ -168,5 +182,5 @@ public class ResendEmailService {
                "Gracias por elegir Millenium Termotanques!\n\n" +
                "📞 Contacto: +54 11 1234-5678\n" +
                "📧 Email: info@milleniumtermotanques.com";
-    }
+    }    
 }
