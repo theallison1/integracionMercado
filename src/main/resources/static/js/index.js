@@ -104,19 +104,17 @@ function loadPaymentForm() {
                 });
             }
         },
-        locale: 'es-AR',
-        customization: {
-            paymentMethods: {
-                creditCard: 'all',
-                debitCard: 'all',
-                ticket: 'all',
-                onboarding_credits: "all",
-										wallet_purchase: "all",
-										: "all",
-                    maxInstallments: 1
-
-
-            },
+       locale: 'es-AR',
+customization: {
+    paymentMethods: {
+        creditCard: 'all',
+        debitCard: 'all', 
+        ticket: 'all',
+        onboarding_credits: "all",
+        wallet_purchase: "all",
+        maxInstallments: 1
+    }
+},
             visual: {
                 style: {
                     theme: 'dark',
