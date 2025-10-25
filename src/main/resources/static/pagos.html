@@ -194,6 +194,42 @@
         .payment-form {
             padding: 20px 0;
         }
+
+        /* Estilos severos para los botones de resultado */
+        .btn-severo {
+            background-color: aquamarine;
+            color: #1d2431;
+            border: 2px solid aquamarine;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .btn-severo:hover {
+            background-color: #1d2431;
+            color: aquamarine;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .container__result {
+            background-color: #1d2431;
+            color: aquamarine;
+            padding: 30px;
+            border-radius: 12px;
+            border: 2px solid aquamarine;
+        }
     </style>
 </head>
 <body>
@@ -251,7 +287,8 @@
                     <input type="hidden" id="amount" value="0" />
                     <input type="hidden" id="description" />
                 </div>
-                <div id="mercadopago-bricks-contaner__PaymentCard"></div>
+                <!-- ✅ CORREGIDO: ID actualizado -->
+                <div id="paymentBrick_container"></div>
                 <a id="go-back" class="btn btn-outline-primary mt-3">
                     ← Volver al catálogo
                 </a>
@@ -271,9 +308,17 @@
                     <div class="col-md-12 col-lg-12">
                         <div class="items product info product-details">
                             <div class="row justify-content-md-center">
-                                <div class="col-md-4 product-detail">
+                                <div class="col-md-8 product-detail text-center">
                                     <div id="statusScreenBrick_container"></div>
-                                    <button id="download-receipt" class="btn btn-primary mt-3">Descargar Comprobante</button>
+                                    <div class="result-actions">
+                                        <!-- ✅ CORREGIDO: Botones con estilo severo -->
+                                        <button id="download-receipt" class="btn-severo">
+                                            📄 Descargar Comprobante
+                                        </button>
+                                        <button id="back-to-payments" class="btn-severo">
+                                            ← Volver a Pagos
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
