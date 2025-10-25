@@ -5,6 +5,7 @@ import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.payment.PaymentCreateRequest;
 import com.mercadopago.client.payment.PaymentPayerRequest;
+import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.payment.Payment;
@@ -21,6 +22,11 @@ import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Paragraph;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class CardPaymentService {
@@ -56,6 +62,17 @@ public class CardPaymentService {
             LOGGER.info("Email: {}", cardPaymentDTO.getPayer().getEmail());
             LOGGER.info("Nombre: {} {}", firstName, lastName);
 
+            // ✅ Configurar headers personalizados con idempotency key
+            Map<String, String> customHeaders = new HashMap<>();
+            String idempotencyKey = generateIdempotencyKey(cardPaymentDTO);
+            customHeaders.put("x-idempotency-key", idempotencyKey);
+
+            MPRequestOptions requestOptions = MPRequestOptions.builder()
+                .customHeaders(customHeaders)
+                .build();
+
+            LOGGER.info("Idempotency Key generado: {}", idempotencyKey);
+
             PaymentCreateRequest paymentCreateRequest =
                     PaymentCreateRequest.builder()
                             .transactionAmount(cardPaymentDTO.getTransactionAmount())
@@ -77,16 +94,21 @@ public class CardPaymentService {
                                             .build())
                             .build();
 
-            Payment payment = client.create(paymentCreateRequest);
+            // ✅ Usar requestOptions con idempotency key
+            Payment payment = client.create(paymentCreateRequest, requestOptions);
 
             LOGGER.info("✅ Pago creado exitosamente - ID: {}, Estado: {}", 
                        payment.getId(), payment.getStatus());
             LOGGER.info("URL de notificación configurada: {}", notificationUrl);
+            LOGGER.info("Idempotency Key utilizado: {}", idempotencyKey);
 
+            // ✅ Usar constructor con todos los campos
             return new PaymentResponseDTO(
                     payment.getId(),
                     String.valueOf(payment.getStatus()),
-                    payment.getStatusDetail());
+                    payment.getStatusDetail(),
+                    payment.getDateCreated(),
+                    payment.getTransactionAmount());
 
         } catch (MPApiException apiException) {
             LOGGER.error("❌ Error API Mercado Pago - Status: {}", apiException.getStatusCode());
@@ -97,18 +119,28 @@ public class CardPaymentService {
             if (apiException.getStatusCode() == 400) {
                 LOGGER.error("=== ERROR 400 - BAD REQUEST ===");
                 LOGGER.error("Posible problema con los datos enviados a Mercado Pago");
+                LOGGER.error("Verificar: token, paymentMethodId, monto, datos del pagador");
+            } else if (apiException.getStatusCode() == 401) {
+                LOGGER.error("=== ERROR 401 - UNAUTHORIZED ===");
+                LOGGER.error("Problema con el access token de Mercado Pago");
             } else if (apiException.getStatusCode() == 403) {
                 LOGGER.error("=== ERROR 403 - FORBIDDEN ===");
                 LOGGER.error("Problema de credenciales o políticas de seguridad");
+            } else if (apiException.getStatusCode() == 422) {
+                LOGGER.error("=== ERROR 422 - UNPROCESSABLE ENTITY ===");
+                LOGGER.error("Error de validación en los datos del pago");
             } else if (apiException.getStatusCode() == 500) {
                 LOGGER.error("=== ERROR 500 - INTERNAL SERVER ERROR ===");
                 LOGGER.error("Error interno de Mercado Pago");
             }
             
-            throw new MercadoPagoException(apiException.getApiResponse().getContent());
+            throw new MercadoPagoException(
+                "Error Mercado Pago: " + apiException.getApiResponse().getContent(),
+                apiException.getStatusCode()
+            );
         } catch (MPException exception) {
             LOGGER.error("❌ Error Mercado Pago: {}", exception.getMessage());
-            throw new MercadoPagoException(exception.getMessage());
+            throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage());
         } catch (Exception exception) {
             LOGGER.error("❌ Error inesperado: {}", exception.getMessage());
             throw new MercadoPagoException("Error interno del servidor: " + exception.getMessage());
@@ -121,7 +153,15 @@ public class CardPaymentService {
             PaymentClient client = new PaymentClient();
             LOGGER.info("Buscando pago con ID: {}", paymentId);
             
-            Payment payment = client.get(paymentId);
+            // ✅ Agregar idempotency key para consultas también
+            Map<String, String> customHeaders = new HashMap<>();
+            customHeaders.put("x-idempotency-key", "GET_PAYMENT_" + paymentId + "_" + UUID.randomUUID().toString());
+            
+            MPRequestOptions requestOptions = MPRequestOptions.builder()
+                .customHeaders(customHeaders)
+                .build();
+            
+            Payment payment = client.get(paymentId, requestOptions);
             LOGGER.info("Pago encontrado - Estado: {}", payment.getStatus());
             
             return payment;
@@ -160,10 +200,10 @@ public class CardPaymentService {
                     .setMarginBottom(10));
 
             document.add(new Paragraph("ID de operación: " + payment.getId()));
-            document.add(new Paragraph("Fecha: " + payment.getDateCreated()));
-            document.add(new Paragraph("Monto: $" + payment.getTransactionAmount()));
-            document.add(new Paragraph("Estado: " + payment.getStatus()));
-            document.add(new Paragraph("Descripción: " + payment.getDescription()));
+            document.add(new Paragraph("Fecha: " + (payment.getDateCreated() != null ? payment.getDateCreated() : "N/A")));
+            document.add(new Paragraph("Monto: $" + (payment.getTransactionAmount() != null ? payment.getTransactionAmount() : "0.00")));
+            document.add(new Paragraph("Estado: " + (payment.getStatus() != null ? payment.getStatus() : "N/A")));
+            document.add(new Paragraph("Descripción: " + (payment.getDescription() != null ? payment.getDescription() : "Compra Millenium")));
 
             document.add(new Paragraph(" ").setMarginBottom(20));
 
@@ -174,7 +214,7 @@ public class CardPaymentService {
                     .setMarginBottom(10));
 
             if (payment.getPayer() != null) {
-                document.add(new Paragraph("Email: " + payment.getPayer().getEmail()));
+                document.add(new Paragraph("Email: " + (payment.getPayer().getEmail() != null ? payment.getPayer().getEmail() : "N/A")));
                 
                 if (payment.getPayer().getFirstName() != null) {
                     document.add(new Paragraph("Nombre: " + payment.getPayer().getFirstName()));
@@ -183,9 +223,13 @@ public class CardPaymentService {
                     document.add(new Paragraph("Apellido: " + payment.getPayer().getLastName()));
                 }
                 if (payment.getPayer().getIdentification() != null) {
-                    document.add(new Paragraph("Tipo de identificación: " + payment.getPayer().getIdentification().getType()));
-                    document.add(new Paragraph("Número: " + payment.getPayer().getIdentification().getNumber()));
+                    document.add(new Paragraph("Tipo de identificación: " + 
+                        (payment.getPayer().getIdentification().getType() != null ? payment.getPayer().getIdentification().getType() : "N/A")));
+                    document.add(new Paragraph("Número: " + 
+                        (payment.getPayer().getIdentification().getNumber() != null ? payment.getPayer().getIdentification().getNumber() : "N/A")));
                 }
+            } else {
+                document.add(new Paragraph("Información del pagador no disponible"));
             }
 
             document.add(new Paragraph(" ").setMarginBottom(30));
@@ -195,12 +239,153 @@ public class CardPaymentService {
 
             document.close();
             
-            LOGGER.info("Comprobante PDF generado exitosamente");
+            LOGGER.info("Comprobante PDF generado exitosamente para pago: {}", payment.getId());
             return baos.toByteArray();
             
         } catch (Exception e) {
-            LOGGER.error("Error generando PDF: {}", e.getMessage());
-            throw new IOException("Error al generar el comprobante PDF", e);
+            LOGGER.error("Error generando PDF para pago {}: {}", payment.getId(), e.getMessage());
+            throw new IOException("Error al generar el comprobante PDF para el pago: " + payment.getId(), e);
+        }
+    }
+
+    /**
+     * ✅ Genera una clave de idempotencia única basada en los datos del pago
+     * Esto previene duplicados si se envía la misma request múltiples veces
+     */
+    private String generateIdempotencyKey(CardPaymentDTO cardPaymentDTO) {
+        try {
+            String baseData = cardPaymentDTO.getPayer().getEmail() + 
+                             "_" + cardPaymentDTO.getTransactionAmount() + 
+                             "_" + cardPaymentDTO.getToken().hashCode() + 
+                             "_" + System.currentTimeMillis();
+            return "PAYMENT_" + UUID.nameUUIDFromBytes(baseData.getBytes()).toString();
+        } catch (Exception e) {
+            // Fallback a UUID aleatorio si hay algún error
+            LOGGER.warn("Error generando idempotency key, usando UUID aleatorio: {}", e.getMessage());
+            return "PAYMENT_" + UUID.randomUUID().toString();
+        }
+    }
+
+    /**
+     * ✅ Método adicional para procesar pagos con opciones personalizadas
+     */
+    public PaymentResponseDTO processPaymentWithOptions(CardPaymentDTO cardPaymentDTO, MPRequestOptions customOptions) {
+        try {
+            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+            PaymentClient client = new PaymentClient();
+
+            PaymentCreateRequest paymentCreateRequest = buildPaymentCreateRequest(cardPaymentDTO);
+            
+            // Usar las opciones personalizadas proporcionadas
+            Payment payment = client.create(paymentCreateRequest, customOptions);
+
+            LOGGER.info("✅ Pago creado con opciones personalizadas - ID: {}", payment.getId());
+            
+            return new PaymentResponseDTO(
+                    payment.getId(),
+                    String.valueOf(payment.getStatus()),
+                    payment.getStatusDetail(),
+                    payment.getDateCreated(),
+                    payment.getTransactionAmount());
+
+        } catch (MPApiException apiException) {
+            LOGGER.error("❌ Error API Mercado Pago con opciones personalizadas - Status: {}", apiException.getStatusCode());
+            LOGGER.error("❌ Error Message: {}", apiException.getMessage());
+            throw new MercadoPagoException(
+                "Error Mercado Pago: " + apiException.getApiResponse().getContent(),
+                apiException.getStatusCode()
+            );
+        } catch (MPException exception) {
+            LOGGER.error("❌ Error Mercado Pago con opciones personalizadas: {}", exception.getMessage());
+            throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage());
+        }
+    }
+
+    /**
+     * ✅ Método auxiliar para construir el request
+     */
+    private PaymentCreateRequest buildPaymentCreateRequest(CardPaymentDTO cardPaymentDTO) {
+        String description = cardPaymentDTO.getProductDescription() != null ? 
+                           cardPaymentDTO.getProductDescription() : 
+                           "Compra de termotanques Millenium";
+
+        String firstName = cardPaymentDTO.getPayer().getFirstName() != null ? 
+                          cardPaymentDTO.getPayer().getFirstName() : "Cliente";
+        String lastName = cardPaymentDTO.getPayer().getLastName() != null ? 
+                         cardPaymentDTO.getPayer().getLastName() : "Millenium";
+
+        String notificationUrl = appBaseUrl + "/process_payment/webhooks/mercadopago";
+
+        return PaymentCreateRequest.builder()
+                .transactionAmount(cardPaymentDTO.getTransactionAmount())
+                .token(cardPaymentDTO.getToken())
+                .description(description)
+                .installments(cardPaymentDTO.getInstallments())
+                .paymentMethodId(cardPaymentDTO.getPaymentMethodId())
+                .notificationUrl(notificationUrl)
+                .payer(
+                        PaymentPayerRequest.builder()
+                                .email(cardPaymentDTO.getPayer().getEmail())
+                                .firstName(firstName)
+                                .lastName(lastName)
+                                .identification(
+                                        IdentificationRequest.builder()
+                                                .type(cardPaymentDTO.getPayer().getIdentification().getType())
+                                                .number(cardPaymentDTO.getPayer().getIdentification().getNumber())
+                                                .build())
+                                .build())
+                .build();
+    }
+
+    /**
+     * ✅ Método para verificar el estado de un pago
+     */
+    public String checkPaymentStatus(Long paymentId) {
+        try {
+            Payment payment = getPaymentById(paymentId);
+            String status = String.valueOf(payment.getStatus());
+            LOGGER.info("Estado del pago {}: {}", paymentId, status);
+            return status;
+        } catch (MPException | MPApiException e) {
+            LOGGER.error("Error verificando estado del pago {}: {}", paymentId, e.getMessage());
+            throw new MercadoPagoException("Error verificando estado del pago: " + e.getMessage());
+        }
+    }
+
+    /**
+     * ✅ Método para cancelar un pago
+     */
+    public PaymentResponseDTO cancelPayment(Long paymentId) {
+        try {
+            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+            PaymentClient client = new PaymentClient();
+
+            // ✅ Agregar idempotency key para cancelación
+            Map<String, String> customHeaders = new HashMap<>();
+            customHeaders.put("x-idempotency-key", "CANCEL_" + paymentId + "_" + UUID.randomUUID().toString());
+
+            MPRequestOptions requestOptions = MPRequestOptions.builder()
+                .customHeaders(customHeaders)
+                .build();
+
+            Payment cancelledPayment = client.cancel(paymentId, requestOptions);
+            
+            LOGGER.info("✅ Pago cancelado exitosamente - ID: {}, Nuevo estado: {}", 
+                       cancelledPayment.getId(), cancelledPayment.getStatus());
+
+            return new PaymentResponseDTO(
+                    cancelledPayment.getId(),
+                    String.valueOf(cancelledPayment.getStatus()),
+                    cancelledPayment.getStatusDetail(),
+                    cancelledPayment.getDateCreated(),
+                    cancelledPayment.getTransactionAmount());
+
+        } catch (MPApiException apiException) {
+            LOGGER.error("❌ Error cancelando pago {}: {}", paymentId, apiException.getApiResponse().getContent());
+            throw new MercadoPagoException("Error cancelando pago: " + apiException.getApiResponse().getContent());
+        } catch (MPException exception) {
+            LOGGER.error("❌ Error cancelando pago {}: {}", paymentId, exception.getMessage());
+            throw new MercadoPagoException("Error cancelando pago: " + exception.getMessage());
         }
     }
 }
