@@ -104,17 +104,17 @@ function loadPaymentForm() {
                 });
             }
         },
-       locale: 'es-AR',
-customization: {
-    paymentMethods: {
-        creditCard: 'all',
-        debitCard: 'all', 
-        ticket: 'all',
-        onboarding_credits: "all",
-        wallet_purchase: "all",
-        maxInstallments: 1
-    }
-},
+        locale: 'es-AR',
+        customization: {
+            paymentMethods: {
+                creditCard: "all",
+                debitCard: "all",
+                ticket: "all",
+                bankTransfer: "all",
+                wallet_purchase: "all",
+                onboarding_credits: "all"
+            },
+            maxInstallments: 1,  // ✅ CORREGIDO: Movido fuera de paymentMethods
             visual: {
                 style: {
                     theme: 'dark',
@@ -124,8 +124,8 @@ customization: {
                     }
                 }
             }
-        },
-    }
+        }
+    };  // ✅ CORREGIDO: Cerrado correctamente
 
     // Limpiar el contenedor antes de crear el nuevo Brick
     const container = document.getElementById('mercadopago-bricks-contaner__PaymentCard');
