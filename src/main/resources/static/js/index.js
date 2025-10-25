@@ -48,7 +48,7 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     });
 };
 
-// ✅ ACTUALIZADO: Función async/await para Payment Bricks
+// ✅ CORREGIDO: Función async/await para Payment Bricks con parámetros correctos
 async function loadPaymentForm() {
     // Obtener el amount del campo hidden en tu HTML actual
     const amountInput = document.getElementById('amount');
@@ -71,7 +71,8 @@ async function loadPaymentForm() {
         initialization: {
             amount: productCost,
             payer: {
-                email: "test@test.com" // Puedes obtener esto de tu formulario
+                email: "test@test.com", // Puedes obtener esto de tu formulario
+                entityType: "individual" // ✅ CORREGIDO: Agregado entityType
             }
         },
         callbacks: {
@@ -123,9 +124,9 @@ async function loadPaymentForm() {
                 creditCard: "all",
                 debitCard: "all",
                 ticket: "all",
-                bankTransfer: "all",
-                wallet_purchase: "all",      // ✅ AHORA SÍ PERMITIDO
-                onboarding_credits: "all"    // ✅ AHORA SÍ PERMITIDO
+                wallet: "all",          // ✅ CORREGIDO: wallet_purchase → wallet
+                bankTransfer: "all",    // ✅ Mantenemos para probar
+                credits: "all"          // ✅ CORREGIDO: onboarding_credits → credits
             },
             maxInstallments: 1,
             visual: {
@@ -366,4 +367,87 @@ function updatePaymentSummary() {
     }
     
     document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
+    updateSummaryTotal(); // Actualizar también el monto visible
+}
+
+// ✅ FUNCIONES DEL CARRITO (desde tu HTML)
+function addToCart(productId) {
+    const quantityInput = document.getElementById(`quantity-${productId}`);
+    const quantity = parseInt(quantityInput.value);
+    const feedback = document.getElementById(`feedback-${productId}`);
+    
+    if (quantity > 0) {
+        updateCart(productId, quantity);
+        feedback.textContent = "✓ Agregado al carrito";
+        feedback.style.color = "#28a745";
+        setTimeout(() => feedback.textContent = "", 2000);
+    } else {
+        feedback.textContent = "Selecciona una cantidad";
+        feedback.style.color = "#dc3545";
+        setTimeout(() => feedback.textContent = "", 2000);
+    }
+}
+
+function updateCart(productId, quantity) {
+    const quantityNum = parseInt(quantity);
+    const product = products.find(p => p.id === productId);
+    
+    if (quantityNum === 0) {
+        cart = cart.filter(item => item.id !== productId);
+    } else {
+        const existingItem = cart.find(item => item.id === productId);
+        
+        if (existingItem) {
+            existingItem.quantity = quantityNum;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: quantityNum,
+                image: product.image
+            });
+        }
+    }
+    
+    updateCartDisplay();
+}
+
+function updateCartDisplay() {
+    const cartItemsContainer = document.getElementById('cart-items');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const amountInput = document.getElementById('amount');
+    
+    cartItemsContainer.innerHTML = '';
+    let total = 0;
+    
+    if (cart.length === 0) {
+        cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
+        checkoutBtn.disabled = true;
+        checkoutBtn.innerHTML = '💳 Ir a Pagar';
+        if (amountInput) amountInput.value = '0';
+    } else {
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            
+            const cartItemElement = `
+                <div class="cart-item p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="font-weight-bold">${item.name}</small><br>
+                            <small class="text-muted">${item.quantity} x $${item.price.toLocaleString()}</small>
+                        </div>
+                        <span class="font-weight-bold price">$${itemTotal.toLocaleString()}</span>
+                    </div>
+                </div>
+            `;
+            cartItemsContainer.innerHTML += cartItemElement;
+        });
+        checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
+        if (amountInput) amountInput.value = total;
+    }
+    
+    document.getElementById('cart-total').textContent = `$${total.toLocaleString()}`;
 }
