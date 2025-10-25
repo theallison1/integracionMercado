@@ -134,16 +134,17 @@ public class CardPaymentService {
                 LOGGER.error("Error interno de Mercado Pago");
             }
             
+            // ✅ CORREGIDO: Pasar la excepción como causa, no el status code
             throw new MercadoPagoException(
-                "Error Mercado Pago: " + apiException.getApiResponse().getContent(),
-                apiException.getStatusCode()
+                "Error Mercado Pago - Status: " + apiException.getStatusCode() + " - " + apiException.getApiResponse().getContent(),
+                apiException
             );
         } catch (MPException exception) {
             LOGGER.error("❌ Error Mercado Pago: {}", exception.getMessage());
-            throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage());
+            throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
         } catch (Exception exception) {
             LOGGER.error("❌ Error inesperado: {}", exception.getMessage());
-            throw new MercadoPagoException("Error interno del servidor: " + exception.getMessage());
+            throw new MercadoPagoException("Error interno del servidor: " + exception.getMessage(), exception);
         }
     }
 
@@ -291,13 +292,14 @@ public class CardPaymentService {
         } catch (MPApiException apiException) {
             LOGGER.error("❌ Error API Mercado Pago con opciones personalizadas - Status: {}", apiException.getStatusCode());
             LOGGER.error("❌ Error Message: {}", apiException.getMessage());
+            // ✅ CORREGIDO: Pasar la excepción como causa
             throw new MercadoPagoException(
                 "Error Mercado Pago: " + apiException.getApiResponse().getContent(),
-                apiException.getStatusCode()
+                apiException
             );
         } catch (MPException exception) {
             LOGGER.error("❌ Error Mercado Pago con opciones personalizadas: {}", exception.getMessage());
-            throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage());
+            throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
         }
     }
 
@@ -348,7 +350,7 @@ public class CardPaymentService {
             return status;
         } catch (MPException | MPApiException e) {
             LOGGER.error("Error verificando estado del pago {}: {}", paymentId, e.getMessage());
-            throw new MercadoPagoException("Error verificando estado del pago: " + e.getMessage());
+            throw new MercadoPagoException("Error verificando estado del pago: " + e.getMessage(), e);
         }
     }
 
@@ -382,10 +384,10 @@ public class CardPaymentService {
 
         } catch (MPApiException apiException) {
             LOGGER.error("❌ Error cancelando pago {}: {}", paymentId, apiException.getApiResponse().getContent());
-            throw new MercadoPagoException("Error cancelando pago: " + apiException.getApiResponse().getContent());
+            throw new MercadoPagoException("Error cancelando pago: " + apiException.getApiResponse().getContent(), apiException);
         } catch (MPException exception) {
             LOGGER.error("❌ Error cancelando pago {}: {}", paymentId, exception.getMessage());
-            throw new MercadoPagoException("Error cancelando pago: " + exception.getMessage());
+            throw new MercadoPagoException("Error cancelando pago: " + exception.getMessage(), exception);
         }
     }
 }
