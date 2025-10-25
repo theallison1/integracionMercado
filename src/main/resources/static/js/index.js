@@ -1,5 +1,7 @@
 const mercadoPagoPublicKey = document.getElementById("mercado-pago-public-key").value;
-const mercadopago = new MercadoPago('APP_USR-c90816a8-38cd-4720-9f60-226dae2b7b4d');
+const mercadopago = new MercadoPago(mercadoPagoPublicKey, {
+    locale: 'es-AR'
+});
 const bricksBuilder = mercadopago.bricks();
 let paymentId;
 
@@ -46,7 +48,7 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     });
 };
 
-// ✅ ACTUALIZADO: Función async/await
+// ✅ ACTUALIZADO: Función async/await para Payment Bricks
 async function loadPaymentForm() {
     // Obtener el amount del campo hidden en tu HTML actual
     const amountInput = document.getElementById('amount');
@@ -68,6 +70,9 @@ async function loadPaymentForm() {
     const settings = {
         initialization: {
             amount: productCost,
+            payer: {
+                email: "test@test.com" // Puedes obtener esto de tu formulario
+            }
         },
         callbacks: {
             onReady: () => {
@@ -77,7 +82,7 @@ async function loadPaymentForm() {
                 console.error('Error en Payment Brick:', error);
                 alert('Error al cargar el formulario de pago');
             },
-            onSubmit: async ({ selectedPaymentMethod, formData }) => { // ✅ También async aquí
+            onSubmit: async ({ selectedPaymentMethod, formData }) => {
                 console.log('Datos del formulario enviados:', formData);
                 
                 try {
@@ -119,8 +124,8 @@ async function loadPaymentForm() {
                 debitCard: "all",
                 ticket: "all",
                 bankTransfer: "all",
-                wallet_purchase: "all",
-                onboarding_credits: "all"
+                wallet_purchase: "all",      // ✅ AHORA SÍ PERMITIDO
+                onboarding_credits: "all"    // ✅ AHORA SÍ PERMITIDO
             },
             maxInstallments: 1,
             visual: {
@@ -130,11 +135,7 @@ async function loadPaymentForm() {
                         formBackgroundColor: '#1d2431',
                         baseColor: 'aquamarine',
                         outlinePrimaryColor: 'aquamarine',
-                        buttonTextColor: '#1d2431',
-                        fontSizeExtraSmall: '14px',
-                        fontSizeSmall: '16px',
-                        fontSizeMedium: '18px',
-                        fontSizeLarge: '20px'
+                        buttonTextColor: '#1d2431'
                     }
                 }
             }
@@ -142,16 +143,16 @@ async function loadPaymentForm() {
     };
 
     // Limpiar el contenedor antes de crear el nuevo Brick
-    const container = document.getElementById('paymentBrick_container'); // ✅ ID actualizado
+    const container = document.getElementById('paymentBrick_container');
     if (container) {
         container.innerHTML = '';
     }
 
     try {
-        // ✅ ACTUALIZADO: Usando la mejor práctica
+        // ✅ ACTUALIZADO: Usando Payment Bricks
         window.paymentBrickController = await bricksBuilder.create(
             "payment",
-            "paymentBrick_container", // ✅ ID actualizado
+            "paymentBrick_container",
             settings
         );
         console.log('Payment Brick creado exitosamente');
@@ -187,7 +188,7 @@ $(document).ready(function() {
     // Botón "Ir a Pagar"
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
-        checkoutBtn.on('click', async function() { // ✅ También async aquí
+        checkoutBtn.on('click', async function() {
             // Verificar que el carrito no esté vacío
             const amountInput = document.getElementById('amount');
             if (!amountInput || !amountInput.value || amountInput.value === '0') {
@@ -195,12 +196,12 @@ $(document).ready(function() {
                 return;
             }
             
-            // ACTUALIZAR EL MONTO VISIBLE ANTES DE MOSTRAR EL FORMULARIO
-            updateSummaryTotal();
+            // ACTUALIZAR EL RESUMEN DE PAGO ANTES DE MOSTRAR EL FORMULARIO
+            updatePaymentSummary();
             
             $('.container__cart').fadeOut(500);
             setTimeout(async () => {
-                await loadPaymentForm(); // ✅ await aquí también
+                await loadPaymentForm();
                 $('.container__payment').show(500).fadeIn();
             }, 500);
         });
@@ -331,3 +332,38 @@ $(document).ready(function() {
         console.error('Elemento "back-to-payments" no encontrado');
     }
 });
+
+// FUNCIÓN PARA ACTUALIZAR EL RESUMEN DE PAGO (desde tu HTML)
+function updatePaymentSummary() {
+    const summaryContainer = document.getElementById('summary-items');
+    const amountInput = document.getElementById('amount');
+    let total = 0;
+    
+    summaryContainer.innerHTML = '';
+    
+    if (cart.length === 0) {
+        summaryContainer.innerHTML = '<p class="text-muted text-center">No hay productos en el carrito</p>';
+        if (amountInput) amountInput.value = '0';
+    } else {
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            
+            summaryContainer.innerHTML += `
+                <div class="item mb-3 p-2 border-bottom">
+                    <span class="price">$${itemTotal.toLocaleString()}</span>
+                    <p class="item-name mb-1">${item.name}</p>
+                    <small class="text-muted">Cantidad: ${item.quantity}</small>
+                </div>
+            `;
+        });
+        
+        // ✅ Asegurar que el amount tenga el valor correcto
+        if (amountInput) {
+            amountInput.value = total;
+            console.log('Amount actualizado para pago:', amountInput.value);
+        }
+    }
+    
+    document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
+}
