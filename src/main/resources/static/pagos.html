@@ -270,31 +270,31 @@
         </div>
     </section>
 
-    <!-- Sección de Pago -->
-    <section class="payment-form dark">
-        <div class="container container__payment">
-            <div class="block-heading text-center">
-                <h2>Medios de Pago</h2>
-                <p>MILLENIUM TERMOTANQUES</p>
-            </div>
-            <div class="form-payment">
-                <div class="products">
-                    <h2 class="title">Resumen</h2>
-                    <div id="summary-items">
-                        <!-- Resumen de productos para pago -->
-                    </div>
-                    <div class="total">Total<span class="price" id="summary-total">$0</span></div>
-                    <input type="hidden" id="amount" value="0" />
-                    <input type="hidden" id="description" />
-                </div>
-                <!-- ✅ CORREGIDO: ID actualizado -->
-                <div id="paymentBrick_container"></div>
-                <a id="go-back" class="btn btn-outline-primary mt-3">
-                    ← Volver al catálogo
-                </a>
-            </div>
+   <!-- Sección de Pago -->
+<section class="payment-form dark">
+    <div class="container container__payment">
+        <div class="block-heading text-center">
+            <h2>Medios de Pago</h2>
+            <p>MILLENIUM TERMOTANQUES</p>
         </div>
-    </section>
+        
+        <!-- ✅ Wallet Brick (Billetera Mercado Pago) -->
+        <div class="wallet-section mb-4">
+            <h4 class="text-center mb-3">👛 Pagar con Mercado Pago</h4>
+            <div id="walletBrick_container"></div>
+        </div>
+
+        <!-- ✅ Payment Brick (Otros métodos) -->
+        <div class="other-methods-section">
+            <h4 class="text-center mb-3">💳 Otros métodos de pago</h4>
+            <div id="paymentBrick_container"></div>
+        </div>
+
+        <a id="go-back" class="btn btn-outline-primary mt-3">
+            ← Volver al catálogo
+        </a>
+    </div>
+</section>
 
     <!-- Sección de Resultado -->
     <section class="shopping-cart dark">
