@@ -48,7 +48,69 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     });
 };
 
-// ✅ CORREGIDO: Función async/await para Payment Bricks con parámetros correctos
+// ✅ NUEVA FUNCIÓN: Cargar Wallet Brick
+async function loadWalletBrick(amount) {
+    try {
+        // Limpiar contenedor del Wallet Brick
+        const walletContainer = document.getElementById('walletBrick_container');
+        if (walletContainer) {
+            walletContainer.innerHTML = '';
+        }
+
+        window.walletBrickController = await bricksBuilder.create("wallet", "walletBrick_container", {
+            initialization: {
+                amount: amount,
+            },
+            callbacks: {
+                onReady: () => {
+                    console.log("Wallet Brick ready");
+                },
+                onError: (error) => {
+                    console.error("Wallet Brick error:", error);
+                },
+                onSubmit: async (cardFormData) => {
+                    console.log('Datos Wallet Brick enviados:', cardFormData);
+                    
+                    try {
+                        const response = await fetch('/process_payment', {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify(cardFormData)
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Error en la respuesta del servidor');
+                        }
+                        
+                        const result = await response.json();
+                        console.log('Respuesta del servidor Wallet:', result);
+                        
+                        if (!result.hasOwnProperty("error_message")) {
+                            await renderStatusScreenBrick(bricksBuilder, result);
+                            
+                            $('.container__payment').fadeOut(500);
+                            setTimeout(() => {
+                                $('.container__result').show(500).fadeIn();
+                            }, 500);
+                        } else {
+                            alert('Error en el pago: ' + result.error_message);
+                        }
+                    } catch (error) {
+                        console.error('Error en la petición Wallet:', error);
+                        alert('Error al procesar el pago: ' + error.message);
+                    }
+                }
+            }
+        });
+        console.log('Wallet Brick creado exitosamente');
+    } catch (error) {
+        console.error('Error creando Wallet Brick:', error);
+    }
+}
+
+// ✅ ACTUALIZADA: Función loadPaymentForm para cargar AMBOS Bricks
 async function loadPaymentForm() {
     // Obtener el amount del campo hidden en tu HTML actual
     const amountInput = document.getElementById('amount');
@@ -67,12 +129,16 @@ async function loadPaymentForm() {
 
     console.log('Monto a pagar:', productCost);
 
+    // ✅ 1. CARGAR WALLET BRICK (Billetera Mercado Pago)
+    await loadWalletBrick(productCost);
+    
+    // ✅ 2. CARGAR PAYMENT BRICK (Otros métodos de pago)
     const settings = {
         initialization: {
             amount: productCost,
             payer: {
-                email: "test@test.com", // Puedes obtener esto de tu formulario
-                entityType: "individual" // ✅ CORREGIDO: Agregado entityType
+                email: "test@test.com",
+                entityType: "individual"
             }
         },
         callbacks: {
@@ -123,10 +189,8 @@ async function loadPaymentForm() {
             paymentMethods: {
                 creditCard: "all",
                 debitCard: "all",
-                ticket: "all",
-                wallet: "all",          // ✅ CORREGIDO: wallet_purchase → wallet
-                bankTransfer: "all",    // ✅ Mantenemos para probar
-                credits: "all"          // ✅ CORREGIDO: onboarding_credits → credits
+                ticket: "all"
+                // ❌ ELIMINAR: wallet, bankTransfer, credits (no son parámetros válidos)
             },
             maxInstallments: 1,
             visual: {
