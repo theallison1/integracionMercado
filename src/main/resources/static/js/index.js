@@ -109,7 +109,13 @@ function loadPaymentForm() {
             paymentMethods: {
                 creditCard: 'all',
                 debitCard: 'all',
-                ticket: 'all'
+                ticket: 'all',
+                onboarding_credits: "all",
+										wallet_purchase: "all",
+										: "all",
+                    maxInstallments: 1
+
+
             },
             visual: {
                 style: {
