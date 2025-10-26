@@ -32,6 +32,36 @@ public class CardPaymentController {
         this.resendEmailService = resendEmailService;
     }
 
+    // NUEVO CONTROLLER o agrega a tu controller existente:
+
+@PostMapping("/process_bricks_payment")
+public ResponseEntity<?> processBricksPayment(@RequestBody BricksPaymentDTO bricksPaymentDTO) {
+    try {
+        LOGGER.info("📥 Recibiendo pago desde Bricks - Tipo: {}", bricksPaymentDTO.getBrickType());
+        
+        // ✅ Validaciones básicas
+        if (bricksPaymentDTO.getToken() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error_message", "Token es requerido"));
+        }
+        
+        if (bricksPaymentDTO.getAmount() == null || bricksPaymentDTO.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("error_message", "Monto inválido"));
+        }
+
+        PaymentResponseDTO result = cardPaymentService.processBricksPayment(bricksPaymentDTO);
+        
+        LOGGER.info("✅ Pago desde Bricks procesado exitosamente - ID: {}", result.getId());
+        return ResponseEntity.ok(result);
+        
+    } catch (MercadoPagoException e) {
+        LOGGER.error("❌ Error procesando pago Bricks: {}", e.getMessage());
+        return ResponseEntity.status(500).body(Map.of("error_message", e.getMessage()));
+    } catch (Exception e) {
+        LOGGER.error("❌ Error inesperado en Bricks: {}", e.getMessage());
+        return ResponseEntity.status(500).body(Map.of("error_message", "Error interno del servidor"));
+    }
+}
+
     // Webhook para notificaciones de Mercado Pago
     @PostMapping("/webhooks/mercadopago")
     public ResponseEntity<String> handleMercadoPagoNotification(
