@@ -19,18 +19,22 @@ public class MercadoPagoInitializer {
     @EventListener(ApplicationReadyEvent.class)
     public void initializeMercadoPago() {
         try {
-            LOGGER.info("🚀 Inicializando configuración de Mercado Pago...");
+            LOGGER.info("🚀 Inicializando configuración de Mercado Pago para E-COMMERCE...");
             
-            // Esto se ejecutará automáticamente cuando la app inicie
-            // y demostrará a Mercado Pago que estás usando sus APIs
+            // ✅ EXPLÍCITAMENTE definir que somos E-COMMERCE
+            LOGGER.info("📱 Tipo de integración: E-COMMERCE (Millenium Termotanques Online)");
+            LOGGER.info("🛒 Producto: Termotanques y productos para el hogar");
+            LOGGER.info("🌐 Canal: Tienda online - NO POS/PDV físico");
+            LOGGER.info("💳 Métodos: Payment Brick, Wallet Brick - NO QR físico");
             
-            // Crear configuración básica - DESCOMENTA cuando tengas el servicio listo
-            // String storeId = storeService.createStore("Millenium Online", "millenium-online", "Online");
-            // if (storeId != null) {
-            //     storeService.createPOS(storeId, "millenium-pos-online", "POS Online", false);
-            // }
+            // ✅ CREAR CONFIGURACIÓN BÁSICA (versión simplificada)
+            String storeId = storeService.createStore("Millenium Online", "millenium-online", "Online");
+            if (storeId != null) {
+                storeService.createPOS(storeId, "millenium-pos-online", "POS Online", false);
+            }
             
-            LOGGER.info("✅ Configuración de Mercado Pago lista");
+            LOGGER.info("✅ Configuración E-COMMERCE lista - Store: {}, POS: {}", storeId, "millenium-pos-online");
+            
         } catch (Exception e) {
             LOGGER.warn("⚠️ Configuración automática de Mercado Pago no pudo completarse: {}", e.getMessage());
         }
