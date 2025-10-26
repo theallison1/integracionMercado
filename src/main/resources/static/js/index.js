@@ -87,14 +87,21 @@ async function handlePaymentSubmission(paymentData, brickType) {
         return;
     }
     
-    if (brickType === 'wallet' && !paymentData.token) {
-        console.error('❌ Error: Falta token en wallet payment');
-        alert('Error: No se pudo generar el token de pago');
-        return;
+    // ✅ Log detallado para debugging
+    console.log('🔍 Estructura completa de paymentData:', JSON.stringify(paymentData, null, 2));
+    
+    // ✅ Validaciones específicas por tipo de Brick
+    if (brickType === 'wallet') {
+        if (!paymentData.token && !paymentData.payment_method_id) {
+            console.error('❌ Error: Wallet Brick - Falta token y payment_method_id');
+            console.log('Datos recibidos en wallet:', paymentData);
+            alert('Error: No se pudo generar el token de pago en la billetera');
+            return;
+        }
     }
     
     if (brickType === 'payment' && !paymentData.token && !paymentData.payment_method_id) {
-        console.error('❌ Error: Datos insuficientes en payment brick');
+        console.error('❌ Error: Payment Brick - Datos insuficientes');
         alert('Error: Información de pago incompleta');
         return;
     }
@@ -104,12 +111,12 @@ async function handlePaymentSubmission(paymentData, brickType) {
         const amountInput = ensureAmountField();
         const amount = parseFloat(amountInput.value);
         
-        // ✅ OBTENER EMAIL DEL USUARIO (puedes modificar esto según tu implementación)
+        // ✅ OBTENER EMAIL DEL USUARIO
         const userEmail = getUserEmail() || "cliente@millenium.com";
         
         // ✅ PREPARAR DATOS PARA EL NUEVO ENDPOINT DE BRICKS
         const requestData = {
-            token: paymentData.token,
+            token: paymentData.token || paymentData.paymentToken,
             paymentMethodId: paymentData.payment_method_id || paymentData.paymentMethodId,
             installments: parseInt(paymentData.installments) || 1,
             amount: amount,
@@ -177,7 +184,7 @@ function getUserEmail() {
     return "cliente@millenium.com";
 }
 
-// ✅ CORREGIDO: Función loadWalletBrick
+// ✅ CORREGIDO: Función loadWalletBrick - SOLUCIÓN AL PROBLEMA
 async function loadWalletBrick(amount) {
     try {
         // Limpiar contenedor del Wallet Brick
@@ -185,6 +192,8 @@ async function loadWalletBrick(amount) {
         if (walletContainer) {
             walletContainer.innerHTML = '';
         }
+
+        console.log('💰 Configurando Wallet Brick con monto:', amount);
 
         window.walletBrickController = await bricksBuilder.create("wallet", "walletBrick_container", {
             initialization: {
@@ -214,26 +223,47 @@ async function loadWalletBrick(amount) {
                 },
                 onError: (error) => {
                     console.error("❌ Wallet Brick error:", error);
-                    alert('Error al cargar la billetera: ' + error.message);
+                    // ✅ Mostrar detalles específicos del error
+                    if (error && error.cause) {
+                        console.error("Causa del error:", error.cause);
+                    }
+                    alert('Error al cargar la billetera: ' + (error.message || 'Error desconocido'));
                 },
-                onSubmit: async (formData) => {
-                    console.log('✅ Datos Wallet Brick enviados:', formData);
+                onSubmit: async (cardFormData, additionalData) => {
+                    console.log('✅ Datos Wallet Brick enviados:', cardFormData);
+                    console.log('✅ Datos adicionales:', additionalData);
                     
-                    // ✅ VALIDAR que formData no sea undefined
-                    if (!formData) {
-                        console.error('❌ Error: formData es undefined');
-                        alert('Error: No se pudieron obtener los datos de pago');
+                    // ✅ VERIFICACIÓN MEJORADA - Usar ambos parámetros
+                    let paymentData = cardFormData;
+                    
+                    // Si cardFormData es undefined, intentar con additionalData
+                    if (!paymentData && additionalData) {
+                        paymentData = additionalData;
+                    }
+                    
+                    // Si todavía no hay datos, verificar si viene en un formato diferente
+                    if (!paymentData) {
+                        console.error('❌ Error: No se pudieron obtener datos del pago');
+                        console.log('Parámetros recibidos:', { cardFormData, additionalData });
+                        alert('Error: No se pudieron obtener los datos de pago. Por favor, intenta nuevamente.');
                         return;
                     }
                     
-                    await handlePaymentSubmission(formData, 'wallet');
+                    // ✅ Validar que tenga los campos mínimos requeridos
+                    if (!paymentData.token && !paymentData.payment_method_id) {
+                        console.error('❌ Error: Datos de pago incompletos:', paymentData);
+                        alert('Error: Datos de pago incompletos. Falta token o payment method.');
+                        return;
+                    }
+                    
+                    await handlePaymentSubmission(paymentData, 'wallet');
                 }
             }
         });
         console.log('✅ Wallet Brick creado exitosamente');
     } catch (error) {
         console.error('❌ Error creando Wallet Brick:', error);
-        alert('Error al cargar la billetera de Mercado Pago');
+        alert('Error al cargar la billetera de Mercado Pago: ' + error.message);
     }
 }
 
