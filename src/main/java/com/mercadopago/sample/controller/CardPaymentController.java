@@ -1,5 +1,10 @@
 package com.mercadopago.sample.controller;
 
+import com.mercadopago.MercadoPagoConfig;
+import com.mercadopago.client.preference.PreferenceClient;
+import com.mercadopago.client.preference.PreferenceRequest;
+import com.mercadopago.client.preference.PreferenceItemRequest;
+import com.mercadopago.resources.preference.Preference;
 import com.mercadopago.sample.dto.BricksPaymentDTO;
 import com.mercadopago.sample.dto.CardPaymentDTO;
 import com.mercadopago.sample.dto.PayerDTO;
@@ -8,25 +13,22 @@ import com.mercadopago.sample.dto.PaymentResponseDTO;
 import com.mercadopago.sample.exception.MercadoPagoException;
 import com.mercadopago.sample.service.CardPaymentService;
 import com.mercadopago.sample.service.ResendEmailService;
+import com.mercadopago.exceptions.MPApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-// AGREGA ESTOS IMPORTS:
-import com.mercadopago.client.preference.PreferenceClient;
-import com.mercadopago.client.preference.PreferenceRequest;
-import com.mercadopago.client.preference.PreferenceItemRequest;
-import com.mercadopago.resources.preference.Preference;
-import java.util.ArrayList;
-import java.util.List;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -40,71 +42,74 @@ public class CardPaymentController {
     @Autowired
     private ResendEmailService resendEmailService;
     
+    @Value("${mercado_pago_sample_access_token}")
+    private String mercadoPagoAccessToken;
+    
     private static final Logger LOGGER = LoggerFactory.getLogger(CardPaymentController.class);
 
     public CardPaymentController(CardPaymentService cardPaymentService, ResendEmailService resendEmailService) {
         this.cardPaymentService = cardPaymentService;
         this.resendEmailService = resendEmailService;
     }
-    
-// AGREGA ESTE ENDPOINT A TU CONTROLLER:
-@PostMapping("/create_wallet_preference")
-public ResponseEntity<?> createWalletPreference(@RequestBody Map<String, Object> requestData) {
-    try {
-        LOGGER.info("🎯 Creando preferencia para Wallet Brick");
-        
-        // ✅ Obtener datos del request
-        BigDecimal amount = new BigDecimal(requestData.get("amount").toString());
-        String description = (String) requestData.get("description");
-        
-        LOGGER.info("📦 Datos preferencia - Monto: {}, Descripción: {}", amount, description);
-        
-        MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
-        PreferenceClient client = new PreferenceClient();
 
-        // ✅ Crear items para la preferencia (según la referencia)
-        List<PreferenceItemRequest> items = new ArrayList<>();
-        PreferenceItemRequest item = PreferenceItemRequest.builder()
-            .title(description)
-            .quantity(1)
-            .unitPrice(amount)  // item unit price
-            .build();
-        items.add(item);
+    // ✅ NUEVO ENDPOINT: Crear preferencia para Wallet Brick
+    @PostMapping("/create_wallet_preference")
+    public ResponseEntity<?> createWalletPreference(@RequestBody Map<String, Object> requestData) {
+        try {
+            LOGGER.info("🎯 Creando preferencia para Wallet Brick");
+            
+            // ✅ Obtener datos del request
+            BigDecimal amount = new BigDecimal(requestData.get("amount").toString());
+            String description = (String) requestData.get("description");
+            
+            LOGGER.info("📦 Datos preferencia - Monto: {}, Descripción: {}", amount, description);
+            
+            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+            PreferenceClient client = new PreferenceClient();
 
-        // ✅ Crear la preferencia (según la referencia)
-        PreferenceRequest request = PreferenceRequest.builder()
-            .purpose("wallet_purchase") // ✅ Para pagos logueados
-            .items(items)
-            .build();
+            // ✅ Crear items para la preferencia
+            List<PreferenceItemRequest> items = new ArrayList<>();
+            PreferenceItemRequest item = PreferenceItemRequest.builder()
+                .title(description)
+                .quantity(1)
+                .unitPrice(amount)
+                .build();
+            items.add(item);
 
-        // ✅ Crear la preferencia en Mercado Pago
-        Preference preference = client.create(request);
-        
-        LOGGER.info("✅ Preferencia creada exitosamente - ID: {}", preference.getId());
-        
-        // ✅ Retornar el ID de la preferencia
-        Map<String, String> response = new HashMap<>();
-        response.put("id", preference.getId());
-        
-        return ResponseEntity.ok(response);
-        
-    } catch (MPApiException apiException) {
-        LOGGER.error("❌ Error API creando preferencia - Status: {}", apiException.getStatusCode());
-        LOGGER.error("❌ Error Message: {}", apiException.getMessage());
-        LOGGER.error("❌ API Response: {}", apiException.getApiResponse().getContent());
-        
-        Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", "Error Mercado Pago: " + apiException.getApiResponse().getContent());
-        return ResponseEntity.status(500).body(errorResponse);
-        
-    } catch (Exception e) {
-        LOGGER.error("❌ Error creando preferencia: {}", e.getMessage());
-        
-        Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", "Error interno: " + e.getMessage());
-        return ResponseEntity.status(500).body(errorResponse);
+            // ✅ Crear la preferencia
+            PreferenceRequest request = PreferenceRequest.builder()
+                .purpose("wallet_purchase") // ✅ Para pagos logueados
+                .items(items)
+                .build();
+
+            // ✅ Crear la preferencia en Mercado Pago
+            Preference preference = client.create(request);
+            
+            LOGGER.info("✅ Preferencia creada exitosamente - ID: {}", preference.getId());
+            
+            // ✅ Retornar el ID de la preferencia
+            Map<String, String> response = new HashMap<>();
+            response.put("id", preference.getId());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (MPApiException apiException) {
+            LOGGER.error("❌ Error API creando preferencia - Status: {}", apiException.getStatusCode());
+            LOGGER.error("❌ Error Message: {}", apiException.getMessage());
+            LOGGER.error("❌ API Response: {}", apiException.getApiResponse().getContent());
+            
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error Mercado Pago: " + apiException.getApiResponse().getContent());
+            return ResponseEntity.status(500).body(errorResponse);
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Error creando preferencia: {}", e.getMessage());
+            
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error interno: " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
     }
-}
 
     @PostMapping("/process_bricks_payment")
     public ResponseEntity<?> processBricksPayment(@RequestBody BricksPaymentDTO bricksPaymentDTO) {
@@ -259,7 +264,7 @@ public ResponseEntity<?> createWalletPreference(@RequestBody Map<String, Object>
         LOGGER.info("Description: {}", cardPaymentDTO.getProductDescription());
         LOGGER.info("Email: {}", cardPaymentDTO.getPayer().getEmail());
 
-        // ✅ CORRECCIÓN: El Brick NO envía productDescription
+        // ✅ CORRECCIÓN CRÍTICA: El Brick NO envía productDescription
         if (cardPaymentDTO.getProductDescription() == null) {
             cardPaymentDTO.setProductDescription("Compra de termotanques Millenium");
             LOGGER.info("✅ Product description asignado por defecto");
