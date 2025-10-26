@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.math.BigDecimal;
+import com.mercadopago.sample.dto.BricksPaymentDTO; // ✅ ESTE IMPORT
+import com.mercadopago.sample.service.CardPaymentService;
 
 @RestController
 @RequestMapping("/process_payment")
