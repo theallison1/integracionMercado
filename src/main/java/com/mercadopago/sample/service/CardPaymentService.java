@@ -27,6 +27,8 @@ import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import com.mercadopago.sample.dto.BricksPaymentDTO; // ✅ ESTE IMPORT
+import com.mercadopago.sample.dto.PaymentResponseDTO;
 
 @Service
 public class CardPaymentService {
