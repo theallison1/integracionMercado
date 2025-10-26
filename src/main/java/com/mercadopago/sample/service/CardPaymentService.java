@@ -353,7 +353,96 @@ public class CardPaymentService {
             throw new MercadoPagoException("Error verificando estado del pago: " + e.getMessage(), e);
         }
     }
+// EN TU CardPaymentService.java - AGREGA ESTE MÉTODO:
 
+/**
+ * ✅ NUEVO MÉTODO: Procesar pagos desde Mercado Pago Bricks (Wallet & Payment)
+ * Este es el endpoint que te falta para los Bricks
+ */
+public PaymentResponseDTO processBricksPayment(BricksPaymentDTO bricksPaymentDTO) {
+    try {
+        MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+        PaymentClient client = new PaymentClient();
+
+        String notificationUrl = appBaseUrl + "/process_payment/webhooks/mercadopago";
+
+        LOGGER.info("=== CREANDO PAGO DESDE BRICKS ===");
+        LOGGER.info("Brick Type: {}", bricksPaymentDTO.getBrickType());
+        LOGGER.info("Monto: {}", bricksPaymentDTO.getAmount());
+        LOGGER.info("Token: {}", bricksPaymentDTO.getToken());
+        LOGGER.info("Payment Method: {}", bricksPaymentDTO.getPaymentMethodId());
+
+        // ✅ Configurar idempotency key para Bricks
+        Map<String, String> customHeaders = new HashMap<>();
+        String idempotencyKey = "BRICKS_" + UUID.randomUUID().toString();
+        customHeaders.put("x-idempotency-key", idempotencyKey);
+
+        MPRequestOptions requestOptions = MPRequestOptions.builder()
+            .customHeaders(customHeaders)
+            .build();
+
+        // ✅ Construir request específico para Bricks
+        PaymentCreateRequest paymentCreateRequest = buildBricksPaymentRequest(bricksPaymentDTO, notificationUrl);
+
+        Payment payment = client.create(paymentCreateRequest, requestOptions);
+
+        LOGGER.info("✅ Pago desde Bricks creado exitosamente - ID: {}, Estado: {}", 
+                   payment.getId(), payment.getStatus());
+
+        return new PaymentResponseDTO(
+                payment.getId(),
+                String.valueOf(payment.getStatus()),
+                payment.getStatusDetail(),
+                payment.getDateCreated(),
+                payment.getTransactionAmount());
+
+    } catch (MPApiException apiException) {
+        LOGGER.error("❌ Error API Mercado Pago en Bricks - Status: {}", apiException.getStatusCode());
+        LOGGER.error("❌ API Response: {}", apiException.getApiResponse().getContent());
+        
+        throw new MercadoPagoException(
+            "Error Mercado Pago Bricks: " + apiException.getApiResponse().getContent(),
+            apiException
+        );
+    } catch (MPException exception) {
+        LOGGER.error("❌ Error Mercado Pago Bricks: {}", exception.getMessage());
+        throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
+    }
+}
+
+/**
+ * ✅ Construir el PaymentCreateRequest para Bricks
+ */
+private PaymentCreateRequest buildBricksPaymentRequest(BricksPaymentDTO bricksPaymentDTO, String notificationUrl) {
+    // ✅ Descripción basada en el tipo de Brick
+    String description = bricksPaymentDTO.getDescription() != null ? 
+                        bricksPaymentDTO.getDescription() : 
+                        "Pago desde " + bricksPaymentDTO.getBrickType() + " Brick";
+
+    // ✅ Para Wallet Brick, el payment method puede ser 'account_money'
+    String paymentMethodId = bricksPaymentDTO.getPaymentMethodId();
+    if ("wallet".equals(bricksPaymentDTO.getBrickType()) && paymentMethodId == null) {
+        paymentMethodId = "account_money";
+    }
+
+    // ✅ Payer information
+    PaymentPayerRequest payerRequest = PaymentPayerRequest.builder()
+            .email(bricksPaymentDTO.getPayerEmail() != null ? bricksPaymentDTO.getPayerEmail() : "guest@millenium.com")
+            .firstName(bricksPaymentDTO.getPayerFirstName() != null ? bricksPaymentDTO.getPayerFirstName() : "Cliente")
+            .lastName(bricksPaymentDTO.getPayerLastName() != null ? bricksPaymentDTO.getPayerLastName() : "Millenium")
+            .build();
+
+    // ✅ Construir el request del pago
+    return PaymentCreateRequest.builder()
+            .transactionAmount(bricksPaymentDTO.getAmount())
+            .token(bricksPaymentDTO.getToken())
+            .description(description)
+            .installments(bricksPaymentDTO.getInstallments() != null ? bricksPaymentDTO.getInstallments() : 1)
+            .paymentMethodId(paymentMethodId)
+            .notificationUrl(notificationUrl)
+            .payer(payerRequest)
+            .build();
+}
     /**
      * ✅ Método para cancelar un pago
      */
