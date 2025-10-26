@@ -74,12 +74,13 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     });
 };
 
-// ✅ NUEVA FUNCIÓN: Crear preferencia para Wallet Brick
+// ✅ CORREGIDO: Función createWalletPreference con RUTA COMPLETA
 async function createWalletPreference(amount) {
     try {
         console.log('🔄 Creando preferencia para Wallet Brick, monto:', amount);
         
-        const response = await fetch('/create_wallet_preference', {
+        // ✅ CORREGIDO: Ruta COMPLETA /process_payment/create_wallet_preference
+        const response = await fetch('/process_payment/create_wallet_preference', {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -140,7 +141,7 @@ async function handlePaymentSubmission(paymentData, brickType) {
 
         console.log('📤 Enviando a /process_bricks_payment:', requestData);
 
-        const response = await fetch('/process_bricks_payment', {
+        const response = await fetch('/process_payment/process_bricks_payment', {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -185,7 +186,7 @@ function getUserEmail() {
     return "cliente@millenium.com";
 }
 
-// ✅ CORREGIDO COMPLETAMENTE: Función loadWalletBrick CON PREFERENCIA
+// ✅ CORREGIDO: Función loadWalletBrick CON PREFERENCIA
 async function loadWalletBrick(amount) {
     try {
         const walletContainer = document.getElementById('walletBrick_container');
