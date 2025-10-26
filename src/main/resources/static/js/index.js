@@ -76,46 +76,108 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     });
 };
 
-// ✅ FUNCIÓN: Manejo unificado de pagos
+// ✅ CORREGIDO: Manejo unificado de pagos con NUEVO ENDPOINT
 async function handlePaymentSubmission(paymentData, brickType) {
-    console.log(`Procesando pago desde ${brickType}:`, paymentData);
+    console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
     
+    // ✅ VALIDACIÓN ROBUSTA de los datos
+    if (!paymentData) {
+        console.error('❌ Error: paymentData es null o undefined');
+        alert('Error: Datos de pago inválidos');
+        return;
+    }
+    
+    if (brickType === 'wallet' && !paymentData.token) {
+        console.error('❌ Error: Falta token en wallet payment');
+        alert('Error: No se pudo generar el token de pago');
+        return;
+    }
+    
+    if (brickType === 'payment' && !paymentData.token && !paymentData.payment_method_id) {
+        console.error('❌ Error: Datos insuficientes en payment brick');
+        alert('Error: Información de pago incompleta');
+        return;
+    }
+
     try {
-        const response = await fetch('/process_payment', {
+        // ✅ OBTENER EL MONTO ACTUALIZADO
+        const amountInput = ensureAmountField();
+        const amount = parseFloat(amountInput.value);
+        
+        // ✅ OBTENER EMAIL DEL USUARIO (puedes modificar esto según tu implementación)
+        const userEmail = getUserEmail() || "cliente@millenium.com";
+        
+        // ✅ PREPARAR DATOS PARA EL NUEVO ENDPOINT DE BRICKS
+        const requestData = {
+            token: paymentData.token,
+            paymentMethodId: paymentData.payment_method_id || paymentData.paymentMethodId,
+            installments: parseInt(paymentData.installments) || 1,
+            amount: amount,
+            brickType: brickType,
+            payerEmail: userEmail,
+            description: `Pago de ${cart.length} productos Millenium`,
+            payerFirstName: "Cliente",
+            payerLastName: "Millenium"
+        };
+
+        console.log('📤 Enviando a /process_bricks_payment:', requestData);
+
+        // ✅ NUEVO ENDPOINT PARA BRICKS
+        const response = await fetch('/process_bricks_payment', {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                ...paymentData,
-                brick_type: brickType
-            })
+            body: JSON.stringify(requestData)
         });
         
+        console.log(`📥 Respuesta del servidor (status: ${response.status})`);
+        
         if (!response.ok) {
-            throw new Error('Error en la respuesta del servidor');
+            const errorText = await response.text();
+            console.error('❌ Error en respuesta:', errorText);
+            throw new Error(`Error del servidor: ${response.status} - ${errorText}`);
         }
         
         const result = await response.json();
-        console.log(`Respuesta del servidor (${brickType}):`, result);
+        console.log(`✅ Respuesta del servidor (${brickType}):`, result);
         
-        if (!result.hasOwnProperty("error_message")) {
-            await renderStatusScreenBrick(bricksBuilder, result);
-            
-            $('.container__payment').fadeOut(500);
-            setTimeout(() => {
-                $('.container__result').show(500).fadeIn();
-            }, 500);
-        } else {
-            alert('Error en el pago: ' + result.error_message);
+        if (result.error_message) {
+            throw new Error(result.error_message);
         }
+        
+        // ✅ PROCESAR RESULTADO EXITOSO
+        await renderStatusScreenBrick(bricksBuilder, result);
+        
+        $('.container__payment').fadeOut(500);
+        setTimeout(() => {
+            $('.container__result').show(500).fadeIn();
+        }, 500);
+        
     } catch (error) {
-        console.error(`Error en la petición (${brickType}):`, error);
-        alert('Error al procesar el pago: ' + error.message);
+        console.error(`❌ Error en la petición (${brickType}):`, error);
+        alert(`Error al procesar el pago: ${error.message}`);
     }
 }
 
-// ✅ NUEVA FUNCIÓN: Cargar Wallet Brick
+// ✅ FUNCIÓN AUXILIAR: Obtener email del usuario
+function getUserEmail() {
+    // Puedes implementar esto según tu aplicación:
+    // 1. De un formulario de usuario
+    // 2. De una sesión almacenada
+    // 3. De un campo hidden en el HTML
+    // 4. Por defecto para testing
+    
+    const emailInput = document.getElementById('user-email');
+    if (emailInput && emailInput.value) {
+        return emailInput.value;
+    }
+    
+    // Si no hay email específico, usar uno por defecto
+    return "cliente@millenium.com";
+}
+
+// ✅ CORREGIDO: Función loadWalletBrick
 async function loadWalletBrick(amount) {
     try {
         // Limpiar contenedor del Wallet Brick
@@ -127,23 +189,51 @@ async function loadWalletBrick(amount) {
         window.walletBrickController = await bricksBuilder.create("wallet", "walletBrick_container", {
             initialization: {
                 amount: amount,
+                preferenceId: null, // ✅ Importante para pagos directos
+            },
+            customization: {
+                visual: {
+                    style: {
+                        theme: 'dark',
+                        customVariables: {
+                            formBackgroundColor: '#1d2431',
+                            baseColor: 'aquamarine',
+                            outlinePrimaryColor: 'aquamarine',
+                            buttonTextColor: '#1d2431'
+                        }
+                    }
+                },
+                texts: {
+                    action: 'pay',
+                    actionComplement: 'with_my_wallet' 
+                }
             },
             callbacks: {
                 onReady: () => {
-                    console.log("Wallet Brick ready");
+                    console.log("✅ Wallet Brick ready y configurado");
                 },
                 onError: (error) => {
-                    console.error("Wallet Brick error:", error);
+                    console.error("❌ Wallet Brick error:", error);
+                    alert('Error al cargar la billetera: ' + error.message);
                 },
-                onSubmit: async (cardFormData) => {
-                    console.log('Datos Wallet Brick enviados:', cardFormData);
-                    await handlePaymentSubmission(cardFormData, 'wallet');
+                onSubmit: async (formData) => {
+                    console.log('✅ Datos Wallet Brick enviados:', formData);
+                    
+                    // ✅ VALIDAR que formData no sea undefined
+                    if (!formData) {
+                        console.error('❌ Error: formData es undefined');
+                        alert('Error: No se pudieron obtener los datos de pago');
+                        return;
+                    }
+                    
+                    await handlePaymentSubmission(formData, 'wallet');
                 }
             }
         });
-        console.log('Wallet Brick creado exitosamente');
+        console.log('✅ Wallet Brick creado exitosamente');
     } catch (error) {
-        console.error('Error creando Wallet Brick:', error);
+        console.error('❌ Error creando Wallet Brick:', error);
+        alert('Error al cargar la billetera de Mercado Pago');
     }
 }
 
@@ -181,7 +271,7 @@ async function loadPaymentForm() {
         initialization: {
             amount: cartTotal,
             payer: {
-                email: "test@test.com",
+                email: getUserEmail() || "test@test.com", // ✅ Usar email real
                 entityType: "individual"
             }
         },
