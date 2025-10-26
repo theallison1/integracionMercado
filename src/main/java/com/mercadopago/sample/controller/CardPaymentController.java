@@ -1,21 +1,19 @@
 package com.mercadopago.sample.controller;
 
-import com.mercadopago.resources.payment.Payment;
-import com.mercadopago.sample.dto.CardPaymentDTO;
-import com.mercadopago.sample.dto.PayerDTO;
-import com.mercadopago.sample.dto.PayerIdentificationDTO;
+
+import com.mercadopago.sample.dto.BricksPaymentDTO;
 import com.mercadopago.sample.dto.PaymentResponseDTO;
+import com.mercadopago.sample.exception.MercadoPagoException;
 import com.mercadopago.sample.service.CardPaymentService;
-import com.mercadopago.sample.service.ResendEmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
 import java.math.BigDecimal;
-import com.mercadopago.sample.dto.BricksPaymentDTO; // ✅ ESTE IMPORT
-import com.mercadopago.sample.service.CardPaymentService;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/process_payment")
