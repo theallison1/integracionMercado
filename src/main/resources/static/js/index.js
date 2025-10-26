@@ -5,12 +5,40 @@ const mercadopago = new MercadoPago(mercadoPagoPublicKey, {
 const bricksBuilder = mercadopago.bricks();
 let paymentId;
 
-// FUNCIÓN PARA ACTUALIZAR EL MONTO VISIBLE
+// ✅ FUNCIÓN: Asegurar que el campo amount existe
+function ensureAmountField() {
+    let amountInput = document.getElementById('amount');
+    
+    if (!amountInput) {
+        // Crear el campo hidden si no existe
+        amountInput = document.createElement('input');
+        amountInput.id = 'amount';
+        amountInput.type = 'hidden';
+        amountInput.value = '0';
+        document.body.appendChild(amountInput);
+        console.log('✅ Campo amount creado dinámicamente');
+    }
+    
+    return amountInput;
+}
+
+// ✅ FUNCIÓN: Calcular total del carrito de forma confiable
+function calculateCartTotal() {
+    if (!cart || cart.length === 0) return 0;
+    
+    let total = 0;
+    cart.forEach(item => {
+        total += item.price * item.quantity;
+    });
+    return total;
+}
+
+// ✅ FUNCIÓN PARA ACTUALIZAR EL MONTO VISIBLE
 function updateSummaryTotal() {
-    const amountInput = document.getElementById('amount');
+    const amountInput = ensureAmountField();
     const summaryTotal = document.getElementById('summary-total');
     
-    if (amountInput && summaryTotal) {
+    if (summaryTotal) {
         const amount = parseFloat(amountInput.value);
         if (!isNaN(amount) && amount > 0) {
             summaryTotal.textContent = '$' + amount.toLocaleString('es-AR');
@@ -48,6 +76,45 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     });
 };
 
+// ✅ FUNCIÓN: Manejo unificado de pagos
+async function handlePaymentSubmission(paymentData, brickType) {
+    console.log(`Procesando pago desde ${brickType}:`, paymentData);
+    
+    try {
+        const response = await fetch('/process_payment', {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                ...paymentData,
+                brick_type: brickType
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error en la respuesta del servidor');
+        }
+        
+        const result = await response.json();
+        console.log(`Respuesta del servidor (${brickType}):`, result);
+        
+        if (!result.hasOwnProperty("error_message")) {
+            await renderStatusScreenBrick(bricksBuilder, result);
+            
+            $('.container__payment').fadeOut(500);
+            setTimeout(() => {
+                $('.container__result').show(500).fadeIn();
+            }, 500);
+        } else {
+            alert('Error en el pago: ' + result.error_message);
+        }
+    } catch (error) {
+        console.error(`Error en la petición (${brickType}):`, error);
+        alert('Error al procesar el pago: ' + error.message);
+    }
+}
+
 // ✅ NUEVA FUNCIÓN: Cargar Wallet Brick
 async function loadWalletBrick(amount) {
     try {
@@ -70,37 +137,7 @@ async function loadWalletBrick(amount) {
                 },
                 onSubmit: async (cardFormData) => {
                     console.log('Datos Wallet Brick enviados:', cardFormData);
-                    
-                    try {
-                        const response = await fetch('/process_payment', {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify(cardFormData)
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error('Error en la respuesta del servidor');
-                        }
-                        
-                        const result = await response.json();
-                        console.log('Respuesta del servidor Wallet:', result);
-                        
-                        if (!result.hasOwnProperty("error_message")) {
-                            await renderStatusScreenBrick(bricksBuilder, result);
-                            
-                            $('.container__payment').fadeOut(500);
-                            setTimeout(() => {
-                                $('.container__result').show(500).fadeIn();
-                            }, 500);
-                        } else {
-                            alert('Error en el pago: ' + result.error_message);
-                        }
-                    } catch (error) {
-                        console.error('Error en la petición Wallet:', error);
-                        alert('Error al procesar el pago: ' + error.message);
-                    }
+                    await handlePaymentSubmission(cardFormData, 'wallet');
                 }
             }
         });
@@ -112,34 +149,37 @@ async function loadWalletBrick(amount) {
 
 // ✅ ACTUALIZADA: Función loadPaymentForm para cargar AMBOS Bricks
 async function loadPaymentForm() {
-    // Obtener el amount del campo hidden en tu HTML actual
-    const amountInput = document.getElementById('amount');
-    
-    // ✅ VERIFICACIÓN MEJORADA - Usar múltiples criterios
-    const hasValidAmount = amountInput && amountInput.value && amountInput.value !== '0';
+    // ✅ VERIFICACIÓN MEJORADA - Usar cálculo directo del carrito
+    const cartTotal = calculateCartTotal();
     const hasItemsInCart = cart && cart.length > 0;
+    const hasValidAmount = cartTotal > 0;
     
-    if (!hasValidAmount || !hasItemsInCart) {
-        alert('Error: El carrito está vacío. Agrega productos antes de pagar.');
-        return;
-    }
-    
-    const productCost = parseFloat(amountInput.value);
-    
-    if (isNaN(productCost) || productCost <= 0) {
-        alert('Error: El monto debe ser mayor a 0.');
+    console.log('Verificación final de pago:', {
+        cartTotal,
+        hasItemsInCart,
+        hasValidAmount,
+        cartLength: cart ? cart.length : 0
+    });
+
+    if (!hasItemsInCart || !hasValidAmount) {
+        alert('Error: El carrito está vacío o el monto es inválido. Agrega productos antes de pagar.');
         return;
     }
 
-    console.log('Monto a pagar:', productCost);
+    console.log('Monto a pagar:', cartTotal);
+
+    // ✅ ACTUALIZAR EL CAMPO AMOUNT CON EL VALOR CORRECTO
+    const amountInput = ensureAmountField();
+    amountInput.value = cartTotal.toFixed(2);
+    console.log('💰 Campo amount actualizado:', amountInput.value);
 
     // ✅ 1. CARGAR WALLET BRICK (Billetera Mercado Pago)
-    await loadWalletBrick(productCost);
+    await loadWalletBrick(cartTotal);
     
     // ✅ 2. CARGAR PAYMENT BRICK (Otros métodos de pago)
     const settings = {
         initialization: {
-            amount: productCost,
+            amount: cartTotal,
             payer: {
                 email: "test@test.com",
                 entityType: "individual"
@@ -155,37 +195,7 @@ async function loadPaymentForm() {
             },
             onSubmit: async ({ selectedPaymentMethod, formData }) => {
                 console.log('Datos del formulario enviados:', formData);
-                
-                try {
-                    const response = await fetch('/process_payment', {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify(formData)
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Error en la respuesta del servidor');
-                    }
-                    
-                    const result = await response.json();
-                    console.log('Respuesta del servidor:', result);
-                    
-                    if (!result.hasOwnProperty("error_message")) {
-                        await renderStatusScreenBrick(bricksBuilder, result);
-                        
-                        $('.container__payment').fadeOut(500);
-                        setTimeout(() => {
-                            $('.container__result').show(500).fadeIn();
-                        }, 500);
-                    } else {
-                        alert('Error en el pago: ' + result.error_message);
-                    }
-                } catch (error) {
-                    console.error('Error en la petición:', error);
-                    alert('Error al procesar el pago: ' + error.message);
-                }
+                await handlePaymentSubmission(formData, 'payment');
             }
         },
         locale: 'es-AR',
@@ -194,7 +204,6 @@ async function loadPaymentForm() {
                 creditCard: "all",
                 debitCard: "all",
                 ticket: "all"
-                // ❌ ELIMINAR: wallet, bankTransfer, credits (no son parámetros válidos)
             },
             maxInstallments: 1,
             visual: {
@@ -237,12 +246,150 @@ function goBackToPayments() {
     window.location.href = 'pagos.html';
 }
 
+// ✅ FUNCIONES DEL CARRITO MEJORADAS
+function addToCart(productId) {
+    const quantityInput = document.getElementById(`quantity-${productId}`);
+    const quantity = parseInt(quantityInput.value);
+    const feedback = document.getElementById(`feedback-${productId}`);
+    
+    if (quantity > 0) {
+        updateCart(productId, quantity);
+        feedback.textContent = "✓ Agregado al carrito";
+        feedback.style.color = "#28a745";
+        setTimeout(() => feedback.textContent = "", 2000);
+    } else {
+        feedback.textContent = "Selecciona una cantidad";
+        feedback.style.color = "#dc3545";
+        setTimeout(() => feedback.textContent = "", 2000);
+    }
+}
+
+function updateCart(productId, quantity) {
+    const quantityNum = parseInt(quantity);
+    const product = products.find(p => p.id === productId);
+    
+    if (quantityNum === 0) {
+        cart = cart.filter(item => item.id !== productId);
+    } else {
+        const existingItem = cart.find(item => item.id === productId);
+        
+        if (existingItem) {
+            existingItem.quantity = quantityNum;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: quantityNum,
+                image: product.image
+            });
+        }
+    }
+    
+    updateCartDisplay();
+}
+
+function updateCartDisplay() {
+    const cartItemsContainer = document.getElementById('cart-items');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    
+    // ✅ Asegurar que el campo amount existe
+    const amountInput = ensureAmountField();
+    
+    cartItemsContainer.innerHTML = '';
+    let total = 0;
+    
+    if (!cart || cart.length === 0) {
+        cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
+        if (checkoutBtn) {
+            checkoutBtn.disabled = true;
+            checkoutBtn.innerHTML = '💳 Ir a Pagar';
+        }
+        amountInput.value = '0';
+    } else {
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            
+            const cartItemElement = `
+                <div class="cart-item p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="font-weight-bold">${item.name}</small><br>
+                            <small class="text-muted">${item.quantity} x $${item.price.toLocaleString()}</small>
+                        </div>
+                        <span class="font-weight-bold price">$${itemTotal.toLocaleString()}</span>
+                    </div>
+                </div>
+            `;
+            cartItemsContainer.innerHTML += cartItemElement;
+        });
+        
+        if (checkoutBtn) {
+            checkoutBtn.disabled = false;
+            checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
+        }
+        
+        // ✅ ACTUALIZAR EL MONTO CORRECTAMENTE
+        amountInput.value = total.toFixed(2);
+        console.log('💰 Monto actualizado en display:', amountInput.value);
+    }
+    
+    const cartTotalElement = document.getElementById('cart-total');
+    if (cartTotalElement) {
+        cartTotalElement.textContent = `$${total.toLocaleString()}`;
+    }
+    
+    // ✅ Actualizar también el summary visible
+    updateSummaryTotal();
+}
+
+// ✅ FUNCIÓN PARA ACTUALIZAR EL RESUMEN DE PAGO
+function updatePaymentSummary() {
+    const summaryContainer = document.getElementById('summary-items');
+    const amountInput = ensureAmountField();
+    const cartTotal = calculateCartTotal();
+    
+    if (summaryContainer) {
+        summaryContainer.innerHTML = '';
+        
+        if (!cart || cart.length === 0) {
+            summaryContainer.innerHTML = '<p class="text-muted text-center">No hay productos en el carrito</p>';
+            amountInput.value = '0';
+        } else {
+            cart.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                
+                summaryContainer.innerHTML += `
+                    <div class="item mb-3 p-2 border-bottom">
+                        <span class="price">$${itemTotal.toLocaleString()}</span>
+                        <p class="item-name mb-1">${item.name}</p>
+                        <small class="text-muted">Cantidad: ${item.quantity}</small>
+                    </div>
+                `;
+            });
+            
+            // ✅ Asegurar que el amount tenga el valor correcto
+            amountInput.value = cartTotal.toFixed(2);
+            console.log('💰 Amount actualizado para pago:', amountInput.value);
+        }
+    }
+    
+    const summaryTotal = document.getElementById('summary-total');
+    if (summaryTotal) {
+        summaryTotal.textContent = `$${cartTotal.toLocaleString()}`;
+    }
+    
+    updateSummaryTotal(); // Actualizar también el monto visible
+}
+
 // Event listeners usando jQuery
 $(document).ready(function() {
-    // ACTUALIZAR EL MONTO VISIBLE AL CARGAR LA PÁGINA
+    // ✅ Asegurar que el campo amount existe al cargar la página
+    ensureAmountField();
     updateSummaryTotal();
     
-    // APLICAR ESTILO SEVERO AL CONTENEDOR DE RESULTADOS
+    // ✅ APLICAR ESTILO SEVERO AL CONTENEDOR DE RESULTADOS
     const resultContainer = $('.container__result');
     if (resultContainer.length) {
         resultContainer.css({
@@ -258,33 +405,29 @@ $(document).ready(function() {
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
         checkoutBtn.on('click', async function() {
-            console.log('=== VERIFICACIÓN CARRITO ===');
-            console.log('Cart:', cart);
-            console.log('Cart length:', cart ? cart.length : 0);
-            console.log('Amount value:', document.getElementById('amount')?.value);
+            console.log('=== VERIFICACIÓN MEJORADA CARRITO ===');
             
-            // ✅ VERIFICACIÓN MÚLTIPLE Y ROBUSTA
+            // ✅ USAR CÁLCULO DIRECTO Y CONFIABLE
+            const cartTotal = calculateCartTotal();
             const hasItemsInCart = cart && cart.length > 0;
-            const amountInput = document.getElementById('amount');
-            const hasValidAmount = amountInput && amountInput.value && amountInput.value !== '0' && amountInput.value !== '0.00';
-            const amountValue = parseFloat(amountInput?.value || 0);
+            const hasValidAmount = cartTotal > 0;
             
-            console.log('Verificación:', { 
+            console.log('Verificación mejorada:', { 
                 hasItemsInCart, 
                 hasValidAmount, 
-                amountValue,
-                isCheckoutEnabled: !this.disabled 
+                cartTotal,
+                cartLength: cart ? cart.length : 0
             });
             
-            if (!hasItemsInCart || !hasValidAmount || amountValue <= 0) {
-                alert('El carrito está vacío. Agrega productos antes de pagar.');
-                console.log('❌ Carrito inválido detectado');
+            if (!hasItemsInCart || !hasValidAmount) {
+                alert('❌ Error: El carrito está vacío o el monto es inválido.');
+                console.error('Carrito inválido:', { cart, cartTotal });
                 return;
             }
             
-            console.log('✅ Carrito OK - Procediendo con pago...');
+            console.log('✅ Carrito válido - Procediendo con pago...');
             
-            // ACTUALIZAR EL RESUMEN DE PAGO ANTES DE MOSTRAR EL FORMULARIO
+            // ✅ ACTUALIZAR EL RESUMEN DE PAGO ANTES DE MOSTRAR EL FORMULARIO
             updatePaymentSummary();
             
             $('.container__cart').fadeOut(500);
@@ -380,7 +523,7 @@ $(document).ready(function() {
         console.error('Elemento "download-receipt" no encontrado');
     }
 
-    // ✅ NUEVO: Botón "Volver a Pagos"
+    // ✅ BOTÓN "Volver a Pagos"
     const backToPaymentsBtn = $('#back-to-payments');
     if (backToPaymentsBtn.length) {
         backToPaymentsBtn.on('click', function() {
@@ -420,121 +563,3 @@ $(document).ready(function() {
         console.error('Elemento "back-to-payments" no encontrado');
     }
 });
-
-// FUNCIÓN PARA ACTUALIZAR EL RESUMEN DE PAGO (desde tu HTML)
-function updatePaymentSummary() {
-    const summaryContainer = document.getElementById('summary-items');
-    const amountInput = document.getElementById('amount');
-    let total = 0;
-    
-    summaryContainer.innerHTML = '';
-    
-    if (!cart || cart.length === 0) {
-        summaryContainer.innerHTML = '<p class="text-muted text-center">No hay productos en el carrito</p>';
-        if (amountInput) amountInput.value = '0';
-    } else {
-        cart.forEach(item => {
-            const itemTotal = item.price * item.quantity;
-            total += itemTotal;
-            
-            summaryContainer.innerHTML += `
-                <div class="item mb-3 p-2 border-bottom">
-                    <span class="price">$${itemTotal.toLocaleString()}</span>
-                    <p class="item-name mb-1">${item.name}</p>
-                    <small class="text-muted">Cantidad: ${item.quantity}</small>
-                </div>
-            `;
-        });
-        
-        // ✅ Asegurar que el amount tenga el valor correcto
-        if (amountInput) {
-            amountInput.value = total;
-            console.log('Amount actualizado para pago:', amountInput.value);
-        }
-    }
-    
-    document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
-    updateSummaryTotal(); // Actualizar también el monto visible
-}
-
-// ✅ FUNCIONES DEL CARRITO (desde tu HTML)
-function addToCart(productId) {
-    const quantityInput = document.getElementById(`quantity-${productId}`);
-    const quantity = parseInt(quantityInput.value);
-    const feedback = document.getElementById(`feedback-${productId}`);
-    
-    if (quantity > 0) {
-        updateCart(productId, quantity);
-        feedback.textContent = "✓ Agregado al carrito";
-        feedback.style.color = "#28a745";
-        setTimeout(() => feedback.textContent = "", 2000);
-    } else {
-        feedback.textContent = "Selecciona una cantidad";
-        feedback.style.color = "#dc3545";
-        setTimeout(() => feedback.textContent = "", 2000);
-    }
-}
-
-function updateCart(productId, quantity) {
-    const quantityNum = parseInt(quantity);
-    const product = products.find(p => p.id === productId);
-    
-    if (quantityNum === 0) {
-        cart = cart.filter(item => item.id !== productId);
-    } else {
-        const existingItem = cart.find(item => item.id === productId);
-        
-        if (existingItem) {
-            existingItem.quantity = quantityNum;
-        } else {
-            cart.push({
-                id: product.id,
-                name: product.name,
-                price: product.price,
-                quantity: quantityNum,
-                image: product.image
-            });
-        }
-    }
-    
-    updateCartDisplay();
-}
-
-function updateCartDisplay() {
-    const cartItemsContainer = document.getElementById('cart-items');
-    const checkoutBtn = document.getElementById('checkout-btn');
-    const amountInput = document.getElementById('amount');
-    
-    cartItemsContainer.innerHTML = '';
-    let total = 0;
-    
-    if (!cart || cart.length === 0) {
-        cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
-        checkoutBtn.disabled = true;
-        checkoutBtn.innerHTML = '💳 Ir a Pagar';
-        if (amountInput) amountInput.value = '0';
-    } else {
-        cart.forEach(item => {
-            const itemTotal = item.price * item.quantity;
-            total += itemTotal;
-            
-            const cartItemElement = `
-                <div class="cart-item p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <small class="font-weight-bold">${item.name}</small><br>
-                            <small class="text-muted">${item.quantity} x $${item.price.toLocaleString()}</small>
-                        </div>
-                        <span class="font-weight-bold price">$${itemTotal.toLocaleString()}</span>
-                    </div>
-                </div>
-            `;
-            cartItemsContainer.innerHTML += cartItemElement;
-        });
-        checkoutBtn.disabled = false;
-        checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
-        if (amountInput) amountInput.value = total;
-    }
-    
-    document.getElementById('cart-total').textContent = `$${total.toLocaleString()}`;
-}
