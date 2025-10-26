@@ -115,7 +115,11 @@ async function loadPaymentForm() {
     // Obtener el amount del campo hidden en tu HTML actual
     const amountInput = document.getElementById('amount');
     
-    if (!amountInput || !amountInput.value || amountInput.value === '0') {
+    // ✅ VERIFICACIÓN MEJORADA - Usar múltiples criterios
+    const hasValidAmount = amountInput && amountInput.value && amountInput.value !== '0';
+    const hasItemsInCart = cart && cart.length > 0;
+    
+    if (!hasValidAmount || !hasItemsInCart) {
         alert('Error: El carrito está vacío. Agrega productos antes de pagar.');
         return;
     }
@@ -250,16 +254,35 @@ $(document).ready(function() {
         });
     }
     
-    // Botón "Ir a Pagar"
+    // ✅ CORREGIDO: Botón "Ir a Pagar" - VERIFICACIÓN ROBUSTA
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
         checkoutBtn.on('click', async function() {
-            // Verificar que el carrito no esté vacío
+            console.log('=== VERIFICACIÓN CARRITO ===');
+            console.log('Cart:', cart);
+            console.log('Cart length:', cart ? cart.length : 0);
+            console.log('Amount value:', document.getElementById('amount')?.value);
+            
+            // ✅ VERIFICACIÓN MÚLTIPLE Y ROBUSTA
+            const hasItemsInCart = cart && cart.length > 0;
             const amountInput = document.getElementById('amount');
-            if (!amountInput || !amountInput.value || amountInput.value === '0') {
+            const hasValidAmount = amountInput && amountInput.value && amountInput.value !== '0' && amountInput.value !== '0.00';
+            const amountValue = parseFloat(amountInput?.value || 0);
+            
+            console.log('Verificación:', { 
+                hasItemsInCart, 
+                hasValidAmount, 
+                amountValue,
+                isCheckoutEnabled: !this.disabled 
+            });
+            
+            if (!hasItemsInCart || !hasValidAmount || amountValue <= 0) {
                 alert('El carrito está vacío. Agrega productos antes de pagar.');
+                console.log('❌ Carrito inválido detectado');
                 return;
             }
+            
+            console.log('✅ Carrito OK - Procediendo con pago...');
             
             // ACTUALIZAR EL RESUMEN DE PAGO ANTES DE MOSTRAR EL FORMULARIO
             updatePaymentSummary();
@@ -406,7 +429,7 @@ function updatePaymentSummary() {
     
     summaryContainer.innerHTML = '';
     
-    if (cart.length === 0) {
+    if (!cart || cart.length === 0) {
         summaryContainer.innerHTML = '<p class="text-muted text-center">No hay productos en el carrito</p>';
         if (amountInput) amountInput.value = '0';
     } else {
@@ -485,7 +508,7 @@ function updateCartDisplay() {
     cartItemsContainer.innerHTML = '';
     let total = 0;
     
-    if (cart.length === 0) {
+    if (!cart || cart.length === 0) {
         cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
         checkoutBtn.disabled = true;
         checkoutBtn.innerHTML = '💳 Ir a Pagar';
