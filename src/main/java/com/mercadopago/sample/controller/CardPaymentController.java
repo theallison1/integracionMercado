@@ -11,7 +11,6 @@ import com.mercadopago.sample.service.ResendEmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -19,7 +18,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,15 +27,14 @@ import java.util.Map;
 @CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
 public class CardPaymentController {
     
-    @Resource
+    @Autowired
     private CardPaymentService cardPaymentService;
     
-    @Resource
+    @Autowired
     private ResendEmailService resendEmailService;
     
     private static final Logger LOGGER = LoggerFactory.getLogger(CardPaymentController.class);
 
-    @Autowired
     public CardPaymentController(CardPaymentService cardPaymentService, ResendEmailService resendEmailService) {
         this.cardPaymentService = cardPaymentService;
         this.resendEmailService = resendEmailService;
@@ -48,7 +45,7 @@ public class CardPaymentController {
         try {
             LOGGER.info("📥 Recibiendo pago desde Bricks - Tipo: {}", bricksPaymentDTO.getBrickType());
             
-            // ✅ Validaciones básicas (versión compatible con Java 8)
+            // ✅ Validaciones básicas
             if (bricksPaymentDTO.getToken() == null) {
                 Map<String, String> errorResponse = new HashMap<>();
                 errorResponse.put("error_message", "Token es requerido");
@@ -129,7 +126,7 @@ public class CardPaymentController {
             
             String status = payment.getStatus();
             
-            // ✅ CORRECCIÓN: Manejar caso cuando payer es null
+            // ✅ Manejar caso cuando payer es null
             String customerEmail = null;
             String customerName = "Cliente";
             
@@ -139,16 +136,16 @@ public class CardPaymentController {
                               (payment.getPayer().getLastName() != null ? payment.getPayer().getLastName() : "");
             }
             
-            // ✅ CORRECCIÓN: Si no hay email, usar email de respaldo
+            // ✅ Si no hay email, usar email de respaldo
             if (customerEmail == null || customerEmail.trim().isEmpty()) {
                 LOGGER.warn("⚠️ Email del cliente no disponible para pago ID: {}. Usando email de respaldo.", paymentId);
-                customerEmail = "nicolas.espinosa.ok@gmail.com"; // Email de respaldo para testing
+                customerEmail = "nicolas.espinosa.ok@gmail.com";
             }
             
             LOGGER.info("📊 Estado del pago {}: {}", paymentId, status);
             LOGGER.info("👤 Cliente: {} ({})", customerName, customerEmail);
             
-            // Enviar email según el estado del pago usando el NUEVO servicio
+            // Enviar email según el estado del pago
             switch (status) {
                 case "approved":
                     LOGGER.info("✅ Pago aprobado - Enviando email de confirmación");
@@ -196,13 +193,13 @@ public class CardPaymentController {
         LOGGER.info("Description: {}", cardPaymentDTO.getProductDescription());
         LOGGER.info("Email: {}", cardPaymentDTO.getPayer().getEmail());
 
-        // ✅ CORRECCIÓN CRÍTICA: El Brick NO envía productDescription
+        // ✅ CORRECCIÓN: El Brick NO envía productDescription
         if (cardPaymentDTO.getProductDescription() == null) {
             cardPaymentDTO.setProductDescription("Compra de termotanques Millenium");
             LOGGER.info("✅ Product description asignado por defecto");
         }
 
-        // ✅ También completar firstName y lastName si faltan
+        // ✅ Completar firstName y lastName si faltan
         if (cardPaymentDTO.getPayer().getFirstName() == null) {
             cardPaymentDTO.getPayer().setFirstName("Cliente");
         }
@@ -215,7 +212,7 @@ public class CardPaymentController {
             PaymentResponseDTO payment = cardPaymentService.processPayment(cardPaymentDTO);
             LOGGER.info("✅ Pago exitoso - ID: {}", payment.getId());
             
-            // ✅ Enviar email inmediato de confirmación de recepción usando el NUEVO servicio
+            // ✅ Enviar email inmediato de confirmación
             try {
                 resendEmailService.sendPaymentReceivedEmail(
                     cardPaymentDTO.getPayer().getEmail(),
