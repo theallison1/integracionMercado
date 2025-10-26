@@ -1,66 +1,83 @@
 package com.mercadopago.sample.controller;
 
-
 import com.mercadopago.sample.dto.BricksPaymentDTO;
+import com.mercadopago.sample.dto.CardPaymentDTO;
+import com.mercadopago.sample.dto.PayerDTO;
+import com.mercadopago.sample.dto.PayerIdentificationDTO;
 import com.mercadopago.sample.dto.PaymentResponseDTO;
 import com.mercadopago.sample.exception.MercadoPagoException;
 import com.mercadopago.sample.service.CardPaymentService;
+import com.mercadopago.sample.service.ResendEmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/process_payment")
+@CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
 public class CardPaymentController {
     
     @Resource
     private CardPaymentService cardPaymentService;
     
     @Resource
-    private ResendEmailService resendEmailService; // ✅ NUEVO servicio Resend
+    private ResendEmailService resendEmailService;
     
     private static final Logger LOGGER = LoggerFactory.getLogger(CardPaymentController.class);
 
+    @Autowired
     public CardPaymentController(CardPaymentService cardPaymentService, ResendEmailService resendEmailService) {
         this.cardPaymentService = cardPaymentService;
         this.resendEmailService = resendEmailService;
     }
 
-    // NUEVO CONTROLLER o agrega a tu controller existente:
+    @PostMapping("/process_bricks_payment")
+    public ResponseEntity<?> processBricksPayment(@RequestBody BricksPaymentDTO bricksPaymentDTO) {
+        try {
+            LOGGER.info("📥 Recibiendo pago desde Bricks - Tipo: {}", bricksPaymentDTO.getBrickType());
+            
+            // ✅ Validaciones básicas (versión compatible con Java 8)
+            if (bricksPaymentDTO.getToken() == null) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error_message", "Token es requerido");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            if (bricksPaymentDTO.getAmount() == null || bricksPaymentDTO.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error_message", "Monto inválido");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
 
-@PostMapping("/process_bricks_payment")
-public ResponseEntity<?> processBricksPayment(@RequestBody BricksPaymentDTO bricksPaymentDTO) {
-    try {
-        LOGGER.info("📥 Recibiendo pago desde Bricks - Tipo: {}", bricksPaymentDTO.getBrickType());
-        
-        // ✅ Validaciones básicas
-        if (bricksPaymentDTO.getToken() == null) {
-            return ResponseEntity.badRequest().body(Map.of("error_message", "Token es requerido"));
+            PaymentResponseDTO result = cardPaymentService.processBricksPayment(bricksPaymentDTO);
+            
+            LOGGER.info("✅ Pago desde Bricks procesado exitosamente - ID: {}", result.getId());
+            return ResponseEntity.ok(result);
+            
+        } catch (MercadoPagoException e) {
+            LOGGER.error("❌ Error procesando pago Bricks: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error_message", e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        } catch (Exception e) {
+            LOGGER.error("❌ Error inesperado en Bricks: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error_message", "Error interno del servidor");
+            return ResponseEntity.status(500).body(errorResponse);
         }
-        
-        if (bricksPaymentDTO.getAmount() == null || bricksPaymentDTO.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            return ResponseEntity.badRequest().body(Map.of("error_message", "Monto inválido"));
-        }
-
-        PaymentResponseDTO result = cardPaymentService.processBricksPayment(bricksPaymentDTO);
-        
-        LOGGER.info("✅ Pago desde Bricks procesado exitosamente - ID: {}", result.getId());
-        return ResponseEntity.ok(result);
-        
-    } catch (MercadoPagoException e) {
-        LOGGER.error("❌ Error procesando pago Bricks: {}", e.getMessage());
-        return ResponseEntity.status(500).body(Map.of("error_message", e.getMessage()));
-    } catch (Exception e) {
-        LOGGER.error("❌ Error inesperado en Bricks: {}", e.getMessage());
-        return ResponseEntity.status(500).body(Map.of("error_message", "Error interno del servidor"));
     }
-}
 
     // Webhook para notificaciones de Mercado Pago
     @PostMapping("/webhooks/mercadopago")
@@ -103,7 +120,7 @@ public ResponseEntity<?> processBricksPayment(@RequestBody BricksPaymentDTO bric
             LOGGER.info("🔄 Obteniendo información del pago ID: {}", paymentId);
             
             // Obtener información completa del pago
-            Payment payment = cardPaymentService.getPaymentById(Long.parseLong(paymentId));
+            com.mercadopago.resources.payment.Payment payment = cardPaymentService.getPaymentById(Long.parseLong(paymentId));
             
             if (payment == null) {
                 LOGGER.error("❌ No se pudo obtener información del pago ID: {}", paymentId);
@@ -169,7 +186,6 @@ public ResponseEntity<?> processBricksPayment(@RequestBody BricksPaymentDTO bric
         return ResponseEntity.ok("Webhook verificado - Tópico: " + topic);
     }
 
-    @CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
     @PostMapping
     public ResponseEntity<PaymentResponseDTO> processPayment(@RequestBody CardPaymentDTO cardPaymentDTO) {
         LOGGER.info("=== SOLICITUD DE PAGO RECIBIDA ===");
@@ -218,11 +234,10 @@ public ResponseEntity<?> processBricksPayment(@RequestBody BricksPaymentDTO bric
     }
 
     // Método para obtener el comprobante del pago
-    @CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
     @GetMapping("/download_receipt/{paymentId}")
     public ResponseEntity<byte[]> downloadReceipt(@PathVariable Long paymentId) {
         try {
-            Payment payment = cardPaymentService.getPaymentById(paymentId);
+            com.mercadopago.resources.payment.Payment payment = cardPaymentService.getPaymentById(paymentId);
             byte[] pdfContent = cardPaymentService.generateReceiptPdf(payment);
 
             HttpHeaders headers = new HttpHeaders();
@@ -237,7 +252,6 @@ public ResponseEntity<?> processBricksPayment(@RequestBody BricksPaymentDTO bric
     }
 
     // Endpoint de prueba
-    @CrossOrigin(origins = {"http://localhost:8080", "https://integracionmercado.onrender.com"})
     @GetMapping("/holis")
     public ResponseEntity<String> getAuthenticationRequest() {
         LOGGER.info("Entro al endpoint de prueba ----------------------");
