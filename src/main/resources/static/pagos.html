@@ -270,6 +270,93 @@
         </div>
     </section>
 
+    <!-- NUEVA SECCIÓN: Formulario del Comprador -->
+<section class="customer-form dark" id="customer-form-section" style="display: none;">
+    <div class="container">
+        <div class="block-heading text-center">
+            <h2>👤 Información del Comprador</h2>
+            <p>Completa tus datos para procesar tu compra</p>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="form-card" style="background: #2d2d2d; padding: 30px; border-radius: 10px; border: 1px solid #444; margin-bottom: 20px;">
+                    <form id="customer-info-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="customer-first-name" class="text-primary">Nombre *</label>
+                                    <input type="text" class="form-control" id="customer-first-name" 
+                                           placeholder="Ej: Juan" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="customer-last-name" class="text-primary">Apellido *</label>
+                                    <input type="text" class="form-control" id="customer-last-name" 
+                                           placeholder="Ej: Pérez" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="customer-email" class="text-primary">Email *</label>
+                            <input type="email" class="form-control" id="customer-email" 
+                                   placeholder="ejemplo@correo.com" required>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="customer-dni-type" class="text-primary">Tipo de documento</label>
+                                    <select class="form-control" id="customer-dni-type">
+                                        <option value="DNI">DNI</option>
+                                        <option value="CUIT">CUIT</option>
+                                        <option value="CUIL">CUIL</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="customer-dni-number" class="text-primary">Número de documento</label>
+                                    <input type="text" class="form-control" id="customer-dni-number" 
+                                           placeholder="Ej: 12345678">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="customer-phone" class="text-primary">Teléfono</label>
+                            <input type="tel" class="form-control" id="customer-phone" 
+                                   placeholder="Ej: +54 11 1234-5678">
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                ✅ Continuar al Pago
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-lg ml-2" onclick="skipCustomerInfo()">
+                                ⏭️ Saltar este paso
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Resumen del Pedido en el formulario -->
+                <div class="summary">
+                    <h4 class="text-center mb-3 text-primary">📋 Resumen de tu Pedido</h4>
+                    <div id="customer-cart-summary">
+                        <!-- Los items del carrito se cargan aquí -->
+                    </div>
+                    <div class="summary-item mt-3 pt-3 border-top">
+                        <span class="text"><strong>Total a Pagar</strong></span>
+                        <span class="price" id="customer-cart-total">$0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
  <!-- En tu sección de pago, agrega esto: -->
 <section class="payment-form dark">
     <div class="container container__payment">
