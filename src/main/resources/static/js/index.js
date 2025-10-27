@@ -5,6 +5,16 @@ const mercadopago = new MercadoPago(mercadoPagoPublicKey, {
 const bricksBuilder = mercadopago.bricks();
 let paymentId;
 
+// Datos del comprador
+let customerData = {
+    firstName: '',
+    lastName: '', 
+    email: '',
+    dniType: 'DNI',
+    dniNumber: '',
+    phone: ''
+};
+
 // ✅ FUNCIÓN: Asegurar que el campo amount existe
 function ensureAmountField() {
     let amountInput = document.getElementById('amount');
@@ -45,6 +55,160 @@ function updateSummaryTotal() {
             summaryTotal.textContent = '$0';
         }
     }
+}
+
+// ✅ FUNCIÓN: Mostrar formulario del comprador
+function showCustomerForm() {
+    // Ocultar carrito, mostrar formulario
+    document.querySelector('.container__cart').style.display = 'none';
+    document.querySelector('#customer-form-section').style.display = 'block';
+    document.querySelector('.container__payment').style.display = 'none';
+    
+    // Actualizar resumen en el formulario
+    updateCustomerCartSummary();
+}
+
+// ✅ FUNCIÓN: Actualizar resumen del carrito en el formulario
+function updateCustomerCartSummary() {
+    const summaryContainer = document.getElementById('customer-cart-summary');
+    const totalElement = document.getElementById('customer-cart-total');
+    
+    summaryContainer.innerHTML = '';
+    let total = 0;
+    
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
+        
+        summaryContainer.innerHTML += `
+            <div class="cart-item p-2">
+                <div class="d-flex justify-content-between">
+                    <span>${item.name} x${item.quantity}</span>
+                    <span class="price">$${itemTotal.toLocaleString()}</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    totalElement.textContent = `$${total.toLocaleString()}`;
+}
+
+// ✅ FUNCIÓN: Validar email
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+// ✅ FUNCIÓN: Saltar formulario (opcional)
+function skipCustomerInfo() {
+    // Datos por defecto si salta el formulario
+    customerData = {
+        firstName: 'Cliente',
+        lastName: 'Millenium',
+        email: 'cliente@millenium.com',
+        dniType: 'DNI',
+        dniNumber: '',
+        phone: ''
+    };
+    
+    goToPayment();
+}
+
+// ✅ FUNCIÓN: Ir a métodos de pago
+function goToPayment() {
+    // Ocultar formulario, mostrar métodos de pago
+    document.querySelector('.container__cart').style.display = 'none';
+    document.querySelector('#customer-form-section').style.display = 'none';
+    document.querySelector('.container__payment').style.display = 'block';
+    
+    // Inicializar los Bricks de Mercado Pago con los datos del cliente
+    initializeMercadoPagoBricks();
+}
+
+// ✅ FUNCIÓN: Inicializar Mercado Pago con datos del cliente
+function initializeMercadoPagoBricks() {
+    const mp = new MercadoPago('APP_USR-c90816a8-38cd-4720-9f60-226dae2b7b4d');
+    
+    // Calcular total
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Configurar Bricks con datos del cliente
+    const bricksBuilder = mp.bricks();
+    
+    // Wallet Brick
+    const renderWalletBrick = async (bricksBuilder) => {
+        const settings = {
+            initialization: {
+                amount: total,
+                payer: {
+                    email: customerData.email,
+                }
+            },
+            callbacks: {
+                onReady: () => {
+                    console.log('Wallet Brick ready');
+                },
+                onSubmit: (formData) => {
+                    // Procesar pago con datos del cliente
+                    processPaymentWithCustomerData(formData);
+                },
+                onError: (error) => {
+                    console.error('Wallet Brick error:', error);
+                }
+            }
+        };
+        window.walletBrickController = await bricksBuilder.create('wallet', 'walletBrick_container', settings);
+    };
+    
+    // Payment Brick
+    const renderPaymentBrick = async (bricksBuilder) => {
+        const settings = {
+            initialization: {
+                amount: total,
+                payer: {
+                    email: customerData.email,
+                }
+            },
+            customization: {
+                visual: {
+                    style: {
+                        theme: 'dark'
+                    }
+                }
+            },
+            callbacks: {
+                onReady: () => {
+                    console.log('Payment Brick ready');
+                },
+                onSubmit: (formData) => {
+                    processPaymentWithCustomerData(formData);
+                },
+                onError: (error) => {
+                    console.error('Payment Brick error:', error);
+                }
+            }
+        };
+        window.paymentBrickController = await bricksBuilder.create('payment', 'paymentBrick_container', settings);
+    };
+    
+    renderWalletBrick(bricksBuilder);
+    renderPaymentBrick(bricksBuilder);
+}
+
+// ✅ FUNCIÓN: Procesar pago con datos del cliente
+function processPaymentWithCustomerData(paymentData) {
+    // Agregar datos del cliente al paymentData
+    paymentData.customer = customerData;
+    
+    console.log('📤 Procesando pago con datos del cliente:', {
+        customer: customerData,
+        cart: cart,
+        paymentData: paymentData
+    });
+    
+    // Aquí enviarías los datos a tu backend
+    // Por ahora solo mostramos en consola
+    alert(`✅ Pago procesado para ${customerData.firstName} ${customerData.lastName}`);
 }
 
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
@@ -125,7 +289,7 @@ async function handlePaymentSubmission(paymentData, brickType) {
     try {
         const amountInput = ensureAmountField();
         const amount = parseFloat(amountInput.value);
-        const userEmail = getUserEmail() || "cliente@millenium.com";
+        const userEmail = customerData.email || "cliente@millenium.com";
         
         const requestData = {
             token: paymentData.token,
@@ -135,8 +299,12 @@ async function handlePaymentSubmission(paymentData, brickType) {
             brickType: brickType,
             payerEmail: userEmail,
             description: `Pago de ${cart.length} productos Millenium`,
-            payerFirstName: "Cliente",
-            payerLastName: "Millenium"
+            payerFirstName: customerData.firstName,
+            payerLastName: customerData.lastName,
+            payerIdentification: customerData.dniNumber ? {
+                type: customerData.dniType,
+                number: customerData.dniNumber
+            } : null
         };
 
         console.log('📤 Enviando a /process_bricks_payment:', requestData);
@@ -175,15 +343,6 @@ async function handlePaymentSubmission(paymentData, brickType) {
         console.error(`❌ Error en la petición (${brickType}):`, error);
         alert(`Error al procesar el pago: ${error.message}`);
     }
-}
-
-// ✅ FUNCIÓN AUXILIAR: Obtener email del usuario
-function getUserEmail() {
-    const emailInput = document.getElementById('user-email');
-    if (emailInput && emailInput.value) {
-        return emailInput.value;
-    }
-    return "cliente@millenium.com";
 }
 
 // ✅ CORREGIDO: Función loadWalletBrick CON PREFERENCIA
@@ -281,7 +440,7 @@ async function loadPaymentForm() {
         initialization: {
             amount: cartTotal,
             payer: {
-                email: getUserEmail() || "test@test.com",
+                email: customerData.email || "cliente@millenium.com",
                 entityType: "individual"
             }
         },
@@ -483,6 +642,39 @@ $(document).ready(function() {
     ensureAmountField();
     updateSummaryTotal();
     
+    // ✅ MANEJAR FORMULARIO DEL COMPRADOR
+    const customerForm = document.getElementById('customer-info-form');
+    if (customerForm) {
+        customerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Guardar datos del cliente
+            customerData = {
+                firstName: document.getElementById('customer-first-name').value.trim(),
+                lastName: document.getElementById('customer-last-name').value.trim(),
+                email: document.getElementById('customer-email').value.trim(),
+                dniType: document.getElementById('customer-dni-type').value,
+                dniNumber: document.getElementById('customer-dni-number').value.trim(),
+                phone: document.getElementById('customer-phone').value.trim()
+            };
+            
+            // Validar campos obligatorios
+            if (!customerData.firstName || !customerData.lastName || !customerData.email) {
+                alert('❌ Por favor completa los campos obligatorios (*)');
+                return;
+            }
+            
+            // Validar email
+            if (!isValidEmail(customerData.email)) {
+                alert('❌ Por favor ingresa un email válido');
+                return;
+            }
+            
+            // Ir a la sección de pago
+            goToPayment();
+        });
+    }
+    
     // ✅ APLICAR ESTILO SEVERO AL CONTENEDOR DE RESULTADOS
     const resultContainer = $('.container__result');
     if (resultContainer.length) {
@@ -517,15 +709,10 @@ $(document).ready(function() {
                 return;
             }
             
-            console.log('✅ Carrito válido - Procediendo con pago...');
+            console.log('✅ Carrito válido - Mostrando formulario del comprador...');
             
-            updatePaymentSummary();
-            
-            $('.container__cart').fadeOut(500);
-            setTimeout(async () => {
-                await loadPaymentForm();
-                $('.container__payment').show(500).fadeIn();
-            }, 500);
+            // ✅ MOSTRAR FORMULARIO DEL COMPRADOR (nuevo paso)
+            showCustomerForm();
         });
     } else {
         console.error('Elemento "checkout-btn" no encontrado');
