@@ -381,7 +381,7 @@ public class MercadoPagoStoreService {
             String url = "https://api.mercadopago.com/stores";
             
             HttpHeaders headers = createHeadersWithAuth();
-            headers.setContentType(MediaType.APPLERSION_JSON);
+            headers.setContentType(MediaType.APPLICATION_JSON);
             
             Map<String, Object> requestBody = createStoreRequestBody();
             
