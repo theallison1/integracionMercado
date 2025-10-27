@@ -9,6 +9,8 @@ import com.mercadopago.sample.dto.PayerDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import com.mercadopago.client.common.IdentificationRequest; // 🆕 AGREGAR
+import com.mercadopago.client.payment.PaymentPhoneRequest;   // 🆕 AGREGAR
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
