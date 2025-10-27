@@ -3,14 +3,13 @@ package com.mercadopago.sample.service;
 import com.mercadopago.client.payment.PaymentCreateRequest;
 import com.mercadopago.client.payment.PaymentItemRequest;
 import com.mercadopago.client.payment.PaymentPayerRequest;
+import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.sample.dto.DetailedPaymentRequestDTO;
 import com.mercadopago.sample.dto.PaymentItemDTO;
 import com.mercadopago.sample.dto.PayerDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import com.mercadopago.client.common.IdentificationRequest; // 🆕 AGREGAR
-import com.mercadopago.client.payment.PaymentPhoneRequest;   // 🆕 AGREGAR
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -24,7 +23,7 @@ public class EnhancedPaymentService {
     private static final Logger LOGGER = LoggerFactory.getLogger(EnhancedPaymentService.class);
 
     /**
-     * ✅ CONSTRUIR PAYMENT REQUEST CON ITEMS DETALLADOS
+     * ✅ CONSTRUIR PAYMENT REQUEST CON ITEMS DETALLADOS - CORREGIDO
      */
     public PaymentCreateRequest buildPaymentWithItems(DetailedPaymentRequestDTO paymentRequest) {
         LOGGER.info("🛒 Construyendo pago con {} items detallados", 
@@ -39,7 +38,6 @@ public class EnhancedPaymentService {
             }
         }
         
-        // ✅ CORREGIDO: Usar el builder correctamente
         PaymentCreateRequest.Builder requestBuilder = PaymentCreateRequest.builder()
                 .transactionAmount(paymentRequest.getTransactionAmount())
                 .token(paymentRequest.getToken())
@@ -60,7 +58,7 @@ public class EnhancedPaymentService {
     }
 
     /**
-     * ✅ CONSTRUIR PAYER REQUEST CORREGIDO
+     * ✅ CONSTRUIR PAYER REQUEST - CORREGIDO (sin PaymentPhoneRequest)
      */
     private PaymentPayerRequest buildPayerRequest(PayerDTO payer) {
         if (payer == null) {
@@ -71,11 +69,20 @@ public class EnhancedPaymentService {
                     .build();
         }
         
-        // ✅ CORREGIDO: Construir correctamente el PaymentPayerRequest
         PaymentPayerRequest.Builder payerBuilder = PaymentPayerRequest.builder()
                 .email(payer.getEmail())
                 .firstName(payer.getFirstName() != null ? payer.getFirstName() : "Cliente")
                 .lastName(payer.getLastName() != null ? payer.getLastName() : "Millenium");
+        
+        // ✅ SOLO identification (phone no está disponible en este SDK)
+        if (payer.getIdentification() != null) {
+            payerBuilder.identification(
+                IdentificationRequest.builder()
+                    .type(payer.getIdentification().getType())
+                    .number(payer.getIdentification().getNumber())
+                    .build()
+            );
+        }
         
         return payerBuilder.build();
     }
@@ -169,5 +176,91 @@ public class EnhancedPaymentService {
         }
         
         return errors;
+    }
+
+    /**
+     * ✅ CONSTRUIR PAYMENT REQUEST COMPLETO CON TODOS LOS CAMPOS REQUERIDOS
+     */
+    public PaymentCreateRequest buildCompletePaymentRequest(DetailedPaymentRequestDTO paymentRequest) {
+        LOGGER.info("🛒 Construyendo pago COMPLETO con todos los campos requeridos");
+        
+        PaymentCreateRequest.Builder requestBuilder = PaymentCreateRequest.builder()
+                .transactionAmount(paymentRequest.getTransactionAmount())
+                .token(paymentRequest.getToken())
+                .description(paymentRequest.getDescription())
+                .installments(paymentRequest.getInstallments())
+                .paymentMethodId(paymentRequest.getPaymentMethodId())
+                .externalReference(paymentRequest.getExternalReference())
+                .notificationUrl(paymentRequest.getNotificationUrl())
+                .statementDescriptor("MILLENIUM TERMOTANQUES") // ✅ STATEMENT DESCRIPTOR
+                .binaryMode(true) // ✅ BINARY MODE
+                .payer(buildCompletePayerRequest(paymentRequest.getPayer())); // ✅ PAYER COMPLETO
+        
+        // ✅ ITEMS COMPLETOS CON TODOS LOS CAMPOS
+        if (paymentRequest.getItems() != null && !paymentRequest.getItems().isEmpty()) {
+            List<PaymentItemRequest> mpItems = buildCompleteMercadoPagoItems(paymentRequest.getItems());
+            requestBuilder.items(mpItems);
+            LOGGER.info("✅ {} items completos agregados al pago", mpItems.size());
+        }
+        
+        return requestBuilder.build();
+    }
+
+    /**
+     * ✅ CONSTRUIR PAYER COMPLETO CON TODOS LOS CAMPOS DISPONIBLES
+     */
+    private PaymentPayerRequest buildCompletePayerRequest(PayerDTO payer) {
+        if (payer == null) {
+            return PaymentPayerRequest.builder()
+                    .email("guest@millenium.com")
+                    .firstName("Cliente")
+                    .lastName("Millenium")
+                    .build();
+        }
+        
+        PaymentPayerRequest.Builder payerBuilder = PaymentPayerRequest.builder()
+                .email(payer.getEmail()) // ✅ EMAIL OBLIGATORIO
+                .firstName(payer.getFirstName() != null ? payer.getFirstName() : "Cliente") // ✅ FIRST_NAME
+                .lastName(payer.getLastName() != null ? payer.getLastName() : "Millenium"); // ✅ LAST_NAME
+        
+        // ✅ CAMPOS ADICIONALES PARA MEJORAR APROBACIÓN
+        if (payer.getIdentification() != null) {
+            payerBuilder.identification(
+                IdentificationRequest.builder()
+                    .type(payer.getIdentification().getType())
+                    .number(payer.getIdentification().getNumber())
+                    .build()
+            );
+        }
+        
+        // ❌ ELIMINADO: PhoneRequest no existe en este SDK
+        
+        return payerBuilder.build();
+    }
+
+    /**
+     * ✅ CONSTRUIR ITEMS COMPLETOS CON TODOS LOS CAMPOS REQUERIDOS
+     */
+    private List<PaymentItemRequest> buildCompleteMercadoPagoItems(List<PaymentItemDTO> items) {
+        List<PaymentItemRequest> mpItems = new ArrayList<>();
+        
+        for (PaymentItemDTO item : items) {
+            PaymentItemRequest mpItem = PaymentItemRequest.builder()
+                    .id(item.getId()) // ✅ ITEM ID
+                    .title(item.getTitle()) // ✅ ITEM TITLE
+                    .description(item.getDescription()) // ✅ ITEM DESCRIPTION
+                    .pictureUrl(item.getPictureUrl())
+                    .categoryId(item.getCategoryId()) // ✅ CATEGORY ID
+                    .quantity(item.getQuantity()) // ✅ QUANTITY
+                    .unitPrice(item.getUnitPrice()) // ✅ UNIT PRICE
+                    .build();
+            
+            mpItems.add(mpItem);
+            
+            LOGGER.info("📦 Item completo agregado: {} (ID: {}) x {} = ${}", 
+                       item.getTitle(), item.getId(), item.getQuantity(), item.getTotalAmount());
+        }
+        
+        return mpItems;
     }
 }
