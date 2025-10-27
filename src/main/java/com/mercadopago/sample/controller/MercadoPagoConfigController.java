@@ -57,37 +57,6 @@ public class MercadoPagoConfigController {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
-    /**
- * ✅ LISTAR STORES CON DETALLES (para el controller)
- */
-public Map<String, Object> listStoresWithDetails() {
-    try {
-        LOGGER.info("📋 Listando stores con detalles...");
-        
-        List<Map<String, Object>> stores = listAllStores();
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
-        result.put("total_stores", stores.size());
-        result.put("stores", stores);
-        result.put("environment", "PRODUCTION");
-        result.put("timestamp", new Date());
-        
-        if (stores.isEmpty()) {
-            result.put("message", "No hay stores configurados. Usa /api/config/manage-stores para crear uno.");
-        } else {
-            result.put("primary_store_id", stores.get(0).get("id"));
-            result.put("primary_store_name", stores.get(0).get("name"));
-        }
-        
-        LOGGER.info("✅ Listado de stores completado - Total: {}", stores.size());
-        return result;
-        
-    } catch (Exception e) {
-        LOGGER.error("❌ Error listando stores: {}", e.getMessage());
-        return createErrorResponse("STORES_LIST_ERROR", e.getMessage());
-    }
-}
 
     /**
      * ✅ ENDPOINT DE VERIFICACIÓN PARA MERCADO PAGO
