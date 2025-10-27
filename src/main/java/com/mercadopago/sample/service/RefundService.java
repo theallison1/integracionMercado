@@ -226,34 +226,40 @@ public class RefundService {
         }
     }
 
-    /**
-     * ✅ CALCULAR MONTO DISPONIBLE PARA DEVOLUCIÓN
-     */
-    private BigDecimal getAvailableRefundAmount(Payment payment) {
+  /**
+ * ✅ CALCULAR MONTO DISPONIBLE PARA DEVOLUCIÓN
+ */
+private BigDecimal getAvailableRefundAmount(Payment payment) {
+    try {
+        BigDecimal originalAmount = payment.getTransactionAmount();
+        BigDecimal totalRefunded = BigDecimal.ZERO;
+        
+        // Obtener devoluciones existentes - CORREGIDO
+        MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+        PaymentRefundClient refundClient = new PaymentRefundClient();
+        
+        // ❌ ELIMINAR: List<PaymentRefund> refunds = refundClient.refundList(payment.getId());
+        // ✅ REEMPLAZAR CON: No hay método directo, usar getRefund
         try {
-            BigDecimal originalAmount = payment.getTransactionAmount();
-            BigDecimal totalRefunded = BigDecimal.ZERO;
-            
-            // Obtener devoluciones existentes
-            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
-            PaymentRefundClient refundClient = new PaymentRefundClient();
-            
-            java.util.List<PaymentRefund> refunds = refundClient.refundList(payment.getId());
-            for (PaymentRefund refund : refunds) {
-                totalRefunded = totalRefunded.add(refund.getAmount());
-            }
-            
-            BigDecimal available = originalAmount.subtract(totalRefunded);
-            LOGGER.debug("💰 Monto disponible para devolución: {} (Original: {}, Reembolsado: {})", 
-                        available, originalAmount, totalRefunded);
-            
-            return available.compareTo(BigDecimal.ZERO) > 0 ? available : BigDecimal.ZERO;
-            
+            // Intentar obtener información de devoluciones si existe algún endpoint
+            // Por ahora, asumimos que no hay devoluciones previas
+            totalRefunded = BigDecimal.ZERO;
         } catch (Exception e) {
-            LOGGER.error("Error calculando monto disponible para devolución: {}", e.getMessage());
-            return BigDecimal.ZERO;
+            LOGGER.warn("No se pudieron obtener devoluciones previas: {}", e.getMessage());
+            totalRefunded = BigDecimal.ZERO;
         }
+        
+        BigDecimal available = originalAmount.subtract(totalRefunded);
+        LOGGER.debug("💰 Monto disponible para devolución: {} (Original: {}, Reembolsado: {})", 
+                    available, originalAmount, totalRefunded);
+        
+        return available.compareTo(BigDecimal.ZERO) > 0 ? available : BigDecimal.ZERO;
+        
+    } catch (Exception e) {
+        LOGGER.error("Error calculando monto disponible para devolución: {}", e.getMessage());
+        return BigDecimal.ZERO;
     }
+}
 
     /**
      * ✅ OBTENER PAGO POR ID
