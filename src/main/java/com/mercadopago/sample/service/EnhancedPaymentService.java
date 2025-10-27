@@ -38,7 +38,6 @@ public class EnhancedPaymentService {
             }
         }
         
-        // ✅ CORREGIDO: Usar builder() correctamente
         PaymentCreateRequest.Builder requestBuilder = PaymentCreateRequest.builder()
                 .transactionAmount(paymentRequest.getTransactionAmount())
                 .token(paymentRequest.getToken())
@@ -74,7 +73,6 @@ public class EnhancedPaymentService {
                     .build();
         }
         
-        // ✅ CORREGIDO: Usar builder() correctamente
         PaymentPayerRequest.Builder payerBuilder = PaymentPayerRequest.builder()
                 .email(payer.getEmail())
                 .firstName(payer.getFirstName() != null ? payer.getFirstName() : "Cliente")
@@ -184,12 +182,11 @@ public class EnhancedPaymentService {
     }
 
     /**
-     * ✅ CONSTRUIR PAYMENT REQUEST COMPLETO - CORREGIDO (sin notificationUrl)
+     * ✅ CONSTRUIR PAYMENT REQUEST COMPLETO - AHORA CON notificationUrl
      */
     public PaymentCreateRequest buildCompletePaymentRequest(DetailedPaymentRequestDTO paymentRequest) {
         LOGGER.info("🛒 Construyendo pago COMPLETO con todos los campos requeridos");
         
-        // ✅ CORREGIDO: Sin notificationUrl que causaba error
         PaymentCreateRequest.Builder requestBuilder = PaymentCreateRequest.builder()
                 .transactionAmount(paymentRequest.getTransactionAmount())
                 .token(paymentRequest.getToken())
@@ -197,6 +194,12 @@ public class EnhancedPaymentService {
                 .installments(paymentRequest.getInstallments())
                 .paymentMethodId(paymentRequest.getPaymentMethodId())
                 .payer(buildCompletePayerRequest(paymentRequest.getPayer()));
+        
+        // ✅ AGREGAR NOTIFICATION URL SI EXISTE
+        if (paymentRequest.getNotificationUrl() != null && !paymentRequest.getNotificationUrl().isEmpty()) {
+            requestBuilder.notificationUrl(paymentRequest.getNotificationUrl());
+            LOGGER.info("✅ Notification URL agregada: {}", paymentRequest.getNotificationUrl());
+        }
         
         // Agregar externalReference si existe
         if (paymentRequest.getExternalReference() != null) {
@@ -225,11 +228,10 @@ public class EnhancedPaymentService {
                     .build();
         }
         
-        // ✅ CORREGIDO: Usar builder() correctamente
         PaymentPayerRequest.Builder payerBuilder = PaymentPayerRequest.builder()
-                .email(payer.getEmail()) // ✅ EMAIL OBLIGATORIO
-                .firstName(payer.getFirstName() != null ? payer.getFirstName() : "Cliente") // ✅ FIRST_NAME
-                .lastName(payer.getLastName() != null ? payer.getLastName() : "Millenium"); // ✅ LAST_NAME
+                .email(payer.getEmail())
+                .firstName(payer.getFirstName() != null ? payer.getFirstName() : "Cliente")
+                .lastName(payer.getLastName() != null ? payer.getLastName() : "Millenium");
         
         // ✅ CAMPOS ADICIONALES PARA MEJORAR APROBACIÓN
         if (payer.getIdentification() != null) {
@@ -251,13 +253,13 @@ public class EnhancedPaymentService {
         
         for (PaymentItemDTO item : items) {
             PaymentItemRequest mpItem = PaymentItemRequest.builder()
-                    .id(item.getId()) // ✅ ITEM ID
-                    .title(item.getTitle()) // ✅ ITEM TITLE
-                    .description(item.getDescription()) // ✅ ITEM DESCRIPTION
+                    .id(item.getId())
+                    .title(item.getTitle())
+                    .description(item.getDescription())
                     .pictureUrl(item.getPictureUrl())
-                    .categoryId(item.getCategoryId()) // ✅ CATEGORY ID
-                    .quantity(item.getQuantity()) // ✅ QUANTITY
-                    .unitPrice(item.getUnitPrice()) // ✅ UNIT PRICE
+                    .categoryId(item.getCategoryId())
+                    .quantity(item.getQuantity())
+                    .unitPrice(item.getUnitPrice())
                     .build();
             
             mpItems.add(mpItem);
