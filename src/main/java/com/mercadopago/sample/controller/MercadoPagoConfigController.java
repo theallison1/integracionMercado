@@ -21,7 +21,6 @@ public class MercadoPagoConfigController {
 
     /**
      * ✅ ENDPOINT PARA INICIALIZAR CONFIGURACIÓN DE MERCADO PAGO
-     * Esto demuestra a Mercado Pago que estás usando sus APIs
      */
     @PostMapping("/initialize")
     public ResponseEntity<?> initializeMercadoPagoConfig() {
@@ -30,7 +29,7 @@ public class MercadoPagoConfigController {
             
             Map<String, String> results = new HashMap<>();
             
-            // 1. Crear sucursal virtual (para e-commerce)
+            // 1. Crear sucursal virtual
             String storeId = mercadoPagoStoreService.createStore(
                 "Millenium Termotanques Online", 
                 "millenium-online-001",
@@ -38,13 +37,13 @@ public class MercadoPagoConfigController {
             );
             results.put("storeId", storeId);
             
-            // 2. Crear POS virtual (para e-commerce)
+            // 2. Crear POS virtual
             if (storeId != null) {
                 String posId = mercadoPagoStoreService.createPOS(
                     storeId,
                     "millenium-pos-online",
                     "POS Millenium Online", 
-                    false // fixedAmount = false para montos variables
+                    false
                 );
                 results.put("posId", posId);
             }
