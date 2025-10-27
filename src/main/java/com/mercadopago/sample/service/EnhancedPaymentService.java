@@ -10,7 +10,9 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;  // 🆕 AGREGAR ESTE IMPORT
 import java.util.List;
+import java.util.Map;      // 🆕 AGREGAR ESTE IMPORT
 
 @Service
 public class EnhancedPaymentService {
@@ -141,5 +143,15 @@ public class EnhancedPaymentService {
         }
         
         return errors;
+    }
+
+    /**
+     * ✅ MÉTODO AUXILIAR PARA CONSTRUIR PAYER REQUEST
+     * (Necesitas implementar esto basado en tu CardPaymentService)
+     */
+    private Object buildPayerRequest(Object payer) {
+        // Este método depende de cómo tienes estructurado tu PayerDTO
+        // Por ahora devolvemos el objeto directamente
+        return payer;
     }
 }
