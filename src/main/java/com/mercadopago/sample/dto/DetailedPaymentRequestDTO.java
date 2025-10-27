@@ -10,15 +10,16 @@ public class DetailedPaymentRequestDTO {
     private Integer installments;
     private String paymentMethodId;
     private PayerDTO payer;
-    private List<PaymentItemDTO> items; // ✅ NUEVO: Array de items detallados
+    private List<PaymentItemDTO> items;
     private String externalReference;
+    private String notificationUrl; // ✅ AGREGAR ESTE CAMPO
 
-    // Constructors
+    // Constructors - ACTUALIZAR
     public DetailedPaymentRequestDTO() {}
 
     public DetailedPaymentRequestDTO(BigDecimal transactionAmount, String token, String description, 
                                    Integer installments, String paymentMethodId, PayerDTO payer, 
-                                   List<PaymentItemDTO> items, String externalReference) {
+                                   List<PaymentItemDTO> items, String externalReference, String notificationUrl) {
         this.transactionAmount = transactionAmount;
         this.token = token;
         this.description = description;
@@ -27,9 +28,10 @@ public class DetailedPaymentRequestDTO {
         this.payer = payer;
         this.items = items;
         this.externalReference = externalReference;
+        this.notificationUrl = notificationUrl; // ✅ AGREGAR EN CONSTRUCTOR
     }
 
-    // Getters and Setters
+    // Getters and Setters - AGREGAR LOS NUEVOS
     public BigDecimal getTransactionAmount() { return transactionAmount; }
     public void setTransactionAmount(BigDecimal transactionAmount) { this.transactionAmount = transactionAmount; }
 
@@ -53,4 +55,13 @@ public class DetailedPaymentRequestDTO {
 
     public String getExternalReference() { return externalReference; }
     public void setExternalReference(String externalReference) { this.externalReference = externalReference; }
+
+    // ✅ AGREGAR GETTER Y SETTER PARA notificationUrl
+    public String getNotificationUrl() {
+        return notificationUrl;
+    }
+
+    public void setNotificationUrl(String notificationUrl) {
+        this.notificationUrl = notificationUrl;
+    }
 }
