@@ -15,7 +15,7 @@
     <description>Card payment Bricks sample written in Java</description>
     <properties>
         <java.version>11</java.version>
-        <mercadopago.sdk.version>2.1.10</mercadopago.sdk.version>
+        <mercadopago.sdk.version>2.5.0</mercadopago.sdk.version>
     </properties>
     <dependencies>
         <dependency>
@@ -52,12 +52,6 @@
             <version>8.0.5</version>
             <type>pom</type>
         </dependency>
-
-        <!-- ELIMINAR: spring-boot-starter-mail (NO LO USAS) -->
-        <!-- <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-        </dependency> -->
 
         <dependency>
             <groupId>com.google.code.gson</groupId>
