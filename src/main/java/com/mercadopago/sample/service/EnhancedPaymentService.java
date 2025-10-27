@@ -2,17 +2,19 @@ package com.mercadopago.sample.service;
 
 import com.mercadopago.client.payment.PaymentCreateRequest;
 import com.mercadopago.client.payment.PaymentItemRequest;
+import com.mercadopago.client.payment.PaymentPayerRequest;
 import com.mercadopago.sample.dto.DetailedPaymentRequestDTO;
 import com.mercadopago.sample.dto.PaymentItemDTO;
+import com.mercadopago.sample.dto.PayerDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.HashMap;  // 🆕 AGREGAR ESTE IMPORT
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map;      // 🆕 AGREGAR ESTE IMPORT
+import java.util.Map;
 
 @Service
 public class EnhancedPaymentService {
@@ -35,6 +37,7 @@ public class EnhancedPaymentService {
             }
         }
         
+        // ✅ CORREGIDO: Usar el builder correctamente
         PaymentCreateRequest.Builder requestBuilder = PaymentCreateRequest.builder()
                 .transactionAmount(paymentRequest.getTransactionAmount())
                 .token(paymentRequest.getToken())
@@ -52,6 +55,27 @@ public class EnhancedPaymentService {
         }
         
         return requestBuilder.build();
+    }
+
+    /**
+     * ✅ CONSTRUIR PAYER REQUEST CORREGIDO
+     */
+    private PaymentPayerRequest buildPayerRequest(PayerDTO payer) {
+        if (payer == null) {
+            return PaymentPayerRequest.builder()
+                    .email("guest@millenium.com")
+                    .firstName("Cliente")
+                    .lastName("Millenium")
+                    .build();
+        }
+        
+        // ✅ CORREGIDO: Construir correctamente el PaymentPayerRequest
+        PaymentPayerRequest.Builder payerBuilder = PaymentPayerRequest.builder()
+                .email(payer.getEmail())
+                .firstName(payer.getFirstName() != null ? payer.getFirstName() : "Cliente")
+                .lastName(payer.getLastName() != null ? payer.getLastName() : "Millenium");
+        
+        return payerBuilder.build();
     }
 
     /**
@@ -143,15 +167,5 @@ public class EnhancedPaymentService {
         }
         
         return errors;
-    }
-
-    /**
-     * ✅ MÉTODO AUXILIAR PARA CONSTRUIR PAYER REQUEST
-     * (Necesitas implementar esto basado en tu CardPaymentService)
-     */
-    private Object buildPayerRequest(Object payer) {
-        // Este método depende de cómo tienes estructurado tu PayerDTO
-        // Por ahora devolvemos el objeto directamente
-        return payer;
     }
 }
