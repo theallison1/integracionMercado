@@ -38,14 +38,19 @@ public class EnhancedPaymentService {
             }
         }
         
+        // ✅ CORREGIDO: Usar builder() correctamente
         PaymentCreateRequest.Builder requestBuilder = PaymentCreateRequest.builder()
                 .transactionAmount(paymentRequest.getTransactionAmount())
                 .token(paymentRequest.getToken())
                 .description(paymentRequest.getDescription())
                 .installments(paymentRequest.getInstallments())
                 .paymentMethodId(paymentRequest.getPaymentMethodId())
-                .externalReference(paymentRequest.getExternalReference())
                 .payer(buildPayerRequest(paymentRequest.getPayer()));
+        
+        // Agregar externalReference si existe
+        if (paymentRequest.getExternalReference() != null) {
+            requestBuilder.externalReference(paymentRequest.getExternalReference());
+        }
         
         // ✅ AGREGAR ITEMS DETALLADOS
         if (paymentRequest.getItems() != null && !paymentRequest.getItems().isEmpty()) {
@@ -58,7 +63,7 @@ public class EnhancedPaymentService {
     }
 
     /**
-     * ✅ CONSTRUIR PAYER REQUEST - CORREGIDO (sin PaymentPhoneRequest)
+     * ✅ CONSTRUIR PAYER REQUEST - CORREGIDO
      */
     private PaymentPayerRequest buildPayerRequest(PayerDTO payer) {
         if (payer == null) {
@@ -69,6 +74,7 @@ public class EnhancedPaymentService {
                     .build();
         }
         
+        // ✅ CORREGIDO: Usar builder() correctamente
         PaymentPayerRequest.Builder payerBuilder = PaymentPayerRequest.builder()
                 .email(payer.getEmail())
                 .firstName(payer.getFirstName() != null ? payer.getFirstName() : "Cliente")
@@ -76,12 +82,11 @@ public class EnhancedPaymentService {
         
         // ✅ SOLO identification (phone no está disponible en este SDK)
         if (payer.getIdentification() != null) {
-            payerBuilder.identification(
-                IdentificationRequest.builder()
+            IdentificationRequest identification = IdentificationRequest.builder()
                     .type(payer.getIdentification().getType())
                     .number(payer.getIdentification().getNumber())
-                    .build()
-            );
+                    .build();
+            payerBuilder.identification(identification);
         }
         
         return payerBuilder.build();
@@ -107,7 +112,7 @@ public class EnhancedPaymentService {
             mpItems.add(mpItem);
             
             LOGGER.debug("📦 Item agregado: {} x {} = ${}", 
-                        item.getTitle(), item.getQuantity(), item.getTotalAmount());
+                        item.getTitle(), item.getQuantity(), item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
         }
         
         return mpItems;
@@ -118,7 +123,7 @@ public class EnhancedPaymentService {
      */
     private BigDecimal calculateItemsTotal(List<PaymentItemDTO> items) {
         return items.stream()
-                .map(PaymentItemDTO::getTotalAmount)
+                .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -179,22 +184,24 @@ public class EnhancedPaymentService {
     }
 
     /**
-     * ✅ CONSTRUIR PAYMENT REQUEST COMPLETO CON TODOS LOS CAMPOS REQUERIDOS
+     * ✅ CONSTRUIR PAYMENT REQUEST COMPLETO - CORREGIDO (sin notificationUrl)
      */
     public PaymentCreateRequest buildCompletePaymentRequest(DetailedPaymentRequestDTO paymentRequest) {
         LOGGER.info("🛒 Construyendo pago COMPLETO con todos los campos requeridos");
         
+        // ✅ CORREGIDO: Sin notificationUrl que causaba error
         PaymentCreateRequest.Builder requestBuilder = PaymentCreateRequest.builder()
                 .transactionAmount(paymentRequest.getTransactionAmount())
                 .token(paymentRequest.getToken())
                 .description(paymentRequest.getDescription())
                 .installments(paymentRequest.getInstallments())
                 .paymentMethodId(paymentRequest.getPaymentMethodId())
-                .externalReference(paymentRequest.getExternalReference())
-                .notificationUrl(paymentRequest.getNotificationUrl())
-                .statementDescriptor("MILLENIUM TERMOTANQUES") // ✅ STATEMENT DESCRIPTOR
-                .binaryMode(true) // ✅ BINARY MODE
-                .payer(buildCompletePayerRequest(paymentRequest.getPayer())); // ✅ PAYER COMPLETO
+                .payer(buildCompletePayerRequest(paymentRequest.getPayer()));
+        
+        // Agregar externalReference si existe
+        if (paymentRequest.getExternalReference() != null) {
+            requestBuilder.externalReference(paymentRequest.getExternalReference());
+        }
         
         // ✅ ITEMS COMPLETOS CON TODOS LOS CAMPOS
         if (paymentRequest.getItems() != null && !paymentRequest.getItems().isEmpty()) {
@@ -207,7 +214,7 @@ public class EnhancedPaymentService {
     }
 
     /**
-     * ✅ CONSTRUIR PAYER COMPLETO CON TODOS LOS CAMPOS DISPONIBLES
+     * ✅ CONSTRUIR PAYER COMPLETO - CORREGIDO
      */
     private PaymentPayerRequest buildCompletePayerRequest(PayerDTO payer) {
         if (payer == null) {
@@ -218,6 +225,7 @@ public class EnhancedPaymentService {
                     .build();
         }
         
+        // ✅ CORREGIDO: Usar builder() correctamente
         PaymentPayerRequest.Builder payerBuilder = PaymentPayerRequest.builder()
                 .email(payer.getEmail()) // ✅ EMAIL OBLIGATORIO
                 .firstName(payer.getFirstName() != null ? payer.getFirstName() : "Cliente") // ✅ FIRST_NAME
@@ -225,21 +233,18 @@ public class EnhancedPaymentService {
         
         // ✅ CAMPOS ADICIONALES PARA MEJORAR APROBACIÓN
         if (payer.getIdentification() != null) {
-            payerBuilder.identification(
-                IdentificationRequest.builder()
+            IdentificationRequest identification = IdentificationRequest.builder()
                     .type(payer.getIdentification().getType())
                     .number(payer.getIdentification().getNumber())
-                    .build()
-            );
+                    .build();
+            payerBuilder.identification(identification);
         }
-        
-        // ❌ ELIMINADO: PhoneRequest no existe en este SDK
         
         return payerBuilder.build();
     }
 
     /**
-     * ✅ CONSTRUIR ITEMS COMPLETOS CON TODOS LOS CAMPOS REQUERIDOS
+     * ✅ CONSTRUIR ITEMS COMPLETOS - CORREGIDO
      */
     private List<PaymentItemRequest> buildCompleteMercadoPagoItems(List<PaymentItemDTO> items) {
         List<PaymentItemRequest> mpItems = new ArrayList<>();
@@ -258,9 +263,26 @@ public class EnhancedPaymentService {
             mpItems.add(mpItem);
             
             LOGGER.info("📦 Item completo agregado: {} (ID: {}) x {} = ${}", 
-                       item.getTitle(), item.getId(), item.getQuantity(), item.getTotalAmount());
+                       item.getTitle(), item.getId(), item.getQuantity(), 
+                       item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
         }
         
         return mpItems;
+    }
+
+    /**
+     * ✅ MÉTODO SIMPLIFICADO PARA PAGOS BÁSICOS
+     */
+    public PaymentCreateRequest buildSimplePayment(DetailedPaymentRequestDTO paymentRequest) {
+        LOGGER.info("🛒 Construyendo pago simple");
+        
+        return PaymentCreateRequest.builder()
+                .transactionAmount(paymentRequest.getTransactionAmount())
+                .token(paymentRequest.getToken())
+                .description(paymentRequest.getDescription())
+                .installments(paymentRequest.getInstallments())
+                .paymentMethodId(paymentRequest.getPaymentMethodId())
+                .payer(buildPayerRequest(paymentRequest.getPayer()))
+                .build();
     }
 }
