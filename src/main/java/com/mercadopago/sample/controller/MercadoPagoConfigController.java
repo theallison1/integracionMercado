@@ -24,12 +24,13 @@ public class MercadoPagoConfigController {
  */
 @PostMapping("/initialize")
 public ResponseEntity<?> initializeMercadoPagoConfig() {
-    try {
+  
+      /*try {
         LOGGER.info("🎯 Inicializando configuración de Mercado Pago para aprobación");
         
         Map<String, String> results = new HashMap<>();
         
-        /*
+      
         // ❌ COMENTAR TEMPORALMENTE - Estos métodos no existen
         // 1. Crear sucursal virtual (para e-commerce)
         String storeId = mercadoPagoStoreService.createStore(
@@ -49,7 +50,7 @@ public ResponseEntity<?> initializeMercadoPagoConfig() {
             );
             results.put("posId", posId);
         }
-        */
+        
         
         // ✅ USAR LOS MÉTODOS NUEVOS QUE SÍ EXISTEN
         Map<String, Object> storesResult = mercadoPagoStoreService.manageStores();
@@ -62,7 +63,7 @@ public ResponseEntity<?> initializeMercadoPagoConfig() {
     } catch (Exception e) {
         LOGGER.error("❌ Error inicializando configuración: {}", e.getMessage());
         return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
-    }
+    }*/
 }
     /**
      * ✅ ENDPOINT DE VERIFICACIÓN PARA MERCADO PAGO
