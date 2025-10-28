@@ -126,57 +126,85 @@ function initializeMercadoPagoBricks() {
     const total = calculateCartTotal();
     const bricksBuilder = mp.bricks();
     
-    // ✅ CORREGIDO: Wallet Brick SIN onSubmit
+    console.log('💰 Inicializando Bricks con monto:', total);
+    console.log('📧 Email del cliente:', customerData.email);
+
+    // ✅ CORREGIDO: Wallet Brick - SIN onSubmit (correcto)
     const renderWalletBrick = async (bricksBuilder) => {
-        const settings = {
-            initialization: {
-                amount: total,
-                payer: {
-                    email: customerData.email || "cliente@millenium.com",
-                }
-            },
-            callbacks: {
-                onReady: () => {
-                    console.log('✅ Wallet Brick ready');
+        try {
+            const settings = {
+                initialization: {
+                    amount: total,
+                    payer: {
+                        email: customerData.email || "cliente@millenium.com",
+                    }
                 },
-                onError: (error) => {
-                    console.error('❌ Wallet Brick error:', error);
-                }
-            }
-        };
-        window.walletBrickController = await bricksBuilder.create('wallet', 'walletBrick_container', settings);
-    };
-    
-    // ✅ Payment Brick CON onSubmit
-    const renderPaymentBrick = async (bricksBuilder) => {
-        const settings = {
-            initialization: {
-                amount: total,
-                payer: {
-                    email: customerData.email || "cliente@millenium.com",
-                }
-            },
-            customization: {
-                visual: {
-                    style: {
-                        theme: 'dark'
+                callbacks: {
+                    onReady: () => {
+                        console.log('✅ Wallet Brick ready');
+                    },
+                    onError: (error) => {
+                        console.error('❌ Wallet Brick error:', error);
                     }
                 }
-            },
-            callbacks: {
-                onReady: () => {
-                    console.log('✅ Payment Brick ready');
-                },
-                onSubmit: (formData) => {
-                    console.log('🔄 Payment Brick onSubmit:', formData);
-                    handlePaymentSubmission(formData, 'payment');
-                },
-                onError: (error) => {
-                    console.error('❌ Payment Brick error:', error);
-                }
+            };
+            
+            // Limpiar contenedor primero
+            const walletContainer = document.getElementById('walletBrick_container');
+            if (walletContainer) {
+                walletContainer.innerHTML = '';
             }
-        };
-        window.paymentBrickController = await bricksBuilder.create('payment', 'paymentBrick_container', settings);
+            
+            window.walletBrickController = await bricksBuilder.create('wallet', 'walletBrick_container', settings);
+            console.log('✅ Wallet Brick creado exitosamente');
+        } catch (error) {
+            console.error('❌ Error creando Wallet Brick:', error);
+        }
+    };
+    
+    // ✅ CORREGIDO: Payment Brick - CON onSubmit (obligatorio)
+    const renderPaymentBrick = async (bricksBuilder) => {
+        try {
+            const settings = {
+                initialization: {
+                    amount: total,
+                    payer: {
+                        email: customerData.email || "cliente@millenium.com",
+                    }
+                },
+                customization: {
+                    visual: {
+                        style: {
+                            theme: 'dark'
+                        }
+                    }
+                },
+                callbacks: {
+                    onReady: () => {
+                        console.log('✅ Payment Brick ready');
+                    },
+                    // ✅ OBLIGATORIO: Payment Brick SIEMPRE necesita onSubmit
+                    onSubmit: (formData) => {
+                        console.log('🔄 Payment Brick onSubmit:', formData);
+                        handlePaymentSubmission(formData, 'payment');
+                    },
+                    onError: (error) => {
+                        console.error('❌ Payment Brick error:', error);
+                    }
+                }
+            };
+            
+            // Limpiar contenedor primero
+            const paymentContainer = document.getElementById('paymentBrick_container');
+            if (paymentContainer) {
+                paymentContainer.innerHTML = '';
+            }
+            
+            window.paymentBrickController = await bricksBuilder.create('payment', 'paymentBrick_container', settings);
+            console.log('✅ Payment Brick creado exitosamente');
+        } catch (error) {
+            console.error('❌ Error creando Payment Brick:', error);
+        }
     };
     
     renderWalletBrick(bricksBuilder);
@@ -272,6 +300,12 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     console.log('🆔 Payment ID:', paymentId);
 
     try {
+        // Limpiar contenedor primero
+        const statusContainer = document.getElementById('statusScreenBrick_container');
+        if (statusContainer) {
+            statusContainer.innerHTML = '';
+        }
+
         window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
             initialization: {
                 paymentId: paymentId
@@ -328,15 +362,15 @@ async function createWalletPreference(amount) {
     }
 }
 
-// ✅ CORREGIDO: Función loadWalletBrick CON PREFERENCIA
-async function loadWalletBrick(amount) {
+// ✅ CORREGIDO: Función loadWalletBrick CON PREFERENCIA (OPCIONAL)
+async function loadWalletBrickWithPreference(amount) {
     try {
         const walletContainer = document.getElementById('walletBrick_container');
         if (walletContainer) {
             walletContainer.innerHTML = '';
         }
 
-        console.log('💰 Configurando Wallet Brick con monto:', amount);
+        console.log('💰 Configurando Wallet Brick con preferencia, monto:', amount);
 
         // ✅ CREAR PREFERENCIA REAL para Wallet Brick
         const preferenceId = await createWalletPreference(amount);
@@ -368,25 +402,12 @@ async function loadWalletBrick(amount) {
                 },
                 onError: (error) => {
                     console.error("❌ Wallet Brick error:", error);
-                    alert('Error en la billetera: ' + (error.message || 'Error desconocido'));
                 }
             }
         });
-        console.log('✅ Wallet Brick creado exitosamente con preferencia:', preferenceId);
+        console.log('✅ Wallet Brick con preferencia creado exitosamente');
     } catch (error) {
-        console.error('❌ Error creando Wallet Brick:', error);
-        
-        // ✅ FALLBACK elegante
-        const walletContainer = document.getElementById('walletBrick_container');
-        if (walletContainer) {
-            walletContainer.innerHTML = `
-                <div style="background: #1d2431; color: aquamarine; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
-                    <h4>💳 Pagar con Mercado Pago</h4>
-                    <p>Utiliza el formulario de abajo para pagar con tarjetas, efectivo u otros métodos.</p>
-                    <small>La billetera rápida no está disponible temporalmente.</small>
-                </div>
-            `;
-        }
+        console.error('❌ Error creando Wallet Brick con preferencia:', error);
     }
 }
 
@@ -788,5 +809,5 @@ $(document).ready(function() {
         updateCartDisplay();
     }
 
-    console.log('✅ JavaScript cargado correctamente - Rutas configuradas');
+    console.log('✅ JavaScript cargado correctamente - Bricks configurados');
 });
