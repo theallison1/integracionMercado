@@ -361,22 +361,34 @@ async function initializePaymentBrick(total, userEmail) {
                 onReady: () => {
                     console.log('✅ Payment Brick ready');
                 },
-                onSubmit: (formData) => {
-                    console.log('🔄 Payment Brick onSubmit - Datos recibidos:', formData);
-                    // ✅ VERIFICACIÓN INMEDIATA DE LOS DATOS
-                    if (!formData || typeof formData !== 'object') {
-                        console.error('❌ formData es inválido:', formData);
-                        alert('Error: Datos de pago inválidos');
+                onSubmit: (cardFormData) => {
+                    console.log('🔄 Payment Brick onSubmit - Datos recibidos:', cardFormData);
+                    
+                    // ✅ CORRECCIÓN CRÍTICA: Extraer los datos reales del pago
+                    let paymentData;
+                    
+                    if (cardFormData && cardFormData.formData) {
+                        // Los datos están en formData.formData
+                        paymentData = cardFormData.formData;
+                        console.log('✅ Datos de pago extraídos correctamente:', paymentData);
+                    } else if (cardFormData && cardFormData.token) {
+                        // O tal vez los datos están en el objeto principal
+                        paymentData = cardFormData;
+                        console.log('✅ Datos de pago en objeto principal:', paymentData);
+                    } else {
+                        console.error('❌ Estructura de datos inesperada:', cardFormData);
+                        alert('Error: Estructura de datos de pago inesperada');
                         return;
                     }
                     
-                    if (!formData.token && !formData.paymentMethodId) {
-                        console.error('❌ Faltan datos críticos en formData:', formData);
-                        alert('Error: Faltan datos de pago esenciales');
+                    // ✅ VERIFICAR DATOS CRÍTICOS
+                    if (!paymentData.token) {
+                        console.error('❌ Faltan datos críticos en paymentData:', paymentData);
+                        alert('Error: Faltan datos de pago esenciales (token)');
                         return;
                     }
                     
-                    handlePaymentSubmission(formData, 'payment');
+                    handlePaymentSubmission(paymentData, 'payment');
                 },
                 onError: (error) => {
                     console.error('❌ Payment Brick error:', error);
@@ -474,22 +486,21 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     }
 };
 
-// ✅ CORREGIDO COMPLETAMENTE: Manejo unificado de pagos - SIN ERROR DE TOKEN
+// ✅ CORREGIDO COMPLETAMENTE: Manejo unificado de pagos
 async function handlePaymentSubmission(paymentData, brickType) {
     console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
     
-    // ✅ VALIDACIÓN MEJORADA - MÁS FLEXIBLE
+    // ✅ VALIDACIÓN MEJORADA
     if (!paymentData || typeof paymentData !== 'object') {
         console.error('❌ Error: paymentData es inválido:', paymentData);
         alert('Error: Datos de pago inválidos. Por favor, intenta nuevamente.');
         return;
     }
 
-    // ✅ VERIFICAR DATOS CRÍTICOS (diferentes bricks envían diferentes estructuras)
-    const hasRequiredData = paymentData.token || paymentData.paymentMethodId;
-    if (!hasRequiredData) {
-        console.error('❌ Error: Faltan datos críticos en paymentData:', paymentData);
-        alert('Error: Datos de pago incompletos. Faltan token o paymentMethodId.');
+    // ✅ VERIFICAR DATOS CRÍTICOS
+    if (!paymentData.token) {
+        console.error('❌ Error: Falta token en paymentData:', paymentData);
+        alert('Error: Datos de pago incompletos. Falta token.');
         return;
     }
 
@@ -497,10 +508,10 @@ async function handlePaymentSubmission(paymentData, brickType) {
         const total = calculateCartTotal();
         const userEmail = customerData.email || "cliente@millenium.com";
 
-        // ✅ ESTRUCTURA COMPATIBLE CON AMBOS BRICKS
+        // ✅ ESTRUCTURA CORRECTA PARA EL SERVIDOR
         const requestData = {
-            token: paymentData.token || paymentData.paymentMethodId,
-            paymentMethodId: paymentData.payment_method_id || paymentData.paymentMethodId,
+            token: paymentData.token,
+            paymentMethodId: paymentData.payment_method_id,
             installments: parseInt(paymentData.installments) || 1,
             issuerId: paymentData.issuer_id || null,
             paymentType: paymentData.payment_type || 'credit_card',
@@ -752,7 +763,7 @@ $(document).ready(function() {
         updateCartDisplay();
     }
 
-    console.log('✅ JavaScript cargado correctamente - Versión corregida');
+    console.log('✅ JavaScript cargado correctamente - Versión corregida del token');
 });
 
 // ✅ FUNCIÓN ADICIONAL: Mostrar mensajes temporales
