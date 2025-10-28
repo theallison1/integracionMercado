@@ -235,6 +235,9 @@
 <body>
 <!-- Public Key de Mercado Pago -->
 <input id="mercado-pago-public-key" value="APP_USR-c90816a8-38cd-4720-9f60-226dae2b7b4d" type="hidden" />
+<!-- ✅ CAMPO AMOUNT AGREGADO -->
+<input id="amount" type="hidden" value="0">
+
 <main>
     <!-- Shopping Cart -->
     <section class="shopping-cart dark">
@@ -271,117 +274,118 @@
     </section>
 
     <!-- NUEVA SECCIÓN: Formulario del Comprador -->
-<section class="customer-form dark" id="customer-form-section" style="display: none;">
-    <div class="container">
-        <div class="block-heading text-center">
-            <h2>👤 Información del Comprador</h2>
-            <p>Completa tus datos para procesar tu compra</p>
-        </div>
-        
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="form-card" style="background: #2d2d2d; padding: 30px; border-radius: 10px; border: 1px solid #444; margin-bottom: 20px;">
-                    <form id="customer-info-form">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="customer-first-name" class="text-primary">Nombre *</label>
-                                    <input type="text" class="form-control" id="customer-first-name" 
-                                           placeholder="Ej: Juan" required>
+    <section class="customer-form dark" id="customer-form-section" style="display: none;">
+        <div class="container">
+            <div class="block-heading text-center">
+                <h2>👤 Información del Comprador</h2>
+                <p>Completa tus datos para procesar tu compra</p>
+            </div>
+            
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="form-card" style="background: #2d2d2d; padding: 30px; border-radius: 10px; border: 1px solid #444; margin-bottom: 20px;">
+                        <form id="customer-info-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="customer-first-name" class="text-primary">Nombre *</label>
+                                        <input type="text" class="form-control" id="customer-first-name" 
+                                               placeholder="Ej: Juan" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="customer-last-name" class="text-primary">Apellido *</label>
+                                        <input type="text" class="form-control" id="customer-last-name" 
+                                               placeholder="Ej: Pérez" required>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="customer-last-name" class="text-primary">Apellido *</label>
-                                    <input type="text" class="form-control" id="customer-last-name" 
-                                           placeholder="Ej: Pérez" required>
+                            
+                            <div class="form-group">
+                                <label for="customer-email" class="text-primary">Email *</label>
+                                <input type="email" class="form-control" id="customer-email" 
+                                       placeholder="ejemplo@correo.com" required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="customer-dni-type" class="text-primary">Tipo de documento</label>
+                                        <select class="form-control" id="customer-dni-type">
+                                            <option value="DNI">DNI</option>
+                                            <option value="CUIT">CUIT</option>
+                                            <option value="CUIL">CUIL</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="customer-dni-number" class="text-primary">Número de documento</label>
+                                        <input type="text" class="form-control" id="customer-dni-number" 
+                                               placeholder="Ej: 12345678">
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="customer-email" class="text-primary">Email *</label>
-                            <input type="email" class="form-control" id="customer-email" 
-                                   placeholder="ejemplo@correo.com" required>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="customer-dni-type" class="text-primary">Tipo de documento</label>
-                                    <select class="form-control" id="customer-dni-type">
-                                        <option value="DNI">DNI</option>
-                                        <option value="CUIT">CUIT</option>
-                                        <option value="CUIL">CUIL</option>
-                                    </select>
-                                </div>
+                            
+                            <div class="form-group">
+                                <label for="customer-phone" class="text-primary">Teléfono</label>
+                                <input type="tel" class="form-control" id="customer-phone" 
+                                       placeholder="Ej: +54 11 1234-5678">
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="customer-dni-number" class="text-primary">Número de documento</label>
-                                    <input type="text" class="form-control" id="customer-dni-number" 
-                                           placeholder="Ej: 12345678">
-                                </div>
+                            
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    ✅ Continuar al Pago
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-lg ml-2" id="skip-customer-form">
+                                    ⏭️ Saltar este paso
+                                </button>
                             </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="customer-phone" class="text-primary">Teléfono</label>
-                            <input type="tel" class="form-control" id="customer-phone" 
-                                   placeholder="Ej: +54 11 1234-5678">
-                        </div>
-                        
-                        <div class="text-center mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                ✅ Continuar al Pago
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary btn-lg ml-2" onclick="skipCustomerInfo()">
-                                ⏭️ Saltar este paso
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                
-                <!-- Resumen del Pedido en el formulario -->
-                <div class="summary">
-                    <h4 class="text-center mb-3 text-primary">📋 Resumen de tu Pedido</h4>
-                    <div id="customer-cart-summary">
-                        <!-- Los items del carrito se cargan aquí -->
+                        </form>
                     </div>
-                    <div class="summary-item mt-3 pt-3 border-top">
-                        <span class="text"><strong>Total a Pagar</strong></span>
-                        <span class="price" id="customer-cart-total">$0</span>
+                    
+                    <!-- Resumen del Pedido en el formulario -->
+                    <div class="summary">
+                        <h4 class="text-center mb-3 text-primary">📋 Resumen de tu Pedido</h4>
+                        <div id="customer-cart-summary">
+                            <!-- Los items del carrito se cargan aquí -->
+                        </div>
+                        <div class="summary-item mt-3 pt-3 border-top">
+                            <span class="text"><strong>Total a Pagar</strong></span>
+                            <span class="price" id="customer-cart-total">$0</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
- <!-- En tu sección de pago, agrega esto: -->
-<section class="payment-form dark">
-    <div class="container container__payment">
-        <div class="block-heading text-center">
-            <h2>Medios de Pago</h2>
-            <p>MILLENIUM TERMOTANQUES</p>
-        </div>
-        
-        <!-- ✅ NUEVO: Wallet Brick (Billetera Mercado Pago) -->
-        <div class="wallet-section mb-4">
-            <h4 class="text-center mb-3 text-primary">👛 Pagar con Mercado Pago</h4>
-            <div id="walletBrick_container"></div>
-        </div>
+    </section>
 
-        <!-- ✅ Payment Brick (Otros métodos) -->
-        <div class="payment-section">
-            <h4 class="text-center mb-3 text-primary">💳 Otros métodos de pago</h4>
-            <div id="paymentBrick_container"></div>
-        </div>
+    <!-- Sección de Pago -->
+    <section class="payment-form dark">
+        <div class="container container__payment">
+            <div class="block-heading text-center">
+                <h2>Medios de Pago</h2>
+                <p>MILLENIUM TERMOTANQUES</p>
+            </div>
+            
+            <!-- ✅ NUEVO: Wallet Brick (Billetera Mercado Pago) -->
+            <div class="wallet-section mb-4">
+                <h4 class="text-center mb-3 text-primary">👛 Pagar con Mercado Pago</h4>
+                <div id="walletBrick_container"></div>
+            </div>
 
-        <a id="go-back" class="btn btn-outline-primary mt-3">
-            ← Volver al catálogo
-        </a>
-    </div>
-</section>
+            <!-- ✅ Payment Brick (Otros métodos) -->
+            <div class="payment-section">
+                <h4 class="text-center mb-3 text-primary">💳 Otros métodos de pago</h4>
+                <div id="paymentBrick_container"></div>
+            </div>
+
+            <a id="go-back" class="btn btn-outline-primary mt-3">
+                ← Volver al catálogo
+            </a>
+        </div>
+    </section>
 
     <!-- Sección de Resultado -->
     <section class="shopping-cart dark">
@@ -475,6 +479,33 @@ const products = [
 
 // Carrito de compras
 let cart = [];
+
+// ✅ FUNCIÓN: Asegurar que el campo amount existe
+function ensureAmountField() {
+    let amountInput = document.getElementById('amount');
+    
+    if (!amountInput) {
+        amountInput = document.createElement('input');
+        amountInput.id = 'amount';
+        amountInput.type = 'hidden';
+        amountInput.value = '0';
+        document.body.appendChild(amountInput);
+        console.log('✅ Campo amount creado dinámicamente');
+    }
+    
+    return amountInput;
+}
+
+// ✅ FUNCIÓN: Calcular total del carrito de forma confiable
+function calculateCartTotal() {
+    if (!cart || cart.length === 0) return 0;
+    
+    let total = 0;
+    cart.forEach(item => {
+        total += item.price * item.quantity;
+    });
+    return total;
+}
 
 // Función para renderizar productos
 function renderProducts() {
@@ -579,7 +610,9 @@ function updateCart(productId, quantity) {
 function updateCartDisplay() {
     const cartItemsContainer = document.getElementById('cart-items');
     const checkoutBtn = document.getElementById('checkout-btn');
-    const amountInput = document.getElementById('amount');
+    
+    // ✅ USAR ensureAmountField() en lugar de getElementById
+    const amountInput = ensureAmountField();
     
     cartItemsContainer.innerHTML = '';
     let total = 0;
@@ -588,7 +621,7 @@ function updateCartDisplay() {
         cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
         checkoutBtn.disabled = true;
         checkoutBtn.innerHTML = '💳 Ir a Pagar';
-        if (amountInput) amountInput.value = '0';
+        amountInput.value = '0';
     } else {
         cart.forEach(item => {
             const itemTotal = item.price * item.quantity;
@@ -609,44 +642,82 @@ function updateCartDisplay() {
         });
         checkoutBtn.disabled = false;
         checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
-        if (amountInput) amountInput.value = total;
+        amountInput.value = total.toFixed(2);
     }
     
     document.getElementById('cart-total').textContent = `$${total.toLocaleString()}`;
 }
 
-function updatePaymentSummary() {
-    const summaryContainer = document.getElementById('summary-items');
-    const amountInput = document.getElementById('amount');
-    let total = 0;
+// ✅ FUNCIÓN: Actualizar resumen del carrito en el formulario
+function updateCustomerCartSummary() {
+    const summaryContainer = document.getElementById('customer-cart-summary');
+    const totalElement = document.getElementById('customer-cart-total');
     
     summaryContainer.innerHTML = '';
+    let total = 0;
     
-    if (cart.length === 0) {
-        summaryContainer.innerHTML = '<p class="text-muted text-center">No hay productos en el carrito</p>';
-        if (amountInput) amountInput.value = '0';
-    } else {
-        cart.forEach(item => {
-            const itemTotal = item.price * item.quantity;
-            total += itemTotal;
-            
-            summaryContainer.innerHTML += `
-                <div class="item mb-3 p-2 border-bottom">
-                    <span class="price">$${itemTotal.toLocaleString()}</span>
-                    <p class="item-name mb-1">${item.name}</p>
-                    <small class="text-muted">Cantidad: ${item.quantity}</small>
-                </div>
-            `;
-        });
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
         
-        // ✅ Asegurar que el amount tenga el valor correcto
-        if (amountInput) {
-            amountInput.value = total;
-            console.log('Amount actualizado para pago:', amountInput.value);
-        }
-    }
+        summaryContainer.innerHTML += `
+            <div class="cart-item p-2">
+                <div class="d-flex justify-content-between">
+                    <span>${item.name} x${item.quantity}</span>
+                    <span class="price">$${itemTotal.toLocaleString()}</span>
+                </div>
+            </div>
+        `;
+    });
     
-    document.getElementById('summary-total').textContent = `$${total.toLocaleString()}`;
+    totalElement.textContent = `$${total.toLocaleString()}`;
+}
+
+// ✅ FUNCIÓN: Mostrar formulario del comprador
+function showCustomerForm() {
+    document.querySelector('.container__cart').style.display = 'none';
+    document.querySelector('#customer-form-section').style.display = 'block';
+    document.querySelector('.container__payment').style.display = 'none';
+    
+    updateCustomerCartSummary();
+}
+
+// ✅ FUNCIÓN: Validar email
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+// ✅ FUNCIÓN: Saltar formulario (opcional)
+function skipCustomerInfo() {
+    customerData = {
+        firstName: 'Cliente',
+        lastName: 'Millenium',
+        email: 'cliente@millenium.com',
+        dniType: 'DNI',
+        dniNumber: '',
+        phone: ''
+    };
+    
+    goToPayment();
+}
+
+// ✅ FUNCIÓN: Ir a métodos de pago
+function goToPayment() {
+    document.querySelector('.container__cart').style.display = 'none';
+    document.querySelector('#customer-form-section').style.display = 'none';
+    document.querySelector('.container__payment').style.display = 'block';
+    
+    // Llamar a la función del archivo index.js
+    if (typeof initializeMercadoPagoBricks === 'function') {
+        initializeMercadoPagoBricks();
+    }
+}
+
+// ✅ FUNCIÓN PARA VOLVER A PAGOS.HTML
+function goBackToPayments() {
+    console.log('🔄 Volviendo a pagos.html');
+    window.location.href = 'pagos.html';
 }
 
 // Inicializar la página
@@ -654,7 +725,63 @@ document.addEventListener('DOMContentLoaded', function() {
     renderProducts();
     updateCartDisplay();
     
-    // ✅ ELIMINADOS los event listeners duplicados - ahora están en index.js
+    // ✅ Event listener para el botón de saltar formulario
+    const skipFormBtn = document.getElementById('skip-customer-form');
+    if (skipFormBtn) {
+        skipFormBtn.addEventListener('click', skipCustomerInfo);
+    }
+    
+    // ✅ Event listener para el botón de checkout
+    const checkoutBtn = document.getElementById('checkout-btn');
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', function() {
+            const cartTotal = calculateCartTotal();
+            const hasItemsInCart = cart && cart.length > 0;
+            
+            if (!hasItemsInCart || cartTotal <= 0) {
+                alert('❌ Error: El carrito está vacío o el monto es inválido.');
+                return;
+            }
+            
+            showCustomerForm();
+        });
+    }
+    
+    // ✅ MANEJAR FORMULARIO DEL COMPRADOR
+    const customerForm = document.getElementById('customer-info-form');
+    if (customerForm) {
+        customerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Guardar datos del cliente
+            const customerData = {
+                firstName: document.getElementById('customer-first-name').value.trim(),
+                lastName: document.getElementById('customer-last-name').value.trim(),
+                email: document.getElementById('customer-email').value.trim(),
+                dniType: document.getElementById('customer-dni-type').value,
+                dniNumber: document.getElementById('customer-dni-number').value.trim(),
+                phone: document.getElementById('customer-phone').value.trim()
+            };
+            
+            // Validar campos obligatorios
+            if (!customerData.firstName || !customerData.lastName || !customerData.email) {
+                alert('❌ Por favor completa los campos obligatorios (*)');
+                return;
+            }
+            
+            // Validar email
+            if (!isValidEmail(customerData.email)) {
+                alert('❌ Por favor ingresa un email válido');
+                return;
+            }
+            
+            // Guardar en variable global para usar en el pago
+            window.customerData = customerData;
+            
+            // Ir a la sección de pago
+            goToPayment();
+        });
+    }
 });
 </script>
 </body>
