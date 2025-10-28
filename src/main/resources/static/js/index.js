@@ -142,7 +142,7 @@ async function createMercadoPagoPreference(amount) {
     }
 }
 
-// ✅ CORREGIDO: Inicializar ambos Bricks
+// ✅ CORREGIDO: Inicializar ambos Bricks - SOLO SIN PREFERENCIA
 async function initializePaymentBricks() {
     const total = calculateCartTotal();
     const userEmail = customerData.email || "cliente@millenium.com";
@@ -151,22 +151,23 @@ async function initializePaymentBricks() {
     console.log('📧 Email del cliente:', userEmail);
 
     try {
-        // ✅ INTENTAR crear preferencia primero
+        // ✅ INTENTAR crear preferencia para Wallet Brick
         const preferenceId = await createMercadoPagoPreference(total);
         
         if (preferenceId) {
-            // ✅ USAR PREFERENCIA para ambos Bricks
+            // ✅ Wallet Brick CON preferencia
             await initializeWalletBrickWithPreference(preferenceId);
-            await initializePaymentBrickWithPreference(preferenceId);
+            // ✅ Payment Brick SIN preferencia (con amount)
+            await initializePaymentBrickWithoutPreference();
         } else {
             throw new Error('No se pudo crear la preferencia');
         }
         
     } catch (error) {
-        console.error('❌ Error con preferencia, usando modo sin preferencia:', error);
+        console.error('❌ Error con preferencia, inicializando ambos sin preferencia:', error);
         
-        // ✅ FALLBACK: Inicializar sin preferencia
-        await initializeBricksWithoutPreference();
+        // ✅ FALLBACK: Inicializar ambos sin preferencia
+        await initializeBothBricksWithoutPreference();
     }
 }
 
@@ -196,28 +197,45 @@ async function initializeWalletBrickWithPreference(preferenceId) {
         
     } catch (error) {
         console.error('❌ Error creando Wallet Brick con preferencia:', error);
-        throw error;
+        // Mostrar mensaje de fallback
+        const walletContainer = document.getElementById('walletBrick_container');
+        if (walletContainer) {
+            walletContainer.innerHTML = `
+                <div style="background: #2d2d2d; color: #d4af37; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #444;">
+                    <h5>👛 Billetera No Disponible</h5>
+                    <p>Utiliza el formulario de abajo para pagar con tarjetas, efectivo u otros métodos.</p>
+                </div>
+            `;
+        }
     }
 }
 
-// ✅ FUNCIÓN: Inicializar Payment Brick CON preferencia
-async function initializePaymentBrickWithPreference(preferenceId) {
+// ✅ CORREGIDO: Inicializar Payment Brick SIN preferencia (SIEMPRE)
+async function initializePaymentBrickWithoutPreference() {
     try {
+        const total = calculateCartTotal();
+        const userEmail = customerData.email || "cliente@millenium.com";
+        
         const paymentContainer = document.getElementById('paymentBrick_container');
         if (paymentContainer) {
             paymentContainer.innerHTML = '';
         }
 
-        console.log('💳 Inicializando Payment Brick con preferencia:', preferenceId);
+        console.log('💳 Inicializando Payment Brick SIN preferencia, monto:', total);
 
         const settings = {
             initialization: {
-                preferenceId: preferenceId,
+                // ✅ OBLIGATORIO: amount siempre
+                amount: total,
+                payer: {
+                    email: userEmail,
+                }
             },
             callbacks: {
                 onReady: () => {
-                    console.log('✅ Payment Brick ready con preferencia');
+                    console.log('✅ Payment Brick ready');
                 },
+                // ✅ OBLIGATORIO: onSubmit siempre
                 onSubmit: (formData) => {
                     console.log('🔄 Payment Brick onSubmit:', formData);
                     handlePaymentSubmission(formData, 'payment');
@@ -225,8 +243,26 @@ async function initializePaymentBrickWithPreference(preferenceId) {
                 onError: (error) => {
                     console.error('❌ Payment Brick error:', error);
                 }
+            },
+            customization: {
+                visual: {
+                    style: {
+                        theme: 'dark',
+                        customVariables: {
+                            formBackgroundColor: '#1d2431',
+                            baseColor: 'aquamarine',
+                            outlinePrimaryColor: 'aquamarine',
+                            buttonTextColor: '#1d2431'
+                        }
+                    }
+                }
             }
         };
+
+        // ✅ DESMONTAR brick anterior si existe
+        if (window.paymentBrickController) {
+            await window.paymentBrickController.unmount();
+        }
 
         window.paymentBrickController = await bricksBuilder.create(
             "payment",
@@ -234,18 +270,20 @@ async function initializePaymentBrickWithPreference(preferenceId) {
             settings
         );
         
+        console.log('✅ Payment Brick creado exitosamente');
+        
     } catch (error) {
-        console.error('❌ Error creando Payment Brick con preferencia:', error);
-        throw error;
+        console.error('❌ Error crítico creando Payment Brick:', error);
+        alert('Error al cargar el formulario de pago. Por favor, recarga la página.');
     }
 }
 
-// ✅ CORREGIDO: Inicializar Bricks SIN preferencia (FALLBACK)
-async function initializeBricksWithoutPreference() {
+// ✅ FUNCIÓN: Inicializar ambos Bricks SIN preferencia
+async function initializeBothBricksWithoutPreference() {
     const total = calculateCartTotal();
     const userEmail = customerData.email || "cliente@millenium.com";
     
-    console.log('🔄 Inicializando Bricks SIN preferencia (fallback)');
+    console.log('🔄 Inicializando ambos Bricks SIN preferencia');
 
     // ❌ Wallet Brick NO funciona sin preferencia - mostrar mensaje
     const walletContainer = document.getElementById('walletBrick_container');
@@ -259,57 +297,8 @@ async function initializeBricksWithoutPreference() {
         `;
     }
 
-    // ✅ Payment Brick SÍ funciona sin preferencia (con amount + onSubmit)
-    try {
-        const paymentContainer = document.getElementById('paymentBrick_container');
-        if (paymentContainer) {
-            paymentContainer.innerHTML = '';
-        }
-
-        console.log('💳 Inicializando Payment Brick SIN preferencia, monto:', total);
-
-        const settings = {
-            initialization: {
-                // ✅ OBLIGATORIO: amount cuando no hay preferenceId
-                amount: total,
-                payer: {
-                    email: userEmail,
-                }
-            },
-            callbacks: {
-                onReady: () => {
-                    console.log('✅ Payment Brick ready (sin preferencia)');
-                },
-                // ✅ OBLIGATORIO: onSubmit cuando no hay preferenceId
-                onSubmit: (formData) => {
-                    console.log('🔄 Payment Brick onSubmit:', formData);
-                    handlePaymentSubmission(formData, 'payment');
-                },
-                onError: (error) => {
-                    console.error('❌ Payment Brick error:', error);
-                }
-            },
-            customization: {
-                visual: {
-                    style: {
-                        theme: 'dark'
-                    }
-                }
-            }
-        };
-
-        window.paymentBrickController = await bricksBuilder.create(
-            "payment",
-            "paymentBrick_container",
-            settings
-        );
-        
-        console.log('✅ Payment Brick creado exitosamente (sin preferencia)');
-        
-    } catch (error) {
-        console.error('❌ Error crítico creando Payment Brick:', error);
-        alert('Error al cargar el formulario de pago. Por favor, recarga la página.');
-    }
+    // ✅ Payment Brick SIN preferencia
+    await initializePaymentBrickWithoutPreference();
 }
 
 // ✅ FUNCIÓN: Status Screen Brick
@@ -321,6 +310,11 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
         const statusContainer = document.getElementById('statusScreenBrick_container');
         if (statusContainer) {
             statusContainer.innerHTML = '';
+        }
+
+        // ✅ DESMONTAR brick anterior si existe
+        if (window.statusScreenBrickController) {
+            await window.statusScreenBrickController.unmount();
         }
 
         window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
@@ -419,7 +413,7 @@ function goBackToPayments() {
     window.location.href = 'pagos.html';
 }
 
-// ✅ FUNCIONES DEL CARRITO
+// ✅ FUNCIONES DEL CARRITO (se mantienen igual)
 function addToCart(productId) {
     const quantityInput = document.getElementById(`quantity-${productId}`);
     const quantity = parseInt(quantityInput.value);
