@@ -216,10 +216,10 @@ function skipCustomerInfo() {
 
 // CORREGIDO: Ir a métodos de pago
 function goToPayment() {
-    console.log('🚀 Intentando ir a pagos...');
+    console.log(' Intentando ir a pagos...');
     
     if (bricksInitialized) {
-        console.log('ℹ️ Bricks ya inicializados, solo mostrando sección');
+        console.log('Bricks ya inicializados, solo mostrando sección');
         document.querySelector('.container__cart').style.display = 'none';
         document.querySelector('#customer-form-section').style.display = 'none';
         document.querySelector('.container__payment').style.display = 'block';
@@ -236,7 +236,7 @@ function goToPayment() {
 //  CORREGIDO: Crear preferencia para Mercado Pago
 async function createMercadoPagoPreference(amount) {
     try {
-        console.log('🔄 Creando preferencia en Mercado Pago, monto:', amount);
+        console.log('Creando preferencia en Mercado Pago, monto:', amount);
         
         const response = await fetch('/process_payment/create_wallet_preference', {
             method: "POST",
@@ -251,7 +251,7 @@ async function createMercadoPagoPreference(amount) {
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ Error creando preferencia:', errorText);
+            console.error(' Error creando preferencia:', errorText);
             throw new Error('Error del servidor al crear preferencia');
         }
         
@@ -261,11 +261,11 @@ async function createMercadoPagoPreference(amount) {
             throw new Error(result.error);
         }
         
-        console.log('✅ Preferencia creada:', result.id);
+        console.log(' Preferencia creada:', result.id);
         return result.id;
         
     } catch (error) {
-        console.error('❌ Error creando preferencia:', error);
+        console.error(' Error creando preferencia:', error);
         return null;
     }
 }
@@ -273,7 +273,7 @@ async function createMercadoPagoPreference(amount) {
 //  CORREGIDO COMPLETAMENTE: Inicializar ambos Bricks
 async function initializePaymentBricks() {
     if (bricksInitialized) {
-        console.log('ℹ️ Bricks ya inicializados, omitiendo...');
+        console.log('Bricks ya inicializados, omitiendo...');
         return;
     }
     
@@ -282,7 +282,7 @@ async function initializePaymentBricks() {
     const total = calculateCartTotal();
     const userEmail = customerData.email || "cliente@millenium.com";
     
-    console.log('💰 Inicializando Bricks - Monto:', total, 'Email:', userEmail);
+    console.log(' Inicializando Bricks - Monto:', total, 'Email:', userEmail);
 
     try {
         //  WALLET BRICK CON PREFERENCIA
@@ -363,7 +363,7 @@ async function initializePaymentBrick(total, userEmail) {
                 },
                 onSubmit: (formData) => {
                     console.log('Payment Brick onSubmit - Datos recibidos:', formData);
-                    // ✅ VERIFICACIÓN INMEDIATA DE LOS DATOS
+                    //  VERIFICACIÓN INMEDIATA DE LOS DATOS
                     if (!formData || typeof formData !== 'object') {
                         console.error(' formData es inválido:', formData);
                         alert('Error: Datos de pago inválidos');
