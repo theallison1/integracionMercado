@@ -2,9 +2,17 @@
 FROM maven:3.8.4-openjdk-11 AS builder
 WORKDIR /app
 COPY pom.xml .
+
+# ✅ FORZAR DESCARGAR DEPENDENCIAS SIN CACHE
+RUN mvn dependency:purge-local-repository -DactTransitively=false -DreResolve=false
+RUN mvn dependency:resolve
+
 # Copia el código fuente
 COPY src ./src
-RUN mvn clean package -DskipTests
+
+# ✅ LIMPIAR Y COMPILAR CON LOGS DETALLADOS
+RUN mvn clean compile -X -DskipTests
+RUN mvn package -DskipTests
 
 # Fase de ejecución
 FROM openjdk:11-jre-slim
