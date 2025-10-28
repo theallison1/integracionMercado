@@ -5,6 +5,8 @@ import com.mercadopago.client.payment.PaymentCreateRequest;
 
 import com.mercadopago.client.payment.PaymentItemRequest;
 import com.mercadopago.client.payment.PaymentPayerRequest;
+import com.mercadopago.client.payment.PaymentPayerRequest;
+
 import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.sample.dto.DetailedPaymentRequestDTO;
 import com.mercadopago.sample.dto.PaymentItemDTO;
