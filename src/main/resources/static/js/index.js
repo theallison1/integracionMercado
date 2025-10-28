@@ -18,13 +18,12 @@ let customerData = {
     phone: ''
 };
 
-// ✅ FUNCIÓN MEJORADA: Validar formulario del comprador - NO ROMPE EL FLUJO
+// ✅ FUNCIÓN MEJORADA: Validar formulario del comprador
 function validateCustomerForm() {
     const firstName = document.getElementById('customer-first-name').value.trim();
     const lastName = document.getElementById('customer-last-name').value.trim();
     const email = document.getElementById('customer-email').value.trim();
     
-    // ✅ Validaciones que NO detienen el proceso
     const errors = [];
     
     if (!firstName) {
@@ -51,7 +50,6 @@ function validateCustomerForm() {
         highlightField('customer-email', false);
     }
     
-    // ✅ Mostrar errores de forma amigable
     if (errors.length > 0) {
         showValidationErrors(errors);
         return false;
@@ -74,9 +72,8 @@ function highlightField(fieldId, hasError) {
     }
 }
 
-// ✅ FUNCIÓN: Mostrar errores de validación de forma elegante
+// ✅ FUNCIÓN: Mostrar errores de validación
 function showValidationErrors(errors) {
-    // Crear o actualizar contenedor de errores
     let errorContainer = document.getElementById('validation-errors');
     if (!errorContainer) {
         errorContainer = document.createElement('div');
@@ -94,7 +91,6 @@ function showValidationErrors(errors) {
         form.parentNode.insertBefore(errorContainer, form);
     }
     
-    // Construir mensaje de errores
     errorContainer.innerHTML = `
         <div style="display: flex; align-items: center; margin-bottom: 10px;">
             <span style="background: #c53030; color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px;">!</span>
@@ -105,7 +101,6 @@ function showValidationErrors(errors) {
         </ul>
     `;
     
-    // Auto-eliminar después de 5 segundos
     setTimeout(() => {
         if (errorContainer) {
             errorContainer.style.opacity = '0';
@@ -119,7 +114,7 @@ function showValidationErrors(errors) {
     }, 5000);
 }
 
-// ✅ FUNCIÓN MEJORADA: Validar email
+// ✅ FUNCIÓN: Validar email
 function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -151,24 +146,8 @@ function calculateCartTotal() {
     return total;
 }
 
-// ✅ FUNCIÓN PARA ACTUALIZAR EL MONTO VISIBLE
-function updateSummaryTotal() {
-    const amountInput = ensureAmountField();
-    const summaryTotal = document.getElementById('summary-total');
-    
-    if (summaryTotal) {
-        const amount = parseFloat(amountInput.value);
-        if (!isNaN(amount) && amount > 0) {
-            summaryTotal.textContent = '$' + amount.toLocaleString('es-AR');
-        } else {
-            summaryTotal.textContent = '$0';
-        }
-    }
-}
-
 // ✅ FUNCIÓN: Mostrar formulario del comprador
 function showCustomerForm() {
-    // Limpiar errores previos
     const existingErrors = document.getElementById('validation-errors');
     if (existingErrors) {
         existingErrors.remove();
@@ -206,9 +185,8 @@ function updateCustomerCartSummary() {
     totalElement.textContent = `$${total.toLocaleString()}`;
 }
 
-// ✅ FUNCIÓN MEJORADA: Saltar formulario (opcional)
+// ✅ FUNCIÓN: Saltar formulario (opcional)
 function skipCustomerInfo() {
-    // Usar valores por defecto pero permitir edición
     customerData = {
         firstName: document.getElementById('customer-first-name').value.trim() || 'Cliente',
         lastName: document.getElementById('customer-last-name').value.trim() || 'Millenium',
@@ -221,11 +199,10 @@ function skipCustomerInfo() {
     goToPayment();
 }
 
-// ✅ CORREGIDO: Ir a métodos de pago - CON VALIDACIÓN MEJORADA
+// ✅ CORREGIDO: Ir a métodos de pago
 function goToPayment() {
     console.log('🚀 Intentando ir a pagos...');
     
-    // ✅ PREVENIR INICIALIZACIÓN DUPLICADA
     if (bricksInitialized) {
         console.log('ℹ️ Bricks ya inicializados, solo mostrando sección');
         document.querySelector('.container__cart').style.display = 'none';
@@ -258,9 +235,7 @@ async function createMercadoPagoPreference(amount) {
         });
         
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Error creando preferencia:', errorText);
-            throw new Error('Error del servidor al crear preferencia');
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
         
         const result = await response.json();
@@ -278,9 +253,8 @@ async function createMercadoPagoPreference(amount) {
     }
 }
 
-// ✅ CORREGIDO: Inicializar ambos Bricks - UNA SOLA VEZ
+// ✅ CORREGIDO: Inicializar ambos Bricks
 async function initializePaymentBricks() {
-    // ✅ PREVENIR EJECUCIÓN DUPLICADA
     if (bricksInitialized) {
         console.log('ℹ️ Bricks ya inicializados, omitiendo...');
         return;
@@ -293,11 +267,9 @@ async function initializePaymentBricks() {
     
     console.log('💰 Inicializando Bricks - Monto:', total, 'Email:', userEmail);
 
-    // ✅ LIMPIAR CONTENEDORES PRIMERO
     await cleanBrickContainers();
 
     try {
-        // ✅ WALLET BRICK CON PREFERENCIA
         const preferenceId = await createMercadoPagoPreference(total);
         
         if (preferenceId) {
@@ -308,7 +280,6 @@ async function initializePaymentBricks() {
         console.log('ℹ️ Wallet Brick no disponible');
     }
 
-    // ✅ PAYMENT BRICK (SIEMPRE)
     await initializePaymentBrick(total, userEmail);
 }
 
@@ -321,7 +292,6 @@ async function cleanBrickContainers() {
         if (walletContainer) walletContainer.innerHTML = '';
         if (paymentContainer) paymentContainer.innerHTML = '';
 
-        // Limpiar controllers existentes
         if (window.walletBrickController) {
             try { await window.walletBrickController.unmount(); } catch(e) {}
         }
@@ -329,7 +299,6 @@ async function cleanBrickContainers() {
             try { await window.paymentBrickController.unmount(); } catch(e) {}
         }
         
-        console.log('✅ Contenedores limpiados exitosamente');
     } catch (error) {
         console.error('❌ Error limpiando contenedores:', error);
     }
@@ -353,11 +322,10 @@ async function initializeWalletBrickWithPreference(preferenceId) {
                 },
                 onError: (error) => {
                     console.error("❌ Wallet Brick error:", error);
-                    // Mostrar mensaje de error en el contenedor
                     walletContainer.innerHTML = `
                         <div style="background: #2d2d2d; color: #d4af37; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #444;">
                             <h5>👛 Billetera No Disponible</h5>
-                            <p>Utiliza el formulario de abajo para pagar con tarjetas, efectivo u otros métodos.</p>
+                            <p>Utiliza el formulario de abajo para pagar.</p>
                         </div>
                     `;
                 }
@@ -371,14 +339,14 @@ async function initializeWalletBrickWithPreference(preferenceId) {
             walletContainer.innerHTML = `
                 <div style="background: #2d2d2d; color: #d4af37; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #444;">
                     <h5>👛 Billetera No Disponible</h5>
-                    <p>Utiliza el formulario de abajo para pagar con tarjetas, efectivo u otros métodos.</p>
+                    <p>Utiliza el formulario de abajo para pagar.</p>
                 </div>
             `;
         }
     }
 }
 
-// ✅ CORREGIDO: Inicializar Payment Brick
+// ✅ CORREGIDO: Inicializar Payment Brick - CON MEJOR MANEJO DE DATOS
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
@@ -397,13 +365,12 @@ async function initializePaymentBrick(total, userEmail) {
                 onReady: () => {
                     console.log('✅ Payment Brick ready');
                 },
-                onSubmit: (formData) => {
-                    console.log('🔄 Payment Brick onSubmit:', formData);
-                    handlePaymentSubmission(formData, 'payment');
+                onSubmit: async (formData) => {
+                    console.log('🔄 Payment Brick onSubmit - Datos completos:', formData);
+                    await handlePaymentSubmission(formData, 'payment');
                 },
                 onError: (error) => {
                     console.error('❌ Payment Brick error:', error);
-                    // Mostrar mensaje de error
                     paymentContainer.innerHTML = `
                         <div style="background: #2d2d2d; color: #dc3545; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #dc3545;">
                             <h5>❌ Error en formulario de pago</h5>
@@ -451,12 +418,8 @@ async function initializePaymentBrick(total, userEmail) {
                 <div style="background: #2d2d2d; color: #dc3545; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #dc3545;">
                     <h5>❌ Error crítico</h5>
                     <p>No se pudo cargar el formulario de pago.</p>
-                    <p>Error: ${error.message}</p>
                     <button onclick="location.reload()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px;">
                         Recargar página
-                    </button>
-                    <button onclick="goBackToPayments()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px;">
-                        Volver a pagos
                     </button>
                 </div>
             `;
@@ -475,13 +438,8 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
             statusContainer.innerHTML = '';
         }
 
-        // Desmontar status screen anterior si existe
         if (window.statusScreenBrickController) {
-            try {
-                await window.statusScreenBrickController.unmount();
-            } catch (e) {
-                console.log('ℹ️ No se pudo desmontar Status Screen anterior');
-            }
+            try { await window.statusScreenBrickController.unmount(); } catch(e) {}
         }
 
         window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
@@ -502,13 +460,25 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     }
 };
 
-// ✅ CORREGIDO: Manejo unificado de pagos
+// ✅ CORREGIDO COMPLETAMENTE: Manejo de pagos - CON MEJOR VALIDACIÓN
 async function handlePaymentSubmission(paymentData, brickType) {
     console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
     
-    if (!paymentData || !paymentData.token) {
-        console.error('❌ Error: paymentData es inválido o falta token');
-        alert('Error: Datos de pago incompletos. Por favor, intenta nuevamente.');
+    // ✅ VALIDACIÓN MEJORADA DEL TOKEN
+    if (!paymentData) {
+        console.error('❌ Error: paymentData es null o undefined');
+        showTemporaryMessage('Error: No se recibieron datos de pago. Intenta nuevamente.', 'error');
+        return;
+    }
+
+    // ✅ VERIFICAR DIFERENTES FORMATOS DE TOKEN
+    const token = paymentData.token || 
+                  paymentData.payment_token || 
+                  paymentData.paymentToken;
+    
+    if (!token) {
+        console.error('❌ Error: No se encontró token en paymentData:', paymentData);
+        showTemporaryMessage('Error: No se pudo generar el token de pago. Verifica los datos e intenta nuevamente.', 'error');
         return;
     }
 
@@ -516,15 +486,15 @@ async function handlePaymentSubmission(paymentData, brickType) {
         const total = calculateCartTotal();
         const userEmail = customerData.email || "cliente@millenium.com";
 
+        // ✅ ESTRUCTURA DE DATOS CORREGIDA
         const requestData = {
-            token: paymentData.token,
+            token: token,
             paymentMethodId: paymentData.payment_method_id || paymentData.paymentMethodId,
             installments: parseInt(paymentData.installments) || 1,
             issuerId: paymentData.issuer_id || null,
             paymentType: paymentData.payment_type || 'credit_card',
-            amount: total,
-            brickType: brickType,
-            description: `Pago de ${cart.length} productos Millenium`,
+            transactionAmount: total, // ✅ Cambiado de 'amount' a 'transactionAmount'
+            description: `Compra de ${cart.length} productos Millenium`,
             payer: {
                 email: userEmail,
                 firstName: customerData.firstName || "Cliente",
@@ -536,8 +506,9 @@ async function handlePaymentSubmission(paymentData, brickType) {
             }
         };
 
-        console.log('📤 Enviando datos de pago:', requestData);
+        console.log('📤 Enviando datos de pago a /process_payment/process_bricks_payment:', requestData);
 
+        // ✅ MANEJO MEJORADO DE LA RESPUESTA
         const response = await fetch('/process_payment/process_bricks_payment', {
             method: "POST",
             headers: {
@@ -549,9 +520,18 @@ async function handlePaymentSubmission(paymentData, brickType) {
         console.log(`📥 Respuesta del servidor (status: ${response.status})`);
 
         if (!response.ok) {
-            const errorData = await response.json();
-            console.error('❌ Error en respuesta:', errorData);
-            throw new Error(errorData.error_message || `Error del servidor: ${response.status}`);
+            // ✅ INTENTAR OBTENER MÁS INFORMACIÓN DEL ERROR
+            let errorMessage = `Error del servidor: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error_message || errorData.message || errorMessage;
+            } catch (e) {
+                // Si no se puede parsear JSON, usar texto plano
+                const errorText = await response.text();
+                errorMessage = errorText || errorMessage;
+            }
+            
+            throw new Error(errorMessage);
         }
 
         const result = await response.json();
@@ -559,6 +539,11 @@ async function handlePaymentSubmission(paymentData, brickType) {
 
         if (result.error_message) {
             throw new Error(result.error_message);
+        }
+
+        // ✅ VERIFICAR QUE EL PAGO TENGA ID
+        if (!result.id) {
+            throw new Error('El pago no tiene ID. Contacta al soporte.');
         }
 
         await renderStatusScreenBrick(bricksBuilder, result);
@@ -570,7 +555,26 @@ async function handlePaymentSubmission(paymentData, brickType) {
 
     } catch (error) {
         console.error(`❌ Error procesando pago:`, error);
-        alert(`Error al procesar el pago: ${error.message}`);
+        
+        // ✅ MENSAJE DE ERROR MÁS INFORMATIVO
+        let userMessage = error.message;
+        if (error.message.includes('404')) {
+            userMessage = 'Error: El servidor de pagos no está disponible. Contacta al soporte.';
+        } else if (error.message.includes('token')) {
+            userMessage = 'Error: Problema con la autorización del pago. Verifica los datos e intenta nuevamente.';
+        }
+        
+        showTemporaryMessage(userMessage, 'error');
+        
+        // ✅ REHABILITAR EL BRICK PARA REINTENTAR
+        if (window.paymentBrickController) {
+            try {
+                await window.paymentBrickController.unmount();
+                setTimeout(() => initializePaymentBrick(calculateCartTotal(), customerData.email || "cliente@millenium.com"), 1000);
+            } catch (e) {
+                console.log('No se pudo reinicializar el brick:', e);
+            }
+        }
     }
 }
 
@@ -586,7 +590,7 @@ function resetBricksState() {
     console.log('🔄 Estado de Bricks reseteado');
 }
 
-// ✅ FUNCIONES DEL CARRITO
+// ✅ FUNCIONES DEL CARRITO (se mantienen igual)
 function addToCart(productId) {
     const quantityInput = document.getElementById(`quantity-${productId}`);
     const quantity = parseInt(quantityInput.value);
@@ -676,107 +680,9 @@ function updateCartDisplay() {
     if (cartTotalElement) {
         cartTotalElement.textContent = `$${total.toLocaleString()}`;
     }
-    
-    updateSummaryTotal();
 }
 
-// ✅ EVENT LISTENERS MEJORADOS - CON VALIDACIONES QUE NO ROMPEN
-$(document).ready(function() {
-    ensureAmountField();
-    updateSummaryTotal();
-    
-    // ✅ MANEJAR FORMULARIO DEL COMPRADOR - CON VALIDACIÓN MEJORADA
-    const customerForm = document.getElementById('customer-info-form');
-    if (customerForm) {
-        customerForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // ✅ VALIDACIÓN QUE NO DETIENE EL FLUJO
-            if (!validateCustomerForm()) {
-                return; // Solo detiene el envío, no rompe la página
-            }
-            
-            // Guardar datos del cliente
-            customerData = {
-                firstName: document.getElementById('customer-first-name').value.trim(),
-                lastName: document.getElementById('customer-last-name').value.trim(),
-                email: document.getElementById('customer-email').value.trim(),
-                dniType: document.getElementById('customer-dni-type').value,
-                dniNumber: document.getElementById('customer-dni-number').value.trim(),
-                phone: document.getElementById('customer-phone').value.trim()
-            };
-            
-            // Ir a la sección de pago
-            goToPayment();
-        });
-    }
-    
-    // ✅ BOTÓN "Ir a Pagar" - CON VALIDACIÓN MEJORADA
-    const checkoutBtn = $('#checkout-btn');
-    if (checkoutBtn.length) {
-        checkoutBtn.on('click', function() {
-            const cartTotal = calculateCartTotal();
-            const hasItemsInCart = cart && cart.length > 0;
-            
-            if (!hasItemsInCart || cartTotal <= 0) {
-                // ✅ MENSAJE AMIGABLE, NO ROMPE
-                showTemporaryMessage('❌ Error: El carrito está vacío o el monto es inválido.', 'error');
-                return;
-            }
-            
-            showCustomerForm();
-        });
-    }
-
-    // ✅ BOTÓN "Volver al catálogo" - CON RESET
-    const goBackBtn = $('#go-back');
-    if (goBackBtn.length) {
-        goBackBtn.on('click', function() {
-            $('.container__payment').fadeOut(500);
-            setTimeout(() => {
-                $('.container__cart').show(500).fadeIn();
-                resetBricksState();
-            }, 500);
-        });
-    }
-
-    // ✅ BOTÓN "Descargar Comprobante"
-    const downloadReceiptBtn = $('#download-receipt');
-    if (downloadReceiptBtn.length) {
-        downloadReceiptBtn.on('click', function() {
-            if (!paymentId) {
-                showTemporaryMessage('No hay un ID de pago disponible para descargar el comprobante.', 'warning');
-                return;
-            }
-            downloadReceipt(paymentId);
-        });
-    }
-
-    // ✅ BOTÓN "Volver a Pagos"
-    const backToPaymentsBtn = $('#back-to-payments');
-    if (backToPaymentsBtn.length) {
-        backToPaymentsBtn.on('click', function() {
-            goBackToPayments();
-        });
-    }
-
-    // ✅ BOTÓN "Saltar formulario"
-    const skipFormBtn = $('#skip-customer-form');
-    if (skipFormBtn.length) {
-        skipFormBtn.on('click', function() {
-            skipCustomerInfo();
-        });
-    }
-
-    // ✅ INICIALIZAR CARRITO AL CARGAR
-    if (typeof updateCartDisplay === 'function') {
-        updateCartDisplay();
-    }
-
-    console.log('✅ JavaScript cargado correctamente - Validaciones mejoradas');
-});
-
-// ✅ FUNCIÓN ADICIONAL: Mostrar mensajes temporales
+// ✅ FUNCIÓN: Mostrar mensajes temporales
 function showTemporaryMessage(message, type = 'info') {
     const messageDiv = document.createElement('div');
     const styles = {
@@ -800,13 +706,12 @@ function showTemporaryMessage(message, type = 'info') {
         background: ${style.background};
         color: ${style.color};
         border: ${style.border};
-        max-width: 300px;
+        max-width: 400px;
     `;
     
     messageDiv.textContent = message;
     document.body.appendChild(messageDiv);
     
-    // Auto-eliminar después de 4 segundos
     setTimeout(() => {
         messageDiv.style.opacity = '0';
         messageDiv.style.transition = 'opacity 0.5s ease';
@@ -815,5 +720,89 @@ function showTemporaryMessage(message, type = 'info') {
                 messageDiv.parentNode.removeChild(messageDiv);
             }
         }, 500);
-    }, 4000);
+    }, 5000);
 }
+
+// ✅ EVENT LISTENERS
+$(document).ready(function() {
+    ensureAmountField();
+    
+    const customerForm = document.getElementById('customer-info-form');
+    if (customerForm) {
+        customerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!validateCustomerForm()) {
+                return;
+            }
+            
+            customerData = {
+                firstName: document.getElementById('customer-first-name').value.trim(),
+                lastName: document.getElementById('customer-last-name').value.trim(),
+                email: document.getElementById('customer-email').value.trim(),
+                dniType: document.getElementById('customer-dni-type').value,
+                dniNumber: document.getElementById('customer-dni-number').value.trim(),
+                phone: document.getElementById('customer-phone').value.trim()
+            };
+            
+            goToPayment();
+        });
+    }
+    
+    const checkoutBtn = $('#checkout-btn');
+    if (checkoutBtn.length) {
+        checkoutBtn.on('click', function() {
+            const cartTotal = calculateCartTotal();
+            const hasItemsInCart = cart && cart.length > 0;
+            
+            if (!hasItemsInCart || cartTotal <= 0) {
+                showTemporaryMessage('❌ Error: El carrito está vacío o el monto es inválido.', 'error');
+                return;
+            }
+            
+            showCustomerForm();
+        });
+    }
+
+    const goBackBtn = $('#go-back');
+    if (goBackBtn.length) {
+        goBackBtn.on('click', function() {
+            $('.container__payment').fadeOut(500);
+            setTimeout(() => {
+                $('.container__cart').show(500).fadeIn();
+                resetBricksState();
+            }, 500);
+        });
+    }
+
+    const downloadReceiptBtn = $('#download-receipt');
+    if (downloadReceiptBtn.length) {
+        downloadReceiptBtn.on('click', function() {
+            if (!paymentId) {
+                showTemporaryMessage('No hay un ID de pago disponible para descargar el comprobante.', 'warning');
+                return;
+            }
+            downloadReceipt(paymentId);
+        });
+    }
+
+    const backToPaymentsBtn = $('#back-to-payments');
+    if (backToPaymentsBtn.length) {
+        backToPaymentsBtn.on('click', function() {
+            goBackToPayments();
+        });
+    }
+
+    const skipFormBtn = $('#skip-customer-form');
+    if (skipFormBtn.length) {
+        skipFormBtn.on('click', function() {
+            skipCustomerInfo();
+        });
+    }
+
+    if (typeof updateCartDisplay === 'function') {
+        updateCartDisplay();
+    }
+
+    console.log('✅ JavaScript cargado correctamente - Errores corregidos');
+});
