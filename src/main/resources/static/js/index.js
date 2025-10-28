@@ -346,7 +346,7 @@ async function initializeWalletBrickWithPreference(preferenceId) {
     }
 }
 
-// ✅ CORREGIDO: Inicializar Payment Brick - CON MEJOR MANEJO DE DATOS
+// ✅ CORREGIDO: Inicializar Payment Brick
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
@@ -460,18 +460,18 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     }
 };
 
-// ✅ CORREGIDO COMPLETAMENTE: Manejo de pagos - CON MEJOR VALIDACIÓN
+// ✅ CORREGIDO COMPLETAMENTE: Manejo de pagos - MANTENIENDO COMPATIBILIDAD
 async function handlePaymentSubmission(paymentData, brickType) {
     console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
     
-    // ✅ VALIDACIÓN MEJORADA DEL TOKEN
+    // ✅ VALIDACIÓN MEJORADA PERO COMPATIBLE
     if (!paymentData) {
         console.error('❌ Error: paymentData es null o undefined');
         showTemporaryMessage('Error: No se recibieron datos de pago. Intenta nuevamente.', 'error');
         return;
     }
 
-    // ✅ VERIFICAR DIFERENTES FORMATOS DE TOKEN
+    // ✅ VERIFICAR TOKEN EN DIFERENTES FORMATOS
     const token = paymentData.token || 
                   paymentData.payment_token || 
                   paymentData.paymentToken;
@@ -486,15 +486,16 @@ async function handlePaymentSubmission(paymentData, brickType) {
         const total = calculateCartTotal();
         const userEmail = customerData.email || "cliente@millenium.com";
 
-        // ✅ ESTRUCTURA DE DATOS CORREGIDA
+        // ✅ ESTRUCTURA COMPATIBLE CON EL BACKEND ACTUAL
         const requestData = {
             token: token,
             paymentMethodId: paymentData.payment_method_id || paymentData.paymentMethodId,
             installments: parseInt(paymentData.installments) || 1,
             issuerId: paymentData.issuer_id || null,
             paymentType: paymentData.payment_type || 'credit_card',
-            transactionAmount: total, // ✅ Cambiado de 'amount' a 'transactionAmount'
-            description: `Compra de ${cart.length} productos Millenium`,
+            amount: total, // ✅ MANTENIENDO 'amount' para compatibilidad
+            brickType: brickType,
+            description: `Pago de ${cart.length} productos Millenium`,
             payer: {
                 email: userEmail,
                 firstName: customerData.firstName || "Cliente",
@@ -506,9 +507,8 @@ async function handlePaymentSubmission(paymentData, brickType) {
             }
         };
 
-        console.log('📤 Enviando datos de pago a /process_payment/process_bricks_payment:', requestData);
+        console.log('📤 Enviando datos de pago:', requestData);
 
-        // ✅ MANEJO MEJORADO DE LA RESPUESTA
         const response = await fetch('/process_payment/process_bricks_payment', {
             method: "POST",
             headers: {
@@ -520,13 +520,11 @@ async function handlePaymentSubmission(paymentData, brickType) {
         console.log(`📥 Respuesta del servidor (status: ${response.status})`);
 
         if (!response.ok) {
-            // ✅ INTENTAR OBTENER MÁS INFORMACIÓN DEL ERROR
             let errorMessage = `Error del servidor: ${response.status}`;
             try {
                 const errorData = await response.json();
                 errorMessage = errorData.error_message || errorData.message || errorMessage;
             } catch (e) {
-                // Si no se puede parsear JSON, usar texto plano
                 const errorText = await response.text();
                 errorMessage = errorText || errorMessage;
             }
@@ -541,7 +539,6 @@ async function handlePaymentSubmission(paymentData, brickType) {
             throw new Error(result.error_message);
         }
 
-        // ✅ VERIFICAR QUE EL PAGO TENGA ID
         if (!result.id) {
             throw new Error('El pago no tiene ID. Contacta al soporte.');
         }
@@ -556,7 +553,6 @@ async function handlePaymentSubmission(paymentData, brickType) {
     } catch (error) {
         console.error(`❌ Error procesando pago:`, error);
         
-        // ✅ MENSAJE DE ERROR MÁS INFORMATIVO
         let userMessage = error.message;
         if (error.message.includes('404')) {
             userMessage = 'Error: El servidor de pagos no está disponible. Contacta al soporte.';
@@ -804,5 +800,5 @@ $(document).ready(function() {
         updateCartDisplay();
     }
 
-    console.log('✅ JavaScript cargado correctamente - Errores corregidos');
+    console.log('✅ JavaScript cargado correctamente - Compatibilidad garantizada');
 });
