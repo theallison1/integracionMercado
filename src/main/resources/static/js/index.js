@@ -42,21 +42,6 @@ function calculateCartTotal() {
     return total;
 }
 
-// ✅ FUNCIÓN PARA ACTUALIZAR EL MONTO VISIBLE
-function updateSummaryTotal() {
-    const amountInput = ensureAmountField();
-    const summaryTotal = document.getElementById('summary-total');
-    
-    if (summaryTotal) {
-        const amount = parseFloat(amountInput.value);
-        if (!isNaN(amount) && amount > 0) {
-            summaryTotal.textContent = '$' + amount.toLocaleString('es-AR');
-        } else {
-            summaryTotal.textContent = '$0';
-        }
-    }
-}
-
 // ✅ FUNCIÓN: Mostrar formulario del comprador
 function showCustomerForm() {
     document.querySelector('.container__cart').style.display = 'none';
@@ -117,10 +102,10 @@ function goToPayment() {
     document.querySelector('#customer-form-section').style.display = 'none';
     document.querySelector('.container__payment').style.display = 'block';
     
-    initializeMercadoPagoBricks();
+    initializePaymentBricks();
 }
 
-// ✅ CORREGIDO: Crear preferencia para ambos Bricks
+// ✅ CORREGIDO: Crear preferencia para Mercado Pago
 async function createMercadoPagoPreference(amount) {
     try {
         console.log('🔄 Creando preferencia en Mercado Pago, monto:', amount);
@@ -157,256 +142,182 @@ async function createMercadoPagoPreference(amount) {
     }
 }
 
-// ✅ CORREGIDO COMPLETAMENTE: Inicializar Mercado Pago con PREFERENCIA
-async function initializeMercadoPagoBricks() {
-    const mp = new MercadoPago(mercadoPagoPublicKey);
+// ✅ CORREGIDO: Inicializar ambos Bricks
+async function initializePaymentBricks() {
     const total = calculateCartTotal();
-    const bricksBuilder = mp.bricks();
+    const userEmail = customerData.email || "cliente@millenium.com";
     
     console.log('💰 Inicializando Bricks con monto:', total);
-    console.log('📧 Email del cliente:', customerData.email);
+    console.log('📧 Email del cliente:', userEmail);
 
     try {
-        // ✅ CREAR PREFERENCIA PARA AMBOS BRICKS
+        // ✅ INTENTAR crear preferencia primero
         const preferenceId = await createMercadoPagoPreference(total);
         
-        if (!preferenceId) {
+        if (preferenceId) {
+            // ✅ USAR PREFERENCIA para ambos Bricks
+            await initializeWalletBrickWithPreference(preferenceId);
+            await initializePaymentBrickWithPreference(preferenceId);
+        } else {
             throw new Error('No se pudo crear la preferencia');
         }
-
-        // ✅ CORREGIDO: Wallet Brick CON PREFERENCIA
-        const renderWalletBrick = async (bricksBuilder) => {
-            try {
-                const settings = {
-                    initialization: {
-                        preferenceId: preferenceId, // ✅ USAR PREFERENCIA
-                    },
-                    callbacks: {
-                        onReady: () => {
-                            console.log('✅ Wallet Brick ready con preferencia:', preferenceId);
-                        },
-                        onError: (error) => {
-                            console.error('❌ Wallet Brick error:', error);
-                        }
-                    }
-                };
-                
-                // Limpiar contenedor primero
-                const walletContainer = document.getElementById('walletBrick_container');
-                if (walletContainer) {
-                    walletContainer.innerHTML = '';
-                }
-                
-                window.walletBrickController = await bricksBuilder.create('wallet', 'walletBrick_container', settings);
-                console.log('✅ Wallet Brick creado exitosamente con preferencia');
-            } catch (error) {
-                console.error('❌ Error creando Wallet Brick:', error);
-            }
-        };
-        
-        // ✅ CORREGIDO: Payment Brick CON PREFERENCIA Y onSubmit
-        const renderPaymentBrick = async (bricksBuilder) => {
-            try {
-                const settings = {
-                    initialization: {
-                        preferenceId: preferenceId, // ✅ USAR PREFERENCIA
-                    },
-                    customization: {
-                        visual: {
-                            style: {
-                                theme: 'dark'
-                            }
-                        }
-                    },
-                    callbacks: {
-                        onReady: () => {
-                            console.log('✅ Payment Brick ready con preferencia:', preferenceId);
-                        },
-                        // ✅ OPCIONAL: onSubmit para manejo personalizado
-                        onSubmit: (formData) => {
-                            console.log('🔄 Payment Brick onSubmit:', formData);
-                            handlePaymentSubmission(formData, 'payment');
-                        },
-                        onError: (error) => {
-                            console.error('❌ Payment Brick error:', error);
-                        }
-                    }
-                };
-                
-                // Limpiar contenedor primero
-                const paymentContainer = document.getElementById('paymentBrick_container');
-                if (paymentContainer) {
-                    paymentContainer.innerHTML = '';
-                }
-                
-                window.paymentBrickController = await bricksBuilder.create('payment', 'paymentBrick_container', settings);
-                console.log('✅ Payment Brick creado exitosamente con preferencia');
-            } catch (error) {
-                console.error('❌ Error creando Payment Brick:', error);
-            }
-        };
-        
-        await renderWalletBrick(bricksBuilder);
-        await renderPaymentBrick(bricksBuilder);
         
     } catch (error) {
-        console.error('❌ Error inicializando Bricks:', error);
+        console.error('❌ Error con preferencia, usando modo sin preferencia:', error);
         
-        // ✅ FALLBACK: Inicializar sin preferencia (solo Payment Brick funcionará)
-        initializeBricksWithoutPreference();
+        // ✅ FALLBACK: Inicializar sin preferencia
+        await initializeBricksWithoutPreference();
     }
 }
 
-// ✅ FALLBACK: Inicializar Bricks sin preferencia (solo Payment Brick)
-function initializeBricksWithoutPreference() {
-    const mp = new MercadoPago(mercadoPagoPublicKey);
-    const total = calculateCartTotal();
-    const bricksBuilder = mp.bricks();
-    
-    console.log('🔄 Inicializando Bricks sin preferencia (fallback)');
+// ✅ FUNCIÓN: Inicializar Wallet Brick CON preferencia
+async function initializeWalletBrickWithPreference(preferenceId) {
+    try {
+        const walletContainer = document.getElementById('walletBrick_container');
+        if (walletContainer) {
+            walletContainer.innerHTML = '';
+        }
 
-    // ❌ Wallet Brick NO funcionará sin preferencia
+        console.log('👛 Inicializando Wallet Brick con preferencia:', preferenceId);
+
+        window.walletBrickController = await bricksBuilder.create("wallet", "walletBrick_container", {
+            initialization: {
+                preferenceId: preferenceId,
+            },
+            callbacks: {
+                onReady: () => {
+                    console.log("✅ Wallet Brick ready con preferencia");
+                },
+                onError: (error) => {
+                    console.error("❌ Wallet Brick error:", error);
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Error creando Wallet Brick con preferencia:', error);
+        throw error;
+    }
+}
+
+// ✅ FUNCIÓN: Inicializar Payment Brick CON preferencia
+async function initializePaymentBrickWithPreference(preferenceId) {
+    try {
+        const paymentContainer = document.getElementById('paymentBrick_container');
+        if (paymentContainer) {
+            paymentContainer.innerHTML = '';
+        }
+
+        console.log('💳 Inicializando Payment Brick con preferencia:', preferenceId);
+
+        const settings = {
+            initialization: {
+                preferenceId: preferenceId,
+            },
+            callbacks: {
+                onReady: () => {
+                    console.log('✅ Payment Brick ready con preferencia');
+                },
+                onSubmit: (formData) => {
+                    console.log('🔄 Payment Brick onSubmit:', formData);
+                    handlePaymentSubmission(formData, 'payment');
+                },
+                onError: (error) => {
+                    console.error('❌ Payment Brick error:', error);
+                }
+            }
+        };
+
+        window.paymentBrickController = await bricksBuilder.create(
+            "payment",
+            "paymentBrick_container",
+            settings
+        );
+        
+    } catch (error) {
+        console.error('❌ Error creando Payment Brick con preferencia:', error);
+        throw error;
+    }
+}
+
+// ✅ CORREGIDO: Inicializar Bricks SIN preferencia (FALLBACK)
+async function initializeBricksWithoutPreference() {
+    const total = calculateCartTotal();
+    const userEmail = customerData.email || "cliente@millenium.com";
+    
+    console.log('🔄 Inicializando Bricks SIN preferencia (fallback)');
+
+    // ❌ Wallet Brick NO funciona sin preferencia - mostrar mensaje
     const walletContainer = document.getElementById('walletBrick_container');
     if (walletContainer) {
         walletContainer.innerHTML = `
             <div style="background: #2d2d2d; color: #d4af37; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #444;">
-                <h5>👛 Billetera Temporalmente No Disponible</h5>
+                <h5>👛 Billetera No Disponible</h5>
                 <p>Utiliza el formulario de abajo para pagar con tarjetas, efectivo u otros métodos.</p>
-                <small>La billetera rápida requiere configuración adicional.</small>
+                <small>La billetera rápida requiere configuración adicional del servidor.</small>
             </div>
         `;
     }
 
-    // ✅ Payment Brick SÍ funciona sin preferencia (con onSubmit)
-    const renderPaymentBrick = async (bricksBuilder) => {
-        try {
-            const settings = {
-                initialization: {
-                    amount: total,
-                    payer: {
-                        email: customerData.email || "cliente@millenium.com",
-                    }
-                },
-                customization: {
-                    visual: {
-                        style: {
-                            theme: 'dark'
-                        }
-                    }
-                },
-                callbacks: {
-                    onReady: () => {
-                        console.log('✅ Payment Brick ready (sin preferencia)');
-                    },
-                    // ✅ OBLIGATORIO: onSubmit cuando no hay preferenceId
-                    onSubmit: (formData) => {
-                        console.log('🔄 Payment Brick onSubmit:', formData);
-                        handlePaymentSubmission(formData, 'payment');
-                    },
-                    onError: (error) => {
-                        console.error('❌ Payment Brick error:', error);
-                    }
-                }
-            };
-            
-            const paymentContainer = document.getElementById('paymentBrick_container');
-            if (paymentContainer) {
-                paymentContainer.innerHTML = '';
-            }
-            
-            window.paymentBrickController = await bricksBuilder.create('payment', 'paymentBrick_container', settings);
-            console.log('✅ Payment Brick creado exitosamente (sin preferencia)');
-        } catch (error) {
-            console.error('❌ Error creando Payment Brick:', error);
-        }
-    };
-    
-    renderPaymentBrick(bricksBuilder);
-}
-
-// ✅ CORREGIDO: Función unificada para manejar pagos
-async function handlePaymentSubmission(paymentData, brickType) {
-    console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
-    
-    // ✅ VALIDACIÓN MEJORADA
-    if (!paymentData || !paymentData.token) {
-        console.error('❌ Error: paymentData es inválido o falta token');
-        alert('Error: Datos de pago incompletos. Por favor, intenta nuevamente.');
-        return;
-    }
-
+    // ✅ Payment Brick SÍ funciona sin preferencia (con amount + onSubmit)
     try {
-        const total = calculateCartTotal();
-        const userEmail = customerData.email || "cliente@millenium.com";
-        
-        // ✅ PREPARAR datos para enviar al servidor
-        const requestData = {
-            token: paymentData.token,
-            paymentMethodId: paymentData.payment_method_id || paymentData.paymentMethodId,
-            installments: parseInt(paymentData.installments) || 1,
-            issuerId: paymentData.issuer_id || null,
-            paymentType: paymentData.payment_type || 'credit_card',
-            amount: total,
-            brickType: brickType,
-            description: `Pago de ${cart.length} productos Millenium`,
-            payer: {
-                email: userEmail,
-                firstName: customerData.firstName,
-                lastName: customerData.lastName,
-                identification: {
-                    type: customerData.dniType || 'DNI',
-                    number: customerData.dniNumber || ''
+        const paymentContainer = document.getElementById('paymentBrick_container');
+        if (paymentContainer) {
+            paymentContainer.innerHTML = '';
+        }
+
+        console.log('💳 Inicializando Payment Brick SIN preferencia, monto:', total);
+
+        const settings = {
+            initialization: {
+                // ✅ OBLIGATORIO: amount cuando no hay preferenceId
+                amount: total,
+                payer: {
+                    email: userEmail,
+                }
+            },
+            callbacks: {
+                onReady: () => {
+                    console.log('✅ Payment Brick ready (sin preferencia)');
+                },
+                // ✅ OBLIGATORIO: onSubmit cuando no hay preferenceId
+                onSubmit: (formData) => {
+                    console.log('🔄 Payment Brick onSubmit:', formData);
+                    handlePaymentSubmission(formData, 'payment');
+                },
+                onError: (error) => {
+                    console.error('❌ Payment Brick error:', error);
+                }
+            },
+            customization: {
+                visual: {
+                    style: {
+                        theme: 'dark'
+                    }
                 }
             }
         };
 
-        console.log('📤 Enviando datos de pago a /process_payment/process_bricks_payment');
-        console.log('Datos enviados:', requestData);
-
-        const response = await fetch('/process_payment/process_bricks_payment', {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(requestData)
-        });
+        window.paymentBrickController = await bricksBuilder.create(
+            "payment",
+            "paymentBrick_container",
+            settings
+        );
         
-        console.log(`📥 Respuesta del servidor (status: ${response.status})`);
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('❌ Error en respuesta:', errorData);
-            throw new Error(errorData.error_message || `Error del servidor: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log(`✅ Pago procesado exitosamente:`, result);
-        
-        if (result.error_message) {
-            throw new Error(result.error_message);
-        }
-        
-        // ✅ MOSTRAR RESULTADO
-        await renderStatusScreenBrick(bricksBuilder, result);
-        
-        $('.container__payment').fadeOut(500);
-        setTimeout(() => {
-            $('.container__result').show(500).fadeIn();
-        }, 500);
+        console.log('✅ Payment Brick creado exitosamente (sin preferencia)');
         
     } catch (error) {
-        console.error(`❌ Error procesando pago:`, error);
-        alert(`Error al procesar el pago: ${error.message}`);
+        console.error('❌ Error crítico creando Payment Brick:', error);
+        alert('Error al cargar el formulario de pago. Por favor, recarga la página.');
     }
 }
 
 // ✅ FUNCIÓN: Status Screen Brick
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
     paymentId = result.id;
-    console.log('🆔 Payment ID:', paymentId);
+    console.log('Payment ID:', paymentId);
 
     try {
-        // Limpiar contenedor primero
         const statusContainer = document.getElementById('statusScreenBrick_container');
         if (statusContainer) {
             statusContainer.innerHTML = '';
@@ -418,10 +329,10 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
             },
             callbacks: {
                 onReady: () => {
-                    console.log('✅ Status Screen Brick ready');
+                    console.log('Status Screen Brick ready');
                 },
                 onError: (error) => {
-                    console.error('❌ Error en Status Screen Brick:', error);
+                    console.error('Error en Status Screen Brick:', error);
                 }
             }
         });
@@ -430,73 +341,85 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     }
 };
 
+// ✅ CORREGIDO: Manejo unificado de pagos
+async function handlePaymentSubmission(paymentData, brickType) {
+    console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
+    
+    if (!paymentData || !paymentData.token) {
+        console.error('❌ Error: paymentData es inválido o falta token');
+        alert('Error: Datos de pago incompletos. Por favor, intenta nuevamente.');
+        return;
+    }
+
+    try {
+        const total = calculateCartTotal();
+        const userEmail = customerData.email || "cliente@millenium.com";
+
+        const requestData = {
+            token: paymentData.token,
+            paymentMethodId: paymentData.payment_method_id || paymentData.paymentMethodId,
+            installments: parseInt(paymentData.installments) || 1,
+            issuerId: paymentData.issuer_id || null,
+            paymentType: paymentData.payment_type || 'credit_card',
+            amount: total,
+            brickType: brickType,
+            description: `Pago de ${cart.length} productos Millenium`,
+            payer: {
+                email: userEmail,
+                firstName: customerData.firstName || "Cliente",
+                lastName: customerData.lastName || "Millenium",
+                identification: {
+                    type: customerData.dniType || 'DNI',
+                    number: customerData.dniNumber || ''
+                }
+            }
+        };
+
+        console.log('📤 Enviando datos de pago:', requestData);
+
+        const response = await fetch('/process_payment/process_bricks_payment', {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        console.log(`📥 Respuesta del servidor (status: ${response.status})`);
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('❌ Error en respuesta:', errorData);
+            throw new Error(errorData.error_message || `Error del servidor: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log(`✅ Pago procesado exitosamente:`, result);
+
+        if (result.error_message) {
+            throw new Error(result.error_message);
+        }
+
+        await renderStatusScreenBrick(bricksBuilder, result);
+
+        $('.container__payment').fadeOut(500);
+        setTimeout(() => {
+            $('.container__result').show(500).fadeIn();
+        }, 500);
+
+    } catch (error) {
+        console.error(`❌ Error procesando pago:`, error);
+        alert(`Error al procesar el pago: ${error.message}`);
+    }
+}
+
 // ✅ FUNCIÓN PARA VOLVER A PAGOS.HTML
 function goBackToPayments() {
-    console.log('🔄 Volviendo a pagos.html');
+    console.log('Volviendo a pagos.html');
     window.location.href = 'pagos.html';
 }
 
-// ... (las funciones del carrito se mantienen igual - addToCart, updateCart, updateCartDisplay, etc.)
-
-// ✅ EVENT LISTENERS COMPLETOS Y CORREGIDOS
-$(document).ready(function() {
-    // ✅ Asegurar que el campo amount existe al cargar la página
-    ensureAmountField();
-    updateSummaryTotal();
-    
-    // ✅ MANEJAR FORMULARIO DEL COMPRADOR
-    const customerForm = document.getElementById('customer-info-form');
-    if (customerForm) {
-        customerForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Guardar datos del cliente
-            customerData = {
-                firstName: document.getElementById('customer-first-name').value.trim(),
-                lastName: document.getElementById('customer-last-name').value.trim(),
-                email: document.getElementById('customer-email').value.trim(),
-                dniType: document.getElementById('customer-dni-type').value,
-                dniNumber: document.getElementById('customer-dni-number').value.trim(),
-                phone: document.getElementById('customer-phone').value.trim()
-            };
-            
-            // Validar campos obligatorios
-            if (!customerData.firstName || !customerData.lastName || !customerData.email) {
-                alert('❌ Por favor completa los campos obligatorios (*)');
-                return;
-            }
-            
-            // Validar email
-            if (!isValidEmail(customerData.email)) {
-                alert('❌ Por favor ingresa un email válido');
-                return;
-            }
-            
-            // Ir a la sección de pago
-            goToPayment();
-        });
-    }
-    
-    // ✅ BOTÓN "Ir a Pagar"
-    const checkoutBtn = $('#checkout-btn');
-    if (checkoutBtn.length) {
-        checkoutBtn.on('click', async function() {
-            const cartTotal = calculateCartTotal();
-            const hasItemsInCart = cart && cart.length > 0;
-            
-            if (!hasItemsInCart || cartTotal <= 0) {
-                alert('❌ Error: El carrito está vacío o el monto es inválido.');
-                return;
-            }
-            
-            showCustomerForm();
-        });
-    }
-
-    // ... (el resto de los event listeners se mantienen igual)
-});
-
-// ✅ FUNCIONES DEL CARRITO (mantener las mismas)
+// ✅ FUNCIONES DEL CARRITO
 function addToCart(productId) {
     const quantityInput = document.getElementById(`quantity-${productId}`);
     const quantity = parseInt(quantityInput.value);
@@ -586,6 +509,125 @@ function updateCartDisplay() {
     if (cartTotalElement) {
         cartTotalElement.textContent = `$${total.toLocaleString()}`;
     }
-    
-    updateSummaryTotal();
 }
+
+// ✅ EVENT LISTENERS COMPLETOS
+$(document).ready(function() {
+    ensureAmountField();
+    
+    // ✅ MANEJAR FORMULARIO DEL COMPRADOR
+    const customerForm = document.getElementById('customer-info-form');
+    if (customerForm) {
+        customerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            customerData = {
+                firstName: document.getElementById('customer-first-name').value.trim(),
+                lastName: document.getElementById('customer-last-name').value.trim(),
+                email: document.getElementById('customer-email').value.trim(),
+                dniType: document.getElementById('customer-dni-type').value,
+                dniNumber: document.getElementById('customer-dni-number').value.trim(),
+                phone: document.getElementById('customer-phone').value.trim()
+            };
+            
+            if (!customerData.firstName || !customerData.lastName || !customerData.email) {
+                alert('❌ Por favor completa los campos obligatorios (*)');
+                return;
+            }
+            
+            if (!isValidEmail(customerData.email)) {
+                alert('❌ Por favor ingresa un email válido');
+                return;
+            }
+            
+            goToPayment();
+        });
+    }
+    
+    // ✅ BOTÓN "Ir a Pagar"
+    const checkoutBtn = $('#checkout-btn');
+    if (checkoutBtn.length) {
+        checkoutBtn.on('click', function() {
+            const cartTotal = calculateCartTotal();
+            const hasItemsInCart = cart && cart.length > 0;
+            
+            if (!hasItemsInCart || cartTotal <= 0) {
+                alert('❌ Error: El carrito está vacío o el monto es inválido.');
+                return;
+            }
+            
+            showCustomerForm();
+        });
+    }
+
+    // ✅ BOTÓN "Volver al catálogo"
+    const goBackBtn = $('#go-back');
+    if (goBackBtn.length) {
+        goBackBtn.on('click', function() {
+            $('.container__payment').fadeOut(500);
+            setTimeout(() => {
+                $('.container__cart').show(500).fadeIn();
+            }, 500);
+        });
+    }
+
+    // ✅ BOTÓN "Descargar Comprobante"
+    const downloadReceiptBtn = $('#download-receipt');
+    if (downloadReceiptBtn.length) {
+        downloadReceiptBtn.on('click', function() {
+            console.log('📥 Descargando comprobante para paymentId:', paymentId);
+            
+            if (!paymentId) {
+                alert('No hay un ID de pago disponible para descargar el comprobante.');
+                return;
+            }
+
+            const url = `/process_payment/download_receipt/${paymentId}`;
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error al descargar el comprobante');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `comprobante-pago-${paymentId}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    console.log('✅ Comprobante descargado exitosamente');
+                })
+                .catch(error => {
+                    console.error('Error downloading receipt:', error);
+                    alert('Error al descargar el comprobante: ' + error.message);
+                });
+        });
+    }
+
+    // ✅ BOTÓN "Volver a Pagos"
+    const backToPaymentsBtn = $('#back-to-payments');
+    if (backToPaymentsBtn.length) {
+        backToPaymentsBtn.on('click', function() {
+            goBackToPayments();
+        });
+    }
+
+    // ✅ BOTÓN "Saltar formulario"
+    const skipFormBtn = $('#skip-customer-form');
+    if (skipFormBtn.length) {
+        skipFormBtn.on('click', function() {
+            skipCustomerInfo();
+        });
+    }
+
+    // ✅ INICIALIZAR CARRITO AL CARGAR
+    if (typeof updateCartDisplay === 'function') {
+        updateCartDisplay();
+    }
+
+    console.log('✅ JavaScript cargado correctamente');
+});
