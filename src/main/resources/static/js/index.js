@@ -18,7 +18,7 @@ let customerData = {
     phone: ''
 };
 
-// ✅ FUNCIÓN MEJORADA: Validar formulario del comprador
+//  FUNCIÓN MEJORADA: Validar formulario del comprador
 function validateCustomerForm() {
     const firstName = document.getElementById('customer-first-name').value.trim();
     const lastName = document.getElementById('customer-last-name').value.trim();
@@ -58,7 +58,7 @@ function validateCustomerForm() {
     return true;
 }
 
-// ✅ FUNCIÓN: Resaltar campo con error
+//  FUNCIÓN: Resaltar campo con error
 function highlightField(fieldId, hasError) {
     const field = document.getElementById(fieldId);
     if (field) {
@@ -72,7 +72,7 @@ function highlightField(fieldId, hasError) {
     }
 }
 
-// ✅ FUNCIÓN: Mostrar errores de validación
+//  FUNCIÓN: Mostrar errores de validación
 function showValidationErrors(errors) {
     let errorContainer = document.getElementById('validation-errors');
     if (!errorContainer) {
@@ -114,13 +114,13 @@ function showValidationErrors(errors) {
     }, 5000);
 }
 
-// ✅ FUNCIÓN MEJORADA: Validar email
+// FUNCIÓN MEJORADA: Validar email
 function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 }
 
-// ✅ FUNCIÓN: Asegurar que el campo amount existe
+//  FUNCIÓN: Asegurar que el campo amount existe
 function ensureAmountField() {
     let amountInput = document.getElementById('amount');
     
@@ -135,7 +135,7 @@ function ensureAmountField() {
     return amountInput;
 }
 
-// ✅ FUNCIÓN: Calcular total del carrito de forma confiable
+//  FUNCIÓN: Calcular total del carrito de forma confiable
 function calculateCartTotal() {
     if (!cart || cart.length === 0) return 0;
     
@@ -146,7 +146,7 @@ function calculateCartTotal() {
     return total;
 }
 
-// ✅ FUNCIÓN PARA ACTUALIZAR EL MONTO VISIBLE
+//  FUNCIÓN PARA ACTUALIZAR EL MONTO VISIBLE
 function updateSummaryTotal() {
     const amountInput = ensureAmountField();
     const summaryTotal = document.getElementById('summary-total');
@@ -161,7 +161,7 @@ function updateSummaryTotal() {
     }
 }
 
-// ✅ FUNCIÓN: Mostrar formulario del comprador
+//  FUNCIÓN: Mostrar formulario del comprador
 function showCustomerForm() {
     const existingErrors = document.getElementById('validation-errors');
     if (existingErrors) {
@@ -175,7 +175,7 @@ function showCustomerForm() {
     updateCustomerCartSummary();
 }
 
-// ✅ FUNCIÓN: Actualizar resumen del carrito en el formulario
+//  FUNCIÓN: Actualizar resumen del carrito en el formulario
 function updateCustomerCartSummary() {
     const summaryContainer = document.getElementById('customer-cart-summary');
     const totalElement = document.getElementById('customer-cart-total');
@@ -200,7 +200,7 @@ function updateCustomerCartSummary() {
     totalElement.textContent = `$${total.toLocaleString()}`;
 }
 
-// ✅ FUNCIÓN MEJORADA: Saltar formulario (opcional)
+// FUNCIÓN MEJORADA: Saltar formulario (opcional)
 function skipCustomerInfo() {
     customerData = {
         firstName: document.getElementById('customer-first-name').value.trim() || 'Cliente',
@@ -214,7 +214,7 @@ function skipCustomerInfo() {
     goToPayment();
 }
 
-// ✅ CORREGIDO: Ir a métodos de pago
+// CORREGIDO: Ir a métodos de pago
 function goToPayment() {
     console.log('🚀 Intentando ir a pagos...');
     
@@ -233,7 +233,7 @@ function goToPayment() {
     initializePaymentBricks();
 }
 
-// ✅ CORREGIDO: Crear preferencia para Mercado Pago
+//  CORREGIDO: Crear preferencia para Mercado Pago
 async function createMercadoPagoPreference(amount) {
     try {
         console.log('🔄 Creando preferencia en Mercado Pago, monto:', amount);
@@ -270,7 +270,7 @@ async function createMercadoPagoPreference(amount) {
     }
 }
 
-// ✅ CORREGIDO COMPLETAMENTE: Inicializar ambos Bricks
+//  CORREGIDO COMPLETAMENTE: Inicializar ambos Bricks
 async function initializePaymentBricks() {
     if (bricksInitialized) {
         console.log('ℹ️ Bricks ya inicializados, omitiendo...');
@@ -285,7 +285,7 @@ async function initializePaymentBricks() {
     console.log('💰 Inicializando Bricks - Monto:', total, 'Email:', userEmail);
 
     try {
-        // ✅ WALLET BRICK CON PREFERENCIA
+        //  WALLET BRICK CON PREFERENCIA
         const preferenceId = await createMercadoPagoPreference(total);
         
         if (preferenceId) {
@@ -296,17 +296,17 @@ async function initializePaymentBricks() {
         console.log('ℹ️ Wallet Brick no disponible');
     }
 
-    // ✅ PAYMENT BRICK (SIEMPRE)
+    //  PAYMENT BRICK (SIEMPRE)
     await initializePaymentBrick(total, userEmail);
 }
 
-// ✅ FUNCIÓN: Inicializar Wallet Brick
+//  FUNCIÓN: Inicializar Wallet Brick
 async function initializeWalletBrickWithPreference(preferenceId) {
     try {
         const walletContainer = document.getElementById('walletBrick_container');
         if (!walletContainer) return;
 
-        console.log('👛 Inicializando Wallet Brick con preferencia:', preferenceId);
+        console.log(' Inicializando Wallet Brick con preferencia:', preferenceId);
 
         window.walletBrickController = await bricksBuilder.create("wallet", "walletBrick_container", {
             initialization: {
@@ -314,13 +314,13 @@ async function initializeWalletBrickWithPreference(preferenceId) {
             },
             callbacks: {
                 onReady: () => {
-                    console.log("✅ Wallet Brick ready con preferencia");
+                    console.log("Wallet Brick ready con preferencia");
                 },
                 onError: (error) => {
-                    console.error("❌ Wallet Brick error:", error);
+                    console.error("Wallet Brick error:", error);
                     walletContainer.innerHTML = `
                         <div style="background: #2d2d2d; color: #d4af37; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #444;">
-                            <h5>👛 Billetera No Disponible</h5>
+                            <h5> Billetera No Disponible</h5>
                             <p>Utiliza el formulario de abajo para pagar con tarjetas, efectivo u otros métodos.</p>
                         </div>
                     `;
@@ -329,12 +329,12 @@ async function initializeWalletBrickWithPreference(preferenceId) {
         });
         
     } catch (error) {
-        console.error('❌ Error creando Wallet Brick con preferencia:', error);
+        console.error(' Error creando Wallet Brick con preferencia:', error);
         const walletContainer = document.getElementById('walletBrick_container');
         if (walletContainer) {
             walletContainer.innerHTML = `
                 <div style="background: #2d2d2d; color: #d4af37; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #444;">
-                    <h5>👛 Billetera No Disponible</h5>
+                    <h5> Billetera No Disponible</h5>
                     <p>Utiliza el formulario de abajo para pagar con tarjetas, efectivo u otros métodos.</p>
                 </div>
             `;
@@ -342,13 +342,13 @@ async function initializeWalletBrickWithPreference(preferenceId) {
     }
 }
 
-// ✅ CORREGIDO COMPLETAMENTE: Inicializar Payment Brick
+//  CORREGIDO COMPLETAMENTE: Inicializar Payment Brick
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
         if (!paymentContainer) return;
 
-        console.log('💳 Inicializando Payment Brick, monto:', total);
+        console.log(' Inicializando Payment Brick, monto:', total);
 
         const settings = {
             initialization: {
@@ -359,19 +359,19 @@ async function initializePaymentBrick(total, userEmail) {
             },
             callbacks: {
                 onReady: () => {
-                    console.log('✅ Payment Brick ready');
+                    console.log('Payment Brick ready');
                 },
                 onSubmit: (formData) => {
-                    console.log('🔄 Payment Brick onSubmit - Datos recibidos:', formData);
+                    console.log('Payment Brick onSubmit - Datos recibidos:', formData);
                     // ✅ VERIFICACIÓN INMEDIATA DE LOS DATOS
                     if (!formData || typeof formData !== 'object') {
-                        console.error('❌ formData es inválido:', formData);
+                        console.error(' formData es inválido:', formData);
                         alert('Error: Datos de pago inválidos');
                         return;
                     }
                     
                     if (!formData.token && !formData.paymentMethodId) {
-                        console.error('❌ Faltan datos críticos en formData:', formData);
+                        console.error(' Faltan datos críticos en formData:', formData);
                         alert('Error: Faltan datos de pago esenciales');
                         return;
                     }
@@ -379,10 +379,10 @@ async function initializePaymentBrick(total, userEmail) {
                     handlePaymentSubmission(formData, 'payment');
                 },
                 onError: (error) => {
-                    console.error('❌ Payment Brick error:', error);
+                    console.error(' Payment Brick error:', error);
                     paymentContainer.innerHTML = `
                         <div style="background: #2d2d2d; color: #dc3545; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #dc3545;">
-                            <h5>❌ Error en formulario de pago</h5>
+                            <h5> Error en formulario de pago</h5>
                             <p>${error.message || 'Error al cargar el formulario'}</p>
                             <button onclick="location.reload()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
                                 Recargar página
@@ -417,15 +417,15 @@ async function initializePaymentBrick(total, userEmail) {
             settings
         );
         
-        console.log('✅ Payment Brick creado exitosamente');
+        console.log(' Payment Brick creado exitosamente');
         
     } catch (error) {
-        console.error('❌ Error crítico creando Payment Brick:', error);
+        console.error(' Error crítico creando Payment Brick:', error);
         const paymentContainer = document.getElementById('paymentBrick_container');
         if (paymentContainer) {
             paymentContainer.innerHTML = `
                 <div style="background: #2d2d2d; color: #dc3545; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #dc3545;">
-                    <h5>❌ Error crítico</h5>
+                    <h5> Error crítico</h5>
                     <p>No se pudo cargar el formulario de pago.</p>
                     <p>Error: ${error.message}</p>
                     <button onclick="location.reload()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px;">
@@ -437,7 +437,7 @@ async function initializePaymentBrick(total, userEmail) {
     }
 }
 
-// ✅ CORREGIDO COMPLETAMENTE: Status Screen Brick
+// CORREGIDO COMPLETAMENTE: Status Screen Brick
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
     paymentId = result.id;
     console.log('Payment ID:', paymentId);
@@ -452,7 +452,7 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
             try {
                 await window.statusScreenBrickController.unmount();
             } catch (e) {
-                console.log('ℹ️ No se pudo desmontar Status Screen anterior');
+                console.log(' No se pudo desmontar Status Screen anterior');
             }
         }
 
@@ -470,25 +470,25 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
             }
         });
     } catch (error) {
-        console.error('❌ Error creando Status Screen:', error);
+        console.error('Error creando Status Screen:', error);
     }
 };
 
-// ✅ CORREGIDO COMPLETAMENTE: Manejo unificado de pagos - SIN ERROR DE TOKEN
+//  CORREGIDO COMPLETAMENTE: Manejo unificado de pagos - SIN ERROR DE TOKEN
 async function handlePaymentSubmission(paymentData, brickType) {
-    console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
+    console.log(` Procesando pago desde ${brickType}:`, paymentData);
     
-    // ✅ VALIDACIÓN MEJORADA - MÁS FLEXIBLE
+    //  VALIDACIÓN MEJORADA - MÁS FLEXIBLE
     if (!paymentData || typeof paymentData !== 'object') {
-        console.error('❌ Error: paymentData es inválido:', paymentData);
+        console.error(' Error: paymentData es inválido:', paymentData);
         alert('Error: Datos de pago inválidos. Por favor, intenta nuevamente.');
         return;
     }
 
-    // ✅ VERIFICAR DATOS CRÍTICOS (diferentes bricks envían diferentes estructuras)
+    //  VERIFICAR DATOS CRÍTICOS (diferentes bricks envían diferentes estructuras)
     const hasRequiredData = paymentData.token || paymentData.paymentMethodId;
     if (!hasRequiredData) {
-        console.error('❌ Error: Faltan datos críticos en paymentData:', paymentData);
+        console.error(' Error: Faltan datos críticos en paymentData:', paymentData);
         alert('Error: Datos de pago incompletos. Faltan token o paymentMethodId.');
         return;
     }
@@ -497,7 +497,7 @@ async function handlePaymentSubmission(paymentData, brickType) {
         const total = calculateCartTotal();
         const userEmail = customerData.email || "cliente@millenium.com";
 
-        // ✅ ESTRUCTURA COMPATIBLE CON AMBOS BRICKS
+        //  ESTRUCTURA COMPATIBLE CON AMBOS BRICKS
         const requestData = {
             token: paymentData.token || paymentData.paymentMethodId,
             paymentMethodId: paymentData.payment_method_id || paymentData.paymentMethodId,
@@ -518,7 +518,7 @@ async function handlePaymentSubmission(paymentData, brickType) {
             }
         };
 
-        console.log('📤 Enviando datos de pago al servidor:', requestData);
+        console.log(' Enviando datos de pago al servidor:', requestData);
 
         const response = await fetch('/process_payment/process_bricks_payment', {
             method: "POST",
@@ -528,16 +528,16 @@ async function handlePaymentSubmission(paymentData, brickType) {
             body: JSON.stringify(requestData)
         });
 
-        console.log(`📥 Respuesta del servidor (status: ${response.status})`);
+        console.log(` Respuesta del servidor (status: ${response.status})`);
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('❌ Error en respuesta:', errorData);
+            console.error('Error en respuesta:', errorData);
             throw new Error(errorData.error_message || `Error del servidor: ${response.status}`);
         }
 
         const result = await response.json();
-        console.log(`✅ Pago procesado exitosamente:`, result);
+        console.log(` Pago procesado exitosamente:`, result);
 
         if (result.error_message) {
             throw new Error(result.error_message);
@@ -551,24 +551,24 @@ async function handlePaymentSubmission(paymentData, brickType) {
         }, 500);
 
     } catch (error) {
-        console.error(`❌ Error procesando pago:`, error);
+        console.error(` Error procesando pago:`, error);
         alert(`Error al procesar el pago: ${error.message}`);
     }
 }
 
-// ✅ FUNCIÓN PARA VOLVER A PAGOS.HTML
+// FUNCIÓN PARA VOLVER A PAGOS.HTML
 function goBackToPayments() {
     console.log('Volviendo a pagos.html');
     window.location.href = 'pagos.html';
 }
 
-// ✅ RESET para cuando se vuelve al carrito
+//  RESET para cuando se vuelve al carrito
 function resetBricksState() {
     bricksInitialized = false;
-    console.log('🔄 Estado de Bricks reseteado');
+    console.log(' Estado de Bricks reseteado');
 }
 
-// ✅ FUNCIONES DEL CARRITO
+//  FUNCIONES DEL CARRITO
 function addToCart(productId) {
     const quantityInput = document.getElementById(`quantity-${productId}`);
     const quantity = parseInt(quantityInput.value);
@@ -624,7 +624,7 @@ function updateCartDisplay() {
         cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
         if (checkoutBtn) {
             checkoutBtn.disabled = true;
-            checkoutBtn.innerHTML = '💳 Ir a Pagar';
+            checkoutBtn.innerHTML = ' Ir a Pagar';
         }
         amountInput.value = '0';
     } else {
@@ -648,7 +648,7 @@ function updateCartDisplay() {
         
         if (checkoutBtn) {
             checkoutBtn.disabled = false;
-            checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
+            checkoutBtn.innerHTML = ` Pagar $${total.toLocaleString()}`;
         }
         
         amountInput.value = total.toFixed(2);
@@ -662,12 +662,12 @@ function updateCartDisplay() {
     updateSummaryTotal();
 }
 
-// ✅ EVENT LISTENERS MEJORADOS
+//  EVENT LISTENERS MEJORADOS
 $(document).ready(function() {
     ensureAmountField();
     updateSummaryTotal();
     
-    // ✅ MANEJAR FORMULARIO DEL COMPRADOR
+    // MANEJAR FORMULARIO DEL COMPRADOR
     const customerForm = document.getElementById('customer-info-form');
     if (customerForm) {
         customerForm.addEventListener('submit', function(e) {
@@ -691,7 +691,7 @@ $(document).ready(function() {
         });
     }
     
-    // ✅ BOTÓN "Ir a Pagar"
+    // BOTÓN "Ir a Pagar"
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
         checkoutBtn.on('click', function() {
@@ -699,7 +699,7 @@ $(document).ready(function() {
             const hasItemsInCart = cart && cart.length > 0;
             
             if (!hasItemsInCart || cartTotal <= 0) {
-                showTemporaryMessage('❌ Error: El carrito está vacío o el monto es inválido.', 'error');
+                showTemporaryMessage(' Error: El carrito está vacío o el monto es inválido.', 'error');
                 return;
             }
             
@@ -707,7 +707,7 @@ $(document).ready(function() {
         });
     }
 
-    // ✅ BOTÓN "Volver al catálogo"
+    //  BOTÓN "Volver al catálogo"
     const goBackBtn = $('#go-back');
     if (goBackBtn.length) {
         goBackBtn.on('click', function() {
@@ -719,7 +719,7 @@ $(document).ready(function() {
         });
     }
 
-    // ✅ BOTÓN "Descargar Comprobante"
+    //  BOTÓN "Descargar Comprobante"
     const downloadReceiptBtn = $('#download-receipt');
     if (downloadReceiptBtn.length) {
         downloadReceiptBtn.on('click', function() {
@@ -731,7 +731,7 @@ $(document).ready(function() {
         });
     }
 
-    // ✅ BOTÓN "Volver a Pagos"
+    //  BOTÓN "Volver a Pagos"
     const backToPaymentsBtn = $('#back-to-payments');
     if (backToPaymentsBtn.length) {
         backToPaymentsBtn.on('click', function() {
@@ -739,7 +739,7 @@ $(document).ready(function() {
         });
     }
 
-    // ✅ BOTÓN "Saltar formulario"
+    // BOTÓN "Saltar formulario"
     const skipFormBtn = $('#skip-customer-form');
     if (skipFormBtn.length) {
         skipFormBtn.on('click', function() {
@@ -747,15 +747,15 @@ $(document).ready(function() {
         });
     }
 
-    // ✅ INICIALIZAR CARRITO AL CARGAR
+    //  INICIALIZAR CARRITO AL CARGAR
     if (typeof updateCartDisplay === 'function') {
         updateCartDisplay();
     }
 
-    console.log('✅ JavaScript cargado correctamente - Versión corregida');
+    console.log(' JavaScript cargado correctamente - Versión corregida');
 });
 
-// ✅ FUNCIÓN ADICIONAL: Mostrar mensajes temporales
+//  FUNCIÓN ADICIONAL: Mostrar mensajes temporales
 function showTemporaryMessage(message, type = 'info') {
     const messageDiv = document.createElement('div');
     const styles = {
@@ -796,7 +796,7 @@ function showTemporaryMessage(message, type = 'info') {
     }, 4000);
 }
 
-// ✅ FUNCIÓN: Descargar comprobante
+//  FUNCIÓN: Descargar comprobante
 function downloadReceipt(paymentId) {
     const url = `/process_payment/download_receipt/${paymentId}`;
     fetch(url)
