@@ -59,12 +59,10 @@ function updateSummaryTotal() {
 
 // ✅ FUNCIÓN: Mostrar formulario del comprador
 function showCustomerForm() {
-    // Ocultar carrito, mostrar formulario
     document.querySelector('.container__cart').style.display = 'none';
     document.querySelector('#customer-form-section').style.display = 'block';
     document.querySelector('.container__payment').style.display = 'none';
     
-    // Actualizar resumen en el formulario
     updateCustomerCartSummary();
 }
 
@@ -101,7 +99,6 @@ function isValidEmail(email) {
 
 // ✅ FUNCIÓN: Saltar formulario (opcional)
 function skipCustomerInfo() {
-    // Datos por defecto si salta el formulario
     customerData = {
         firstName: 'Cliente',
         lastName: 'Millenium',
@@ -116,57 +113,47 @@ function skipCustomerInfo() {
 
 // ✅ FUNCIÓN: Ir a métodos de pago
 function goToPayment() {
-    // Ocultar formulario, mostrar métodos de pago
     document.querySelector('.container__cart').style.display = 'none';
     document.querySelector('#customer-form-section').style.display = 'none';
     document.querySelector('.container__payment').style.display = 'block';
     
-    // Inicializar los Bricks de Mercado Pago con los datos del cliente
     initializeMercadoPagoBricks();
 }
 
-// ✅ FUNCIÓN: Inicializar Mercado Pago con datos del cliente
+// ✅ CORREGIDO: Inicializar Mercado Pago con datos del cliente
 function initializeMercadoPagoBricks() {
-    const mp = new MercadoPago('APP_USR-c90816a8-38cd-4720-9f60-226dae2b7b4d');
-    
-    // Calcular total
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    
-    // Configurar Bricks con datos del cliente
+    const mp = new MercadoPago(mercadoPagoPublicKey);
+    const total = calculateCartTotal();
     const bricksBuilder = mp.bricks();
     
-    // Wallet Brick
+    // ✅ CORREGIDO: Wallet Brick SIN onSubmit
     const renderWalletBrick = async (bricksBuilder) => {
         const settings = {
             initialization: {
                 amount: total,
                 payer: {
-                    email: customerData.email,
+                    email: customerData.email || "cliente@millenium.com",
                 }
             },
             callbacks: {
                 onReady: () => {
-                    console.log('Wallet Brick ready');
-                },
-                onSubmit: (formData) => {
-                    // ✅ CORREGIDO: Pasar brickType y formData correctamente
-                    handlePaymentSubmission(formData, 'wallet');
+                    console.log('✅ Wallet Brick ready');
                 },
                 onError: (error) => {
-                    console.error('Wallet Brick error:', error);
+                    console.error('❌ Wallet Brick error:', error);
                 }
             }
         };
         window.walletBrickController = await bricksBuilder.create('wallet', 'walletBrick_container', settings);
     };
     
-    // Payment Brick
+    // ✅ Payment Brick CON onSubmit
     const renderPaymentBrick = async (bricksBuilder) => {
         const settings = {
             initialization: {
                 amount: total,
                 payer: {
-                    email: customerData.email,
+                    email: customerData.email || "cliente@millenium.com",
                 }
             },
             customization: {
@@ -178,14 +165,14 @@ function initializeMercadoPagoBricks() {
             },
             callbacks: {
                 onReady: () => {
-                    console.log('Payment Brick ready');
+                    console.log('✅ Payment Brick ready');
                 },
                 onSubmit: (formData) => {
-                    // ✅ CORREGIDO: Pasar brickType y formData correctamente
+                    console.log('🔄 Payment Brick onSubmit:', formData);
                     handlePaymentSubmission(formData, 'payment');
                 },
                 onError: (error) => {
-                    console.error('Payment Brick error:', error);
+                    console.error('❌ Payment Brick error:', error);
                 }
             }
         };
@@ -200,9 +187,10 @@ function initializeMercadoPagoBricks() {
 async function handlePaymentSubmission(paymentData, brickType) {
     console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
     
-    if (!paymentData) {
-        console.error('❌ Error: paymentData es null o undefined');
-        alert('Error: Datos de pago inválidos');
+    // ✅ VALIDACIÓN MEJORADA
+    if (!paymentData || !paymentData.token) {
+        console.error('❌ Error: paymentData es inválido o falta token');
+        alert('Error: Datos de pago incompletos. Por favor, intenta nuevamente.');
         return;
     }
 
@@ -215,24 +203,26 @@ async function handlePaymentSubmission(paymentData, brickType) {
             token: paymentData.token,
             paymentMethodId: paymentData.payment_method_id || paymentData.paymentMethodId,
             installments: parseInt(paymentData.installments) || 1,
+            issuerId: paymentData.issuer_id || null,
+            paymentType: paymentData.payment_type || 'credit_card',
             amount: total,
             brickType: brickType,
-            payerEmail: userEmail,
             description: `Pago de ${cart.length} productos Millenium`,
-            payerFirstName: customerData.firstName,
-            payerLastName: customerData.lastName
+            payer: {
+                email: userEmail,
+                firstName: customerData.firstName,
+                lastName: customerData.lastName,
+                identification: {
+                    type: customerData.dniType || 'DNI',
+                    number: customerData.dniNumber || ''
+                }
+            }
         };
 
-        // ✅ AGREGAR identification si está disponible
-        if (customerData.dniNumber && customerData.dniType) {
-            requestData.payerIdentification = {
-                type: customerData.dniType,
-                number: customerData.dniNumber
-            };
-        }
+        console.log('📤 Enviando datos de pago a /process_payment/process_bricks_payment');
+        console.log('Datos enviados:', requestData);
 
-        console.log('📤 Enviando a /process_bricks_payment:', requestData);
-
+        // ✅ RUTA CORREGIDA
         const response = await fetch('/process_payment/process_bricks_payment', {
             method: "POST",
             headers: {
@@ -244,13 +234,13 @@ async function handlePaymentSubmission(paymentData, brickType) {
         console.log(`📥 Respuesta del servidor (status: ${response.status})`);
         
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Error en respuesta:', errorText);
-            throw new Error(`Error del servidor: ${response.status}`);
+            const errorData = await response.json();
+            console.error('❌ Error en respuesta:', errorData);
+            throw new Error(errorData.error_message || `Error del servidor: ${response.status}`);
         }
         
         const result = await response.json();
-        console.log(`✅ Respuesta del servidor (${brickType}):`, result);
+        console.log(`✅ Pago procesado exitosamente:`, result);
         
         if (result.error_message) {
             throw new Error(result.error_message);
@@ -265,44 +255,47 @@ async function handlePaymentSubmission(paymentData, brickType) {
         }, 500);
         
     } catch (error) {
-        console.error(`❌ Error en la petición (${brickType}):`, error);
+        console.error(`❌ Error procesando pago:`, error);
         alert(`Error al procesar el pago: ${error.message}`);
+        
+        // ✅ REHABILITAR el brick para reintentar
+        if (window.paymentBrickController) {
+            window.paymentBrickController.unmount();
+            setTimeout(() => initializeMercadoPagoBricks(), 1000);
+        }
     }
 }
 
+// ✅ FUNCIÓN: Status Screen Brick
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
     paymentId = result.id;
-    console.log('Payment ID:', paymentId);
+    console.log('🆔 Payment ID:', paymentId);
 
-    window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
-        initialization: {
-            paymentId: paymentId
-        },
-        callbacks: {
-            onReady: () => {
-                console.log('Status Screen Brick ready');
-                
-                const statusContainer = document.getElementById('statusScreenBrick_container');
-                if (statusContainer) {
-                    statusContainer.style.backgroundColor = '#1d2431';
-                    statusContainer.style.color = 'aquamarine';
-                    statusContainer.style.padding = '20px';
-                    statusContainer.style.borderRadius = '8px';
-                }
+    try {
+        window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
+            initialization: {
+                paymentId: paymentId
             },
-            onError: (error) => {
-                console.error('Error en Status Screen Brick:', error);
+            callbacks: {
+                onReady: () => {
+                    console.log('✅ Status Screen Brick ready');
+                },
+                onError: (error) => {
+                    console.error('❌ Error en Status Screen Brick:', error);
+                }
             }
-        }
-    });
+        });
+    } catch (error) {
+        console.error('❌ Error creando Status Screen:', error);
+    }
 };
 
-// ✅ CORREGIDO: Función createWalletPreference con RUTA COMPLETA
+// ✅ CORREGIDO: Función createWalletPreference con ruta correcta
 async function createWalletPreference(amount) {
     try {
         console.log('🔄 Creando preferencia para Wallet Brick, monto:', amount);
         
-        // ✅ CORREGIDO: Ruta COMPLETA /process_payment/create_wallet_preference
+        // ✅ RUTA CORREGIDA
         const response = await fetch('/process_payment/create_wallet_preference', {
             method: "POST",
             headers: {
@@ -354,7 +347,7 @@ async function loadWalletBrick(amount) {
 
         window.walletBrickController = await bricksBuilder.create("wallet", "walletBrick_container", {
             initialization: {
-                preferenceId: preferenceId, // ✅ USAR PREFERENCE_ID (no amount)
+                preferenceId: preferenceId,
             },
             customization: {
                 visual: {
@@ -377,7 +370,6 @@ async function loadWalletBrick(amount) {
                     console.error("❌ Wallet Brick error:", error);
                     alert('Error en la billetera: ' + (error.message || 'Error desconocido'));
                 }
-                // ❌ ELIMINADO: onSubmit - Wallet Brick maneja el pago automáticamente con preferencias
             }
         });
         console.log('✅ Wallet Brick creado exitosamente con preferencia:', preferenceId);
@@ -404,7 +396,7 @@ async function loadPaymentForm() {
     const hasItemsInCart = cart && cart.length > 0;
     const hasValidAmount = cartTotal > 0;
     
-    console.log('Verificación final de pago:', {
+    console.log('✅ Verificación final de pago:', {
         cartTotal,
         hasItemsInCart,
         hasValidAmount,
@@ -412,84 +404,22 @@ async function loadPaymentForm() {
     });
 
     if (!hasItemsInCart || !hasValidAmount) {
-        alert('Error: El carrito está vacío o el monto es inválido. Agrega productos antes de pagar.');
+        alert('❌ Error: El carrito está vacío o el monto es inválido.');
         return;
     }
 
-    console.log('Monto a pagar:', cartTotal);
+    console.log('💰 Monto a pagar:', cartTotal);
 
     const amountInput = ensureAmountField();
     amountInput.value = cartTotal.toFixed(2);
-    console.log('💰 Campo amount actualizado:', amountInput.value);
 
-    // ✅ 1. CARGAR WALLET BRICK (con preferencia)
-    await loadWalletBrick(cartTotal);
-    
-    // ✅ 2. CARGAR PAYMENT BRICK (pagos directos)
-    const settings = {
-        initialization: {
-            amount: cartTotal,
-            payer: {
-                email: customerData.email || "cliente@millenium.com",
-                entityType: "individual"
-            }
-        },
-        callbacks: {
-            onReady: () => {
-                console.log('Payment Brick ready');
-            },
-            onError: (error) => {
-                console.error('Error en Payment Brick:', error);
-                alert('Error al cargar el formulario de pago');
-            },
-            onSubmit: async (formData) => {
-                console.log('Datos del formulario enviados:', formData);
-                await handlePaymentSubmission(formData, 'payment');
-            }
-        },
-        locale: 'es-AR',
-        customization: {
-            paymentMethods: {
-                creditCard: "all",
-                debitCard: "all",
-                ticket: "all"
-            },
-            maxInstallments: 1,
-            visual: {
-                style: {
-                    theme: 'dark',
-                    customVariables: {
-                        formBackgroundColor: '#1d2431',
-                        baseColor: 'aquamarine',
-                        outlinePrimaryColor: 'aquamarine',
-                        buttonTextColor: '#1d2431'
-                    }
-                }
-            }
-        }
-    };
-
-    const container = document.getElementById('paymentBrick_container');
-    if (container) {
-        container.innerHTML = '';
-    }
-
-    try {
-        window.paymentBrickController = await bricksBuilder.create(
-            "payment",
-            "paymentBrick_container",
-            settings
-        );
-        console.log('Payment Brick creado exitosamente');
-    } catch (error) {
-        console.error('Error creando Payment Brick:', error);
-        alert('Error al cargar el formulario de pago');
-    }
+    // ✅ INICIALIZAR BRICKS
+    initializeMercadoPagoBricks();
 }
 
-// FUNCIÓN PARA VOLVER A PAGOS.HTML
+// ✅ FUNCIÓN PARA VOLVER A PAGOS.HTML
 function goBackToPayments() {
-    console.log('Volviendo a pagos.html');
+    console.log('🔄 Volviendo a pagos.html');
     window.location.href = 'pagos.html';
 }
 
@@ -626,7 +556,43 @@ function updatePaymentSummary() {
     updateSummaryTotal();
 }
 
-// ✅ EVENT LISTENERS COMPLETOS
+// ✅ CORREGIDO: Función para descargar comprobante
+function downloadReceipt(paymentId) {
+    console.log('📥 Descargando comprobante para paymentId:', paymentId);
+    
+    if (!paymentId) {
+        alert('No hay un ID de pago disponible para descargar el comprobante.');
+        return;
+    }
+
+    // ✅ RUTA CORREGIDA
+    const url = `/process_payment/download_receipt/${paymentId}`;
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al descargar el comprobante');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `comprobante-pago-${paymentId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            console.log('✅ Comprobante descargado exitosamente');
+        })
+        .catch(error => {
+            console.error('Error downloading receipt:', error);
+            alert('Error al descargar el comprobante: ' + error.message);
+        });
+}
+
+// ✅ EVENT LISTENERS COMPLETOS Y CORREGIDOS
 $(document).ready(function() {
     // ✅ Asegurar que el campo amount existe al cargar la página
     ensureAmountField();
@@ -721,11 +687,11 @@ $(document).ready(function() {
         console.error('Elemento "go-back" no encontrado');
     }
 
-    // ✅ BOTÓN "Descargar Comprobante"
+    // ✅ BOTÓN "Descargar Comprobante" - CORREGIDO
     const downloadReceiptBtn = $('#download-receipt');
     if (downloadReceiptBtn.length) {
         downloadReceiptBtn.on('click', function() {
-            console.log('Payment ID para descarga:', paymentId);
+            console.log('📥 Descargando comprobante para paymentId:', paymentId);
             
             if (!paymentId) {
                 alert('No hay un ID de pago disponible para descargar el comprobante.');
@@ -733,29 +699,7 @@ $(document).ready(function() {
                 return;
             }
 
-            const url = `/process_payment/download_receipt/${paymentId}`;
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Error al descargar el comprobante');
-                    }
-                    return response.blob();
-                })
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `comprobante-pago-${paymentId}.pdf`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
-                    console.log('Comprobante descargado exitosamente');
-                })
-                .catch(error => {
-                    console.error('Error downloading receipt:', error);
-                    alert('Error al descargar el comprobante: ' + error.message);
-                });
+            downloadReceipt(paymentId);
         });
         
         // ✅ APLICAR ESTILO SEVERO AL BOTÓN DESCARGAR COMPROBANTE
@@ -831,8 +775,18 @@ $(document).ready(function() {
         console.error('Elemento "back-to-payments" no encontrado');
     }
 
+    // ✅ BOTÓN "Saltar formulario"
+    const skipFormBtn = $('#skip-customer-form');
+    if (skipFormBtn.length) {
+        skipFormBtn.on('click', function() {
+            skipCustomerInfo();
+        });
+    }
+
     // ✅ INICIALIZAR CARRITO AL CARGAR
     if (typeof updateCartDisplay === 'function') {
         updateCartDisplay();
     }
+
+    console.log('✅ JavaScript cargado correctamente - Rutas configuradas');
 });
