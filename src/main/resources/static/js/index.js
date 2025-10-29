@@ -476,47 +476,57 @@ async function initializePaymentBrick(total, userEmail) {
         }
     }
 }
-
-// ✅ NUEVA FUNCIÓN CORREGIDA: Procesar pagos en efectivo (Pago Fácil y Rapipago)
+// ✅ AGREGAR ESTO A TU processCashPayment FUNCTION
 async function processCashPayment(formData) {
     console.log('🎫 Iniciando procesamiento de pago en efectivo:', formData);
     
     try {
+        // ✅ DEBUG DETALLADO - ESTO ES CLAVE
+        console.log('🔍 DEBUG ANTES DE ENVIAR:');
+        console.log('1. Carrito:', cart);
+        console.log('2. Customer Data:', customerData);
+        console.log('3. Form Data recibido:', formData);
+        
         const total = calculateCartTotal();
         const userEmail = customerData.email || "cliente@millenium.com";
+        const userFirstName = customerData.firstName || "Cliente";
+        const userLastName = customerData.lastName || "Millenium";
         
-        console.log('💰 Monto calculado:', total);
-        console.log('📧 Email del cliente:', userEmail);
-        console.log('👤 Datos del cliente:', customerData);
+        console.log('4. Total calculado:', total);
+        console.log('5. Email a usar:', userEmail);
+        console.log('6. Nombre a usar:', userFirstName, userLastName);
         
         if (total <= 0) {
+            console.error('❌ ERROR: Total es menor o igual a cero:', total);
             throw new Error('El monto debe ser mayor a cero');
         }
 
-        // ✅ PREPARAR DATOS CORRECTAMENTE
+        // ✅ PREPARAR DATOS CON VALORES POR DEFECTO
         const paymentData = {
-            amount: total, // ✅ Usar "amount" en lugar de "transactionAmount"
-            paymentMethodId: formData.payment_method_id, // 'rapipago' o 'pagofacil'
+            amount: total,
+            paymentMethodId: formData.payment_method_id,
             description: `Compra de ${cart.length} productos Millenium`,
             payerEmail: userEmail,
-            payerFirstName: customerData.firstName || "Cliente",
-            payerLastName: customerData.lastName || "Millenium",
+            payerFirstName: userFirstName,
+            payerLastName: userLastName,
             identificationType: customerData.dniType || "DNI",
             identificationNumber: customerData.dniNumber || "00000000"
         };
 
-        console.log('📤 Enviando datos al servidor:', paymentData);
+        console.log('📤 DATOS QUE SE ENVIARÁN AL SERVIDOR:', paymentData);
 
-        // ✅ VERIFICAR QUE LOS DATOS ESTÉN COMPLETOS
+        // ✅ VERIFICACIÓN FINAL ANTES DE ENVIAR
         if (!paymentData.amount || paymentData.amount <= 0) {
+            console.error('❌ MONTO INVÁLIDO:', paymentData.amount);
             throw new Error('Monto inválido: ' + paymentData.amount);
         }
 
         if (!paymentData.payerEmail) {
+            console.error('❌ EMAIL INVÁLIDO:', paymentData.payerEmail);
             throw new Error('Email del cliente es requerido');
         }
 
-        // ✅ Llamar al endpoint de Java para crear pago en efectivo
+        // ✅ ENVIAR AL SERVIDOR
         const response = await fetch('/process_payment/create_ticket_payment', {
             method: "POST",
             headers: {
@@ -538,8 +548,6 @@ async function processCashPayment(formData) {
         }
 
         console.log('✅ Pago en efectivo creado exitosamente:', result);
-        
-        // ✅ Mostrar información del voucher/ticket
         showCashPaymentResult(result);
 
     } catch (error) {
