@@ -342,7 +342,7 @@ async function initializeWalletBrickWithPreference(preferenceId) {
     }
 }
 
-// ✅ CORREGIDO COMPLETAMENTE: Inicializar Payment Brick
+// ✅ CORREGIDO DEFINITIVAMENTE: Inicializar Payment Brick
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
@@ -361,33 +361,28 @@ async function initializePaymentBrick(total, userEmail) {
                 onReady: () => {
                     console.log('✅ Payment Brick ready');
                 },
-                onSubmit: (cardFormData) => {
-                    console.log('🔄 Payment Brick onSubmit - Datos recibidos:', cardFormData);
+                onSubmit: (formData) => {
+                    console.log('🔄 Payment Brick onSubmit - Datos COMPLETOS recibidos:', formData);
                     
-                    // ✅ CORRECCIÓN CRÍTICA: Extraer los datos reales del pago
-                    let paymentData;
+                    // ✅ CORRECCIÓN DEFINITIVA: Los datos vienen directamente en formData
+                    let paymentData = formData;
                     
-                    if (cardFormData && cardFormData.formData) {
-                        // Los datos están en formData.formData
-                        paymentData = cardFormData.formData;
-                        console.log('✅ Datos de pago extraídos correctamente:', paymentData);
-                    } else if (cardFormData && cardFormData.token) {
-                        // O tal vez los datos están en el objeto principal
-                        paymentData = cardFormData;
-                        console.log('✅ Datos de pago en objeto principal:', paymentData);
-                    } else {
-                        console.error('❌ Estructura de datos inesperada:', cardFormData);
-                        alert('Error: Estructura de datos de pago inesperada');
-                        return;
-                    }
+                    // ✅ VERIFICACIÓN COMPLETA DE LOS DATOS
+                    console.log('🔍 Analizando estructura de datos:', {
+                        tieneToken: !!paymentData.token,
+                        tienePaymentMethodId: !!paymentData.payment_method_id,
+                        tieneFormData: !!paymentData.formData,
+                        keys: Object.keys(paymentData)
+                    });
                     
                     // ✅ VERIFICAR DATOS CRÍTICOS
                     if (!paymentData.token) {
-                        console.error('❌ Faltan datos críticos en paymentData:', paymentData);
-                        alert('Error: Faltan datos de pago esenciales (token)');
+                        console.error('❌ Faltan datos críticos - No hay token:', paymentData);
+                        alert('Error: Faltan datos de pago esenciales (token). Por favor, intenta nuevamente.');
                         return;
                     }
                     
+                    console.log('✅ Datos de pago válidos, procediendo con el envío...');
                     handlePaymentSubmission(paymentData, 'payment');
                 },
                 onError: (error) => {
@@ -486,21 +481,29 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     }
 };
 
-// ✅ CORREGIDO COMPLETAMENTE: Manejo unificado de pagos
+// ✅ CORREGIDO DEFINITIVAMENTE: Manejo unificado de pagos
 async function handlePaymentSubmission(paymentData, brickType) {
     console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
     
-    // ✅ VALIDACIÓN MEJORADA
+    // ✅ VALIDACIÓN MEJORADA Y EXPLICATIVA
     if (!paymentData || typeof paymentData !== 'object') {
         console.error('❌ Error: paymentData es inválido:', paymentData);
         alert('Error: Datos de pago inválidos. Por favor, intenta nuevamente.');
         return;
     }
 
-    // ✅ VERIFICAR DATOS CRÍTICOS
+    // ✅ VERIFICACIÓN DETALLADA DE DATOS CRÍTICOS
+    console.log('🔍 Verificando datos de pago recibidos:', {
+        tieneToken: !!paymentData.token,
+        token: paymentData.token,
+        tienePaymentMethodId: !!paymentData.payment_method_id,
+        paymentMethodId: paymentData.payment_method_id,
+        todasLasKeys: Object.keys(paymentData)
+    });
+
     if (!paymentData.token) {
-        console.error('❌ Error: Falta token en paymentData:', paymentData);
-        alert('Error: Datos de pago incompletos. Falta token.');
+        console.error('❌ Error CRÍTICO: Falta token en paymentData:', paymentData);
+        alert('Error: Datos de pago incompletos. Falta el token de seguridad. Por favor, intenta nuevamente.');
         return;
     }
 
@@ -763,7 +766,7 @@ $(document).ready(function() {
         updateCartDisplay();
     }
 
-    console.log('✅ JavaScript cargado correctamente - Versión corregida del token');
+    console.log('✅ JavaScript cargado correctamente - Versión DEFINITIVA corregida');
 });
 
 // ✅ FUNCIÓN ADICIONAL: Mostrar mensajes temporales
