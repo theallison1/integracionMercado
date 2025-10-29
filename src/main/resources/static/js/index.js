@@ -346,9 +346,18 @@ async function initializeWalletBrickWithPreference(preferenceId) {
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
-        if (!paymentContainer) return;
+        if (!paymentContainer) {
+            console.error('❌ Contenedor paymentBrick_container no encontrado');
+            return;
+        }
 
         console.log('💳 Inicializando Payment Brick, monto:', total);
+
+        // Verificar que bricksBuilder esté disponible
+        if (typeof bricksBuilder === 'undefined') {
+            console.error('❌ bricksBuilder no está definido');
+            return;
+        }
 
         const settings = {
             initialization: {
@@ -359,35 +368,53 @@ async function initializePaymentBrick(total, userEmail) {
             },
             callbacks: {
                 onReady: () => {
-                    console.log('✅ Payment Brick ready');
+                    console.log('✅ Payment Brick ready - Formulario listo para usar');
                 },
                 onSubmit: (formData) => {
                     console.log('🔄 Payment Brick onSubmit - Datos recibidos:', formData);
                     
-                    // ✅ CORRECCIÓN: Verificación explícita del token
+                    // ✅ CORRECCIÓN: Verificación de la estructura correcta
                     if (!formData || typeof formData !== 'object') {
                         console.error('❌ formData es inválido:', formData);
                         alert('Error: Datos de pago inválidos. Por favor, intenta nuevamente.');
                         return;
                     }
                     
-                    // ✅ VERIFICACIÓN DETALLADA
-                    console.log('🔍 DEBUG - Estructura de formData:', {
+                    // ✅ CORRECCIÓN: Acceder al token en formData.formData
+                    const token = formData.formData?.token;
+                    const paymentMethodId = formData.formData?.payment_method_id;
+                    const issuerId = formData.formData?.issuer_id;
+                    const installments = formData.formData?.installments;
+
+                    // ✅ VERIFICACIÓN DETALLADA CORREGIDA
+                    console.log('🔍 DEBUG - Estructura CORREGIDA de formData:', {
                         tieneFormData: !!formData,
                         tipo: typeof formData,
-                        keys: formData ? Object.keys(formData) : 'no formData',
-                        token: formData.token,
-                        tokenTipo: typeof formData.token
+                        keys: Object.keys(formData),
+                        // ✅ Acceso correcto al token:
+                        token: token,
+                        tokenTipo: typeof token,
+                        paymentMethodId: paymentMethodId,
+                        issuerId: issuerId,
+                        installments: installments,
+                        estructuraCompleta: formData
                     });
                     
-                    if (!formData.token) {
-                        console.error('❌ Faltan datos críticos - No hay token en formData:', formData);
-                        alert('Error: Faltan datos de pago esenciales. Por favor, intenta nuevamente.');
+                    // ✅ VERIFICACIÓN CORREGIDA DEL TOKEN
+                    if (!token) {
+                        console.error('❌ Token no disponible en formData.formData');
+                        console.error('📋 Estructura completa recibida:', formData);
+                        alert('Error: No se pudo generar el token de seguridad. Verifica que todos los datos de la tarjeta estén completos y correctos.');
                         return;
                     }
                     
-                    console.log('✅ Token encontrado, procediendo con pago...');
-                    handlePaymentSubmission(formData, 'payment');
+                    console.log('✅ Token encontrado correctamente:', token);
+                    console.log('💳 Método de pago:', paymentMethodId);
+                    console.log('🏦 Banco emisor:', issuerId);
+                    console.log('📈 Cuotas:', installments);
+                    
+                    // ✅ Pasar formData.formData que contiene el token y todos los datos
+                    handlePaymentSubmission(formData.formData, 'payment');
                 },
                 onError: (error) => {
                     console.error('❌ Payment Brick error:', error);
@@ -445,6 +472,79 @@ async function initializePaymentBrick(total, userEmail) {
                 </div>
             `;
         }
+    }
+}
+
+// ✅ Función auxiliar para debug (opcional)
+function debugPaymentStructure() {
+    console.log('🔧 Estructura esperada del Payment Brick:');
+    console.log('- formData.paymentType: Tipo de pago');
+    console.log('- formData.selectedPaymentMethod: Método seleccionado'); 
+    console.log('- formData.formData.token: Token de seguridad (IMPORTANTE)');
+    console.log('- formData.formData.payment_method_id: Visa/Mastercard/etc');
+    console.log('- formData.formData.issuer_id: Banco emisor');
+    console.log('- formData.formData.installments: Cuotas');
+}
+
+// ✅ Si necesitas la versión más simplificada:
+async function initializePaymentBrickSimplified(total, userEmail) {
+    try {
+        const paymentContainer = document.getElementById('paymentBrick_container');
+        if (!paymentContainer) return;
+
+        console.log('💳 Inicializando Payment Brick, monto:', total);
+
+        const settings = {
+            initialization: {
+                amount: total,
+                payer: { email: userEmail }
+            },
+            callbacks: {
+                onReady: () => console.log('✅ Payment Brick ready'),
+                onSubmit: (formData) => {
+                    console.log('🔄 Datos recibidos:', formData);
+                    
+                    // ✅ VERIFICACIÓN DIRECTA Y CORREGIDA
+                    const token = formData?.formData?.token;
+                    
+                    if (!token) {
+                        console.error('❌ Token no disponible');
+                        alert('Error: Completa todos los datos de la tarjeta correctamente.');
+                        return;
+                    }
+                    
+                    console.log('✅ Token generado:', token);
+                    handlePaymentSubmission(formData.formData, 'payment');
+                },
+                onError: (error) => {
+                    console.error('❌ Error:', error);
+                    alert('Error en el formulario de pago: ' + error.message);
+                }
+            },
+            customization: {
+                paymentMethods: { creditCard: "all", debitCard: "all", ticket: "all" },
+                visual: {
+                    style: {
+                        theme: 'dark',
+                        customVariables: {
+                            formBackgroundColor: '#1d2431',
+                            baseColor: 'aquamarine',
+                            outlinePrimaryColor: 'aquamarine',
+                            buttonTextColor: '#1d2431'
+                        }
+                    }
+                }
+            }
+        };
+
+        window.paymentBrickController = await bricksBuilder.create(
+            "payment",
+            "paymentBrick_container",
+            settings
+        );
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
     }
 }
 
