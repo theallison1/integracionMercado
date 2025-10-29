@@ -364,13 +364,29 @@ async function initializePaymentBrick(total, userEmail) {
                 onSubmit: (formData) => {
                     console.log('🔄 Payment Brick onSubmit - Datos recibidos:', formData);
                     
-                    // ✅ VERIFICACIÓN SIMPLE Y EFECTIVA
-                    if (!formData?.token) {
-                        console.error('❌ Faltan datos críticos - No hay token');
+                    // ✅ CORRECCIÓN: Verificación explícita del token
+                    if (!formData || typeof formData !== 'object') {
+                        console.error('❌ formData es inválido:', formData);
+                        alert('Error: Datos de pago inválidos. Por favor, intenta nuevamente.');
+                        return;
+                    }
+                    
+                    // ✅ VERIFICACIÓN DETALLADA
+                    console.log('🔍 DEBUG - Estructura de formData:', {
+                        tieneFormData: !!formData,
+                        tipo: typeof formData,
+                        keys: formData ? Object.keys(formData) : 'no formData',
+                        token: formData.token,
+                        tokenTipo: typeof formData.token
+                    });
+                    
+                    if (!formData.token) {
+                        console.error('❌ Faltan datos críticos - No hay token en formData:', formData);
                         alert('Error: Faltan datos de pago esenciales. Por favor, intenta nuevamente.');
                         return;
                     }
                     
+                    console.log('✅ Token encontrado, procediendo con pago...');
                     handlePaymentSubmission(formData, 'payment');
                 },
                 onError: (error) => {
@@ -469,13 +485,22 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     }
 };
 
-// ✅ VERSIÓN FINAL OPTIMIZADA de handlePaymentSubmission
+// ✅ VERSIÓN MEJORADA CON DEBUGGING: handlePaymentSubmission
 async function handlePaymentSubmission(paymentData, brickType) {
-    console.log(`🔄 Procesando pago desde ${brickType}`);
+    console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
     
-    // Validación mínima y efectiva
-    if (!paymentData?.token) {
-        console.error('❌ Token no disponible');
+    // Validación detallada para debugging
+    console.log('🔍 DEBUG - Estructura de paymentData:', {
+        tienePaymentData: !!paymentData,
+        tipo: typeof paymentData,
+        keys: paymentData ? Object.keys(paymentData) : 'no paymentData',
+        token: paymentData?.token,
+        tokenTipo: typeof paymentData?.token
+    });
+    
+    if (!paymentData || !paymentData.token) {
+        console.error('❌ Token no disponible en handlePaymentSubmission:', paymentData);
+        alert('Error: No se pudieron obtener los datos de pago. Por favor, intenta nuevamente.');
         return;
     }
 
@@ -496,6 +521,8 @@ async function handlePaymentSubmission(paymentData, brickType) {
             }
         };
 
+        console.log('📤 Enviando datos al servidor:', requestData);
+
         const response = await fetch('/process_payment/process_bricks_payment', {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -506,11 +533,10 @@ async function handlePaymentSubmission(paymentData, brickType) {
         
         if (!response.ok) throw new Error(result.error_message || 'Error del servidor');
 
-        // ✅ ÉXITO - Mostrar resultado
+        // ✅ ÉXITO
         paymentId = result.id;
         await renderStatusScreenBrick(bricksBuilder, result);
         
-        // Transición suave a resultados
         $('.container__payment').fadeOut(500, () => {
             $('.container__result').fadeIn(500);
         });
@@ -717,7 +743,7 @@ $(document).ready(function() {
         updateCartDisplay();
     }
 
-    console.log('✅ JavaScript cargado correctamente - VERSIÓN FINAL OPTIMIZADA');
+    console.log('✅ JavaScript cargado correctamente - VERSIÓN DEBUG');
 });
 
 // ✅ FUNCIÓN ADICIONAL: Mostrar mensajes temporales
