@@ -13,6 +13,12 @@ public class BricksPaymentDTO {
     private String payerLastName;
     private String description;
     
+    // ✅ CAMPOS NUEVOS para pagos en efectivo
+    private String identificationType;
+    private String identificationNumber;
+    private String issuerId;
+    private String paymentType;
+
     // Constructors
     public BricksPaymentDTO() {}
     
@@ -53,4 +59,17 @@ public class BricksPaymentDTO {
     
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    
+    // ✅ NUEVOS Getters and Setters para pagos en efectivo
+    public String getIdentificationType() { return identificationType; }
+    public void setIdentificationType(String identificationType) { this.identificationType = identificationType; }
+    
+    public String getIdentificationNumber() { return identificationNumber; }
+    public void setIdentificationNumber(String identificationNumber) { this.identificationNumber = identificationNumber; }
+    
+    public String getIssuerId() { return issuerId; }
+    public void setIssuerId(String issuerId) { this.issuerId = issuerId; }
+    
+    public String getPaymentType() { return paymentType; }
+    public void setPaymentType(String paymentType) { this.paymentType = paymentType; }
 }
