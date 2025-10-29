@@ -150,6 +150,79 @@ public class CardPaymentService {
         }
     }
 
+    /**
+     * ✅ NUEVO MÉTODO: Generar PDF específico para vouchers de pago en efectivo
+     */
+    public byte[] generateCashVoucherPdf(Payment payment) throws IOException {
+        LOGGER.info("Generando voucher PDF para pago en efectivo: {}", payment.getId());
+        
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDocument = new PdfDocument(writer);
+            Document document = new Document(pdfDocument);
+
+            // Encabezado específico para voucher
+            document.add(new Paragraph("VOUCHER DE PAGO")
+                    .setFontSize(20)
+                    .setBold()
+                    .setMarginBottom(20));
+
+            document.add(new Paragraph("Millenium Termotanques")
+                    .setFontSize(16)
+                    .setBold()
+                    .setMarginBottom(30));
+
+            // Información específica del voucher
+            document.add(new Paragraph("PRESENTE ESTE VOUCHER PARA PAGAR")
+                    .setFontSize(14)
+                    .setBold()
+                    .setMarginBottom(10));
+
+            document.add(new Paragraph("ID de operación: " + payment.getId()));
+            document.add(new Paragraph("Fecha de creación: " + payment.getDateCreated()));
+            document.add(new Paragraph("Fecha de vencimiento: " + payment.getDateOfExpiration()));
+            document.add(new Paragraph("Monto a pagar: $" + payment.getTransactionAmount()));
+            
+            String paymentMethod = payment.getPaymentMethodId();
+            String paymentMethodName = "rapipago".equals(paymentMethod) ? "Rapipago" : "Pago Fácil";
+            document.add(new Paragraph("Método de pago: " + paymentMethodName));
+            
+            document.add(new Paragraph("Estado: " + payment.getStatus()));
+            document.add(new Paragraph("Descripción: " + payment.getDescription()));
+
+            // ✅ Información del voucher externo
+            if (payment.getTransactionDetails() != null && payment.getTransactionDetails().getExternalResourceUrl() != null) {
+                document.add(new Paragraph("Código de pago: " + payment.getTransactionDetails().getExternalResourceUrl()));
+            }
+
+            document.add(new Paragraph(" ").setMarginBottom(20));
+
+            // Instrucciones específicas
+            document.add(new Paragraph("INSTRUCCIONES:")
+                    .setFontSize(14)
+                    .setBold()
+                    .setMarginBottom(10));
+
+            document.add(new Paragraph("1. Acércate a cualquier sucursal de " + paymentMethodName));
+            document.add(new Paragraph("2. Presenta este voucher o el código de operación"));
+            document.add(new Paragraph("3. Realiza el pago en efectivo"));
+            document.add(new Paragraph("4. Conserva el comprobante de pago"));
+
+            document.add(new Paragraph(" ").setMarginBottom(20));
+            document.add(new Paragraph("⏰ Válido hasta: " + payment.getDateOfExpiration())
+                    .setFontSize(12)
+                    .setItalic());
+
+            document.close();
+            
+            LOGGER.info("Voucher PDF generado exitosamente para pago: {}", payment.getId());
+            return baos.toByteArray();
+            
+        } catch (Exception e) {
+            LOGGER.error("Error generando voucher PDF para pago {}: {}", payment.getId(), e.getMessage());
+            throw new IOException("Error al generar el voucher PDF para el pago: " + payment.getId(), e);
+        }
+    }
     public Payment getPaymentById(Long paymentId) throws MPException, MPApiException {
         try {
             MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
