@@ -135,14 +135,24 @@ function ensureAmountField() {
     return amountInput;
 }
 
-// ✅ FUNCIÓN: Calcular total del carrito de forma confiable
+// ✅ FUNCIÓN MEJORADA: Calcular total del carrito de forma confiable
 function calculateCartTotal() {
-    if (!cart || cart.length === 0) return 0;
+    console.log('🛒 Calculando total del carrito...');
+    
+    if (!cart || cart.length === 0) {
+        console.warn('⚠️ Carrito vacío o no definido');
+        return 0;
+    }
     
     let total = 0;
-    cart.forEach(item => {
-        total += item.price * item.quantity;
+    
+    cart.forEach((item, index) => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
+        console.log(`📦 Item ${index + 1}: ${item.name} x${item.quantity} = $${itemTotal}`);
     });
+    
+    console.log('💰 Total calculado:', total);
     return total;
 }
 
@@ -467,7 +477,7 @@ async function initializePaymentBrick(total, userEmail) {
     }
 }
 
-// ✅ NUEVA FUNCIÓN: Procesar pagos en efectivo (Pago Fácil y Rapipago)
+// ✅ NUEVA FUNCIÓN CORREGIDA: Procesar pagos en efectivo (Pago Fácil y Rapipago)
 async function processCashPayment(formData) {
     console.log('🎫 Iniciando procesamiento de pago en efectivo:', formData);
     
@@ -475,27 +485,36 @@ async function processCashPayment(formData) {
         const total = calculateCartTotal();
         const userEmail = customerData.email || "cliente@millenium.com";
         
+        console.log('💰 Monto calculado:', total);
+        console.log('📧 Email del cliente:', userEmail);
+        console.log('👤 Datos del cliente:', customerData);
+        
         if (total <= 0) {
             throw new Error('El monto debe ser mayor a cero');
         }
 
-        // ✅ Preparar datos para el pago en efectivo
+        // ✅ PREPARAR DATOS CORRECTAMENTE
         const paymentData = {
-            transactionAmount: total,
+            amount: total, // ✅ Usar "amount" en lugar de "transactionAmount"
             paymentMethodId: formData.payment_method_id, // 'rapipago' o 'pagofacil'
             description: `Compra de ${cart.length} productos Millenium`,
-            payer: {
-                email: userEmail,
-                firstName: customerData.firstName || "Cliente",
-                lastName: customerData.lastName || "Millenium",
-                identification: {
-                    type: customerData.dniType || "DNI",
-                    number: customerData.dniNumber || ""
-                }
-            }
+            payerEmail: userEmail,
+            payerFirstName: customerData.firstName || "Cliente",
+            payerLastName: customerData.lastName || "Millenium",
+            identificationType: customerData.dniType || "DNI",
+            identificationNumber: customerData.dniNumber || "00000000"
         };
 
-        console.log('📤 Enviando pago en efectivo al servidor:', paymentData);
+        console.log('📤 Enviando datos al servidor:', paymentData);
+
+        // ✅ VERIFICAR QUE LOS DATOS ESTÉN COMPLETOS
+        if (!paymentData.amount || paymentData.amount <= 0) {
+            throw new Error('Monto inválido: ' + paymentData.amount);
+        }
+
+        if (!paymentData.payerEmail) {
+            throw new Error('Email del cliente es requerido');
+        }
 
         // ✅ Llamar al endpoint de Java para crear pago en efectivo
         const response = await fetch('/process_payment/create_ticket_payment', {
@@ -531,7 +550,7 @@ async function processCashPayment(formData) {
 
 // ✅ NUEVA FUNCIÓN: Mostrar resultado de pago en efectivo
 function showCashPaymentResult(paymentResult) {
-    const paymentMethod = paymentResult.payment_method_id;
+    const paymentMethod = paymentResult.paymentMethodId || 'pagofacil';
     const paymentMethodName = paymentMethod === 'rapipago' ? 'Rapipago' : 'Pago Fácil';
     
     // ✅ Ocultar el contenedor de pago y mostrar resultados
@@ -557,7 +576,7 @@ function showCashPaymentResult(paymentResult) {
             </div>
             <div class="detail-item">
                 <span class="detail-label">Monto:</span>
-                <span class="detail-value">$${calculateCartTotal().toLocaleString('es-AR')}</span>
+                <span class="detail-value">$${paymentResult.transactionAmount ? paymentResult.transactionAmount.toLocaleString('es-AR') : calculateCartTotal().toLocaleString('es-AR')}</span>
             </div>
             <div class="detail-item">
                 <span class="detail-label">Número de Operación:</span>
@@ -573,7 +592,7 @@ function showCashPaymentResult(paymentResult) {
             <h4>📋 Instrucciones para pagar:</h4>
             <p>Acércate a cualquier sucursal de <strong>${paymentMethodName}</strong> y presenta este código:</p>
             <div class="voucher-code">
-                <strong>${paymentResult.transaction_details?.external_resource_url || paymentResult.id}</strong>
+                <strong>${paymentResult.id || 'N/A'}</strong>
             </div>
             <p class="expiration-info">⏰ Tienes 3 días hábiles para realizar el pago</p>
         </div>
@@ -590,7 +609,11 @@ function showCashPaymentResult(paymentResult) {
     
     // ✅ Agregar event listeners para los nuevos botones
     document.getElementById('download-voucher').addEventListener('click', function() {
-        downloadCashVoucher(paymentResult.id);
+        if (paymentResult.id) {
+            downloadCashVoucher(paymentResult.id);
+        } else {
+            showTemporaryMessage('No hay ID de pago disponible para descargar el voucher', 'warning');
+        }
     });
     
     document.getElementById('back-to-store').addEventListener('click', function() {
@@ -624,6 +647,39 @@ function downloadCashVoucher(paymentId) {
             showTemporaryMessage('❌ Error al descargar el voucher: ' + error.message, 'error');
         });
 }
+
+// ✅ FUNCIÓN DE DEBUGGING
+function debugCashPayment() {
+    console.log('🔍 DEBUG - Datos antes de enviar pago efectivo:');
+    console.log('- calculateCartTotal():', calculateCartTotal());
+    console.log('- cart:', cart);
+    console.log('- customerData:', customerData);
+    
+    const total = calculateCartTotal();
+    console.log('- Total calculado:', total);
+    console.log('- Tipo de total:', typeof total);
+    console.log('- Es mayor a cero?:', total > 0);
+}
+
+// ✅ VERIFICAR CARRITO ANTES DE PAGAR
+function verifyCartBeforePayment() {
+    const total = calculateCartTotal();
+    const hasItems = cart && cart.length > 0;
+    
+    console.log('🔍 Verificación pre-pago:');
+    console.log('- Carrito tiene items?:', hasItems);
+    console.log('- Total calculado:', total);
+    console.log('- Carrito completo:', cart);
+    
+    if (!hasItems || total <= 0) {
+        showTemporaryMessage('❌ Error: El carrito está vacío', 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+// ... (el resto de tus funciones existentes se mantienen igual)
 
 // ✅ CORREGIDO COMPLETAMENTE: Status Screen Brick
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
@@ -865,18 +921,13 @@ $(document).ready(function() {
         });
     }
     
-    // ✅ BOTÓN "Ir a Pagar"
+    // ✅ BOTÓN "Ir a Pagar" CON VERIFICACIÓN
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
         checkoutBtn.on('click', function() {
-            const cartTotal = calculateCartTotal();
-            const hasItemsInCart = cart && cart.length > 0;
-            
-            if (!hasItemsInCart || cartTotal <= 0) {
-                showTemporaryMessage('❌ Error: El carrito está vacío o el monto es inválido.', 'error');
+            if (!verifyCartBeforePayment()) {
                 return;
             }
-            
             showCustomerForm();
         });
     }
@@ -926,7 +977,7 @@ $(document).ready(function() {
         updateCartDisplay();
     }
 
-    console.log('✅ JavaScript cargado correctamente - CON PAGO FÁCIL Y RAPIPAGO');
+    console.log('✅ JavaScript cargado correctamente - CON PAGO FÁCIL Y RAPIPAGO CORREGIDO');
 });
 
 // ✅ FUNCIÓN ADICIONAL: Mostrar mensajes temporales
