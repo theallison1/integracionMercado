@@ -51,6 +51,166 @@ public class CardPaymentController {
         this.cardPaymentService = cardPaymentService;
         this.resendEmailService = resendEmailService;
     }
+     /**
+     * ✅ NUEVO ENDPOINT: Crear pago en efectivo (Pago Fácil / Rapipago)
+     */
+    @PostMapping("/create_ticket_payment")
+    public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPaymentDTO) {
+        try {
+            LOGGER.info("🎫 Recibiendo solicitud de pago en efectivo");
+            LOGGER.info("Método: {}", cashPaymentDTO.getPaymentMethodId());
+            LOGGER.info("Monto: {}", cashPaymentDTO.getAmount());
+            LOGGER.info("Email: {}", cashPaymentDTO.getPayerEmail());
+            LOGGER.info("Nombre: {} {}", cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
+            
+            // ✅ Validar método de pago
+            String paymentMethod = cashPaymentDTO.getPaymentMethodId();
+            if (!"rapipago".equals(paymentMethod) && !"pagofacil".equals(paymentMethod)) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Método de pago no válido. Use 'rapipago' o 'pagofacil'");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            // ✅ Validar monto
+            if (cashPaymentDTO.getAmount() == null || cashPaymentDTO.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "El monto debe ser mayor a cero");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            // ✅ Completar datos faltantes
+            if (cashPaymentDTO.getPayerFirstName() == null) {
+                cashPaymentDTO.setPayerFirstName("Cliente");
+            }
+            if (cashPaymentDTO.getPayerLastName() == null) {
+                cashPaymentDTO.setPayerLastName("Millenium");
+            }
+            if (cashPaymentDTO.getIdentificationType() == null) {
+                cashPaymentDTO.setIdentificationType("DNI");
+            }
+            if (cashPaymentDTO.getIdentificationNumber() == null) {
+                cashPaymentDTO.setIdentificationNumber("00000000");
+            }
+            
+            PaymentResponseDTO result = cardPaymentService.processCashPayment(cashPaymentDTO);
+            
+            LOGGER.info("✅ Pago en efectivo creado exitosamente - ID: {}", result.getId());
+            
+            // ✅ Enviar email de confirmación de voucher
+            try {
+                String customerName = cashPaymentDTO.getPayerFirstName() + " " + cashPaymentDTO.getPayerLastName();
+                resendEmailService.sendCashPaymentVoucherEmail(
+                    cashPaymentDTO.getPayerEmail(),
+                    customerName,
+                    result
+                );
+            } catch (Exception emailError) {
+                LOGGER.warn("⚠️ No se pudo enviar email de voucher: {}", emailError.getMessage());
+            }
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (MercadoPagoException e) {
+            LOGGER.error("❌ Error Mercado Pago en pago efectivo: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error Mercado Pago: " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        } catch (Exception e) {
+            LOGGER.error("❌ Error creando pago en efectivo: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error interno: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+
+    /**
+     * ✅ NUEVO ENDPOINT: Obtener voucher de pago en efectivo
+     */
+    @GetMapping("/download_voucher/{paymentId}")
+    public ResponseEntity<?> downloadCashVoucher(@PathVariable Long paymentId) {
+        try {
+            LOGGER.info("📄 Solicitando voucher para pago: {}", paymentId);
+            
+            // Obtener información del pago
+            var payment = cardPaymentService.getPaymentById(paymentId);
+            
+            // Generar PDF del voucher
+            byte[] pdfBytes = cardPaymentService.generateCashVoucherPdf(payment);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(ContentDisposition.attachment()
+                .filename("voucher-pago-" + paymentId + ".pdf")
+                .build());
+            
+            return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+            
+        } catch (MPApiException apiException) {
+            LOGGER.error("❌ Error API Mercado Pago obteniendo voucher: {}", apiException.getApiResponse().getContent());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error obteniendo información del pago: " + apiException.getApiResponse().getContent());
+            return ResponseEntity.status(500).body(errorResponse);
+        } catch (MPException mpException) {
+            LOGGER.error("❌ Error Mercado Pago obteniendo voucher: {}", mpException.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error de conexión con Mercado Pago: " + mpException.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        } catch (Exception e) {
+            LOGGER.error("❌ Error generando voucher: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error generando voucher: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+
+    /**
+     * ✅ NUEVO ENDPOINT: Obtener información de pago en efectivo
+     */
+    @GetMapping("/cash_payment/{paymentId}")
+    public ResponseEntity<?> getCashPaymentInfo(@PathVariable Long paymentId) {
+        try {
+            LOGGER.info("🔍 Solicitando información de pago en efectivo: {}", paymentId);
+            
+            var payment = cardPaymentService.getPaymentById(paymentId);
+            
+            // Crear respuesta con información específica para efectivo
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", payment.getId());
+            response.put("status", payment.getStatus());
+            response.put("statusDetail", payment.getStatusDetail());
+            response.put("transactionAmount", payment.getTransactionAmount());
+            response.put("dateCreated", payment.getDateCreated());
+            response.put("dateOfExpiration", payment.getDateOfExpiration());
+            response.put("paymentMethodId", payment.getPaymentMethodId());
+            response.put("description", payment.getDescription());
+            
+            // Información del voucher externo
+            if (payment.getTransactionDetails() != null) {
+                Map<String, Object> transactionDetails = new HashMap<>();
+                transactionDetails.put("externalResourceUrl", payment.getTransactionDetails().getExternalResourceUrl());
+                transactionDetails.put("financialInstitution", payment.getTransactionDetails().getFinancialInstitution());
+                response.put("transactionDetails", transactionDetails);
+            }
+            
+            // Información del pagador
+            if (payment.getPayer() != null) {
+                Map<String, Object> payerInfo = new HashMap<>();
+                payerInfo.put("email", payment.getPayer().getEmail());
+                payerInfo.put("firstName", payment.getPayer().getFirstName());
+                payerInfo.put("lastName", payment.getPayer().getLastName());
+                response.put("payer", payerInfo);
+            }
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Error obteniendo información de pago: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error obteniendo información del pago: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+
 
     // ✅ NUEVO ENDPOINT: Crear preferencia para Wallet Brick
     @PostMapping("/create_wallet_preference")
