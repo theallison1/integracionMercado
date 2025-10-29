@@ -137,13 +137,13 @@ public class CardPaymentDTO {
         this.statementDescriptor = statementDescriptor;
     }
 
-    // ✅ Método para validar datos básicos
+    // ✅ MÉTODO CORREGIDO: Validar datos básicos
     public boolean isValid() {
         return token != null && !token.trim().isEmpty() &&
                paymentMethodId != null && !paymentMethodId.trim().isEmpty() &&
                transactionAmount != null && transactionAmount.compareTo(BigDecimal.ZERO) > 0 &&
                installments != null && installments > 0 &&
-               payer != null && payer.isValid();
+               payer != null && payer.isValid(); // ✅ AHORA SÍ EXISTE isValid()
     }
 
     // ✅ Método para obtener descripción por defecto si no viene
