@@ -445,6 +445,108 @@ private PaymentCreateRequest buildBricksPaymentRequest(BricksPaymentDTO bricksPa
             .payer(payerRequest)
             .build();
 }
+
+    /**
+ * ✅ NUEVO MÉTODO: Procesar pagos en efectivo (Pago Fácil y Rapipago)
+ */
+public PaymentResponseDTO processCashPayment(BricksPaymentDTO cashPaymentDTO) {
+    try {
+        MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+        PaymentClient client = new PaymentClient();
+
+        String notificationUrl = appBaseUrl + "/process_payment/webhooks/mercadopago";
+
+        LOGGER.info("=== CREANDO PAGO EN EFECTIVO ===");
+        LOGGER.info("Método: {}", cashPaymentDTO.getPaymentMethodId());
+        LOGGER.info("Monto: {}", cashPaymentDTO.getAmount());
+        LOGGER.info("Email: {}", cashPaymentDTO.getPayerEmail());
+        LOGGER.info("Nombre: {} {}", cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
+
+        // ✅ Validar que sea un método de pago en efectivo válido
+        String paymentMethodId = cashPaymentDTO.getPaymentMethodId();
+        if (!"rapipago".equals(paymentMethodId) && !"pagofacil".equals(paymentMethodId)) {
+            throw new MercadoPagoException("Método de pago no válido para efectivo. Use 'rapipago' o 'pagofacil'");
+        }
+
+        // ✅ Configurar idempotency key
+        Map<String, String> customHeaders = new HashMap<>();
+        String idempotencyKey = "CASH_" + UUID.randomUUID().toString();
+        customHeaders.put("x-idempotency-key", idempotencyKey);
+
+        MPRequestOptions requestOptions = MPRequestOptions.builder()
+            .customHeaders(customHeaders)
+            .build();
+
+        // ✅ Fecha de expiración (3 días hábiles)
+        OffsetDateTime expirationDate = OffsetDateTime.now().plusDays(3);
+
+        // ✅ Construir request específico para pagos en efectivo
+        PaymentCreateRequest paymentCreateRequest = buildCashPaymentRequest(cashPaymentDTO, notificationUrl, expirationDate);
+
+        Payment payment = client.create(paymentCreateRequest, requestOptions);
+
+        LOGGER.info("✅ Pago en efectivo creado exitosamente - ID: {}, Estado: {}", 
+                   payment.getId(), payment.getStatus());
+        LOGGER.info("Fecha de expiración: {}", expirationDate);
+        LOGGER.info("URL externa: {}", payment.getTransactionDetails() != null ? 
+                   payment.getTransactionDetails().getExternalResourceUrl() : "N/A");
+
+        return new PaymentResponseDTO(
+                payment.getId(),
+                String.valueOf(payment.getStatus()),
+                payment.getStatusDetail(),
+                payment.getDateCreated(),
+                payment.getTransactionAmount());
+
+    } catch (MPApiException apiException) {
+        LOGGER.error("❌ Error API Mercado Pago en pago efectivo - Status: {}", apiException.getStatusCode());
+        LOGGER.error("❌ API Response: {}", apiException.getApiResponse().getContent());
+        
+        throw new MercadoPagoException(
+            "Error Mercado Pago pago efectivo: " + apiException.getApiResponse().getContent(),
+            apiException
+        );
+    } catch (MPException exception) {
+        LOGGER.error("❌ Error Mercado Pago pago efectivo: {}", exception.getMessage());
+        throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
+    }
+}
+
+/**
+ * ✅ Construir el PaymentCreateRequest para pagos en efectivo
+ */
+private PaymentCreateRequest buildCashPaymentRequest(BricksPaymentDTO cashPaymentDTO, String notificationUrl, OffsetDateTime expirationDate) {
+    
+    // ✅ Descripción específica para pagos en efectivo
+    String paymentMethodName = "rapipago".equals(cashPaymentDTO.getPaymentMethodId()) ? "Rapipago" : "Pago Fácil";
+    String description = cashPaymentDTO.getDescription() != null ? 
+                        cashPaymentDTO.getDescription() : 
+                        "Pago en " + paymentMethodName + " - Millenium";
+
+    // ✅ Información del pagador con identificación
+    PaymentPayerRequest payerRequest = PaymentPayerRequest.builder()
+            .email(cashPaymentDTO.getPayerEmail() != null ? cashPaymentDTO.getPayerEmail() : "guest@millenium.com")
+            .firstName(cashPaymentDTO.getPayerFirstName() != null ? cashPaymentDTO.getPayerFirstName() : "Cliente")
+            .lastName(cashPaymentDTO.getPayerLastName() != null ? cashPaymentDTO.getPayerLastName() : "Millenium")
+            .identification(
+                IdentificationRequest.builder()
+                    .type(cashPaymentDTO.getIdentificationType() != null ? cashPaymentDTO.getIdentificationType() : "DNI")
+                    .number(cashPaymentDTO.getIdentificationNumber() != null ? cashPaymentDTO.getIdentificationNumber() : "00000000")
+                    .build()
+            )
+            .build();
+
+    // ✅ Construir el request del pago en efectivo
+    // NOTA: Para pagos en efectivo NO se usa token
+    return PaymentCreateRequest.builder()
+            .transactionAmount(cashPaymentDTO.getAmount())
+            .description(description)
+            .paymentMethodId(cashPaymentDTO.getPaymentMethodId())
+            .dateOfExpiration(expirationDate) // ✅ Fecha de expiración importante
+            .notificationUrl(notificationUrl)
+            .payer(payerRequest)
+            .build();
+}
     /**
      * ✅ Método para cancelar un pago
      */
