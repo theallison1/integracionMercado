@@ -362,28 +362,16 @@ async function initializePaymentBrick(total, userEmail) {
                     console.log('✅ Payment Brick ready');
                 },
                 onSubmit: (formData) => {
-                    console.log('🔄 Payment Brick onSubmit - Datos COMPLETOS recibidos:', formData);
+                    console.log('🔄 Payment Brick onSubmit - Datos recibidos:', formData);
                     
-                    // ✅ CORRECCIÓN DEFINITIVA: Los datos vienen directamente en formData
-                    let paymentData = formData;
-                    
-                    // ✅ VERIFICACIÓN COMPLETA DE LOS DATOS
-                    console.log('🔍 Analizando estructura de datos:', {
-                        tieneToken: !!paymentData.token,
-                        tienePaymentMethodId: !!paymentData.payment_method_id,
-                        tieneFormData: !!paymentData.formData,
-                        keys: Object.keys(paymentData)
-                    });
-                    
-                    // ✅ VERIFICAR DATOS CRÍTICOS
-                    if (!paymentData.token) {
-                        console.error('❌ Faltan datos críticos - No hay token:', paymentData);
-                        alert('Error: Faltan datos de pago esenciales (token). Por favor, intenta nuevamente.');
+                    // ✅ VERIFICACIÓN SIMPLE Y EFECTIVA
+                    if (!formData?.token) {
+                        console.error('❌ Faltan datos críticos - No hay token');
+                        alert('Error: Faltan datos de pago esenciales. Por favor, intenta nuevamente.');
                         return;
                     }
                     
-                    console.log('✅ Datos de pago válidos, procediendo con el envío...');
-                    handlePaymentSubmission(paymentData, 'payment');
+                    handlePaymentSubmission(formData, 'payment');
                 },
                 onError: (error) => {
                     console.error('❌ Payment Brick error:', error);
@@ -481,92 +469,55 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     }
 };
 
-// ✅ CORREGIDO DEFINITIVAMENTE: Manejo unificado de pagos
+// ✅ VERSIÓN FINAL OPTIMIZADA de handlePaymentSubmission
 async function handlePaymentSubmission(paymentData, brickType) {
-    console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
+    console.log(`🔄 Procesando pago desde ${brickType}`);
     
-    // ✅ VALIDACIÓN MEJORADA Y EXPLICATIVA
-    if (!paymentData || typeof paymentData !== 'object') {
-        console.error('❌ Error: paymentData es inválido:', paymentData);
-        alert('Error: Datos de pago inválidos. Por favor, intenta nuevamente.');
-        return;
-    }
-
-    // ✅ VERIFICACIÓN DETALLADA DE DATOS CRÍTICOS
-    console.log('🔍 Verificando datos de pago recibidos:', {
-        tieneToken: !!paymentData.token,
-        token: paymentData.token,
-        tienePaymentMethodId: !!paymentData.payment_method_id,
-        paymentMethodId: paymentData.payment_method_id,
-        todasLasKeys: Object.keys(paymentData)
-    });
-
-    if (!paymentData.token) {
-        console.error('❌ Error CRÍTICO: Falta token en paymentData:', paymentData);
-        alert('Error: Datos de pago incompletos. Falta el token de seguridad. Por favor, intenta nuevamente.');
+    // Validación mínima y efectiva
+    if (!paymentData?.token) {
+        console.error('❌ Token no disponible');
         return;
     }
 
     try {
-        const total = calculateCartTotal();
-        const userEmail = customerData.email || "cliente@millenium.com";
-
-        // ✅ ESTRUCTURA CORRECTA PARA EL SERVIDOR
         const requestData = {
             token: paymentData.token,
             paymentMethodId: paymentData.payment_method_id,
             installments: parseInt(paymentData.installments) || 1,
-            issuerId: paymentData.issuer_id || null,
+            issuerId: paymentData.issuer_id,
             paymentType: paymentData.payment_type || 'credit_card',
-            amount: total,
+            amount: calculateCartTotal(),
             brickType: brickType,
-            description: `Pago de ${cart.length} productos Millenium`,
+            description: `Compra de ${cart.length} productos Millenium`,
             payer: {
-                email: userEmail,
+                email: customerData.email || "cliente@millenium.com",
                 firstName: customerData.firstName || "Cliente",
-                lastName: customerData.lastName || "Millenium",
-                identification: {
-                    type: customerData.dniType || 'DNI',
-                    number: customerData.dniNumber || ''
-                }
+                lastName: customerData.lastName || "Millenium"
             }
         };
 
-        console.log('📤 Enviando datos de pago al servidor:', requestData);
-
         const response = await fetch('/process_payment/process_bricks_payment', {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestData)
         });
 
-        console.log(`📥 Respuesta del servidor (status: ${response.status})`);
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('❌ Error en respuesta:', errorData);
-            throw new Error(errorData.error_message || `Error del servidor: ${response.status}`);
-        }
-
         const result = await response.json();
-        console.log(`✅ Pago procesado exitosamente:`, result);
+        
+        if (!response.ok) throw new Error(result.error_message || 'Error del servidor');
 
-        if (result.error_message) {
-            throw new Error(result.error_message);
-        }
-
+        // ✅ ÉXITO - Mostrar resultado
+        paymentId = result.id;
         await renderStatusScreenBrick(bricksBuilder, result);
-
-        $('.container__payment').fadeOut(500);
-        setTimeout(() => {
-            $('.container__result').show(500).fadeIn();
-        }, 500);
+        
+        // Transición suave a resultados
+        $('.container__payment').fadeOut(500, () => {
+            $('.container__result').fadeIn(500);
+        });
 
     } catch (error) {
-        console.error(`❌ Error procesando pago:`, error);
-        alert(`Error al procesar el pago: ${error.message}`);
+        console.error('❌ Error procesando pago:', error);
+        alert(`Error: ${error.message}`);
     }
 }
 
@@ -766,7 +717,7 @@ $(document).ready(function() {
         updateCartDisplay();
     }
 
-    console.log('✅ JavaScript cargado correctamente - Versión DEFINITIVA corregida');
+    console.log('✅ JavaScript cargado correctamente - VERSIÓN FINAL OPTIMIZADA');
 });
 
 // ✅ FUNCIÓN ADICIONAL: Mostrar mensajes temporales
