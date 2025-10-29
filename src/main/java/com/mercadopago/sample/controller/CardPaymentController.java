@@ -9,6 +9,8 @@ import com.mercadopago.sample.dto.BricksPaymentDTO;
 import com.mercadopago.sample.dto.CardPaymentDTO;
 import com.mercadopago.sample.dto.PayerDTO;
 import com.mercadopago.sample.dto.PayerIdentificationDTO;
+import com.mercadopago.exceptions.MPException; // ✅ AGREGAR ESTE IMPORT
+
 import com.mercadopago.sample.dto.PaymentResponseDTO;
 import com.mercadopago.sample.exception.MercadoPagoException;
 import com.mercadopago.sample.service.CardPaymentService;
