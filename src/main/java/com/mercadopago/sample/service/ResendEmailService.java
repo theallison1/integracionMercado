@@ -52,6 +52,101 @@ public class ResendEmailService {
         String text = buildPendingEmailText(name, payment);
         sendEmailViaApi(email, subject, text, "procesamiento");
     }
+    /**
+ * ✅ NUEVO MÉTODO: Enviar email con voucher de pago en efectivo
+ */
+public void sendCashPaymentVoucherEmail(String customerEmail, String customerName, PaymentResponseDTO payment) {
+    try {
+        LOGGER.info("📧 Enviando email de voucher a: {} - Pago ID: {}", customerEmail, payment.getId());
+        
+        String paymentMethod = getPaymentMethodName(payment.getStatusDetail());
+        String subject = "🎫 Tu voucher de pago - Millenium Termotanques";
+        
+        String htmlContent = buildCashVoucherEmailTemplate(customerName, payment, paymentMethod);
+        
+        // Usar tu lógica existente para enviar emails
+        sendEmail(customerEmail, subject, htmlContent);
+        
+        LOGGER.info("✅ Email de voucher enviado exitosamente a: {}", customerEmail);
+        
+    } catch (Exception e) {
+        LOGGER.error("❌ Error enviando email de voucher: {}", e.getMessage());
+        throw new RuntimeException("Error enviando email de voucher: " + e.getMessage(), e);
+    }
+}
+
+/**
+ * ✅ Método auxiliar: Obtener nombre del método de pago
+ */
+private String getPaymentMethodName(String statusDetail) {
+    if (statusDetail != null) {
+        if (statusDetail.contains("rapipago")) return "Rapipago";
+        if (statusDetail.contains("pagofacil")) return "Pago Fácil";
+    }
+    return "Efectivo";
+}
+
+/**
+ * ✅ Método auxiliar: Construir template de email para voucher
+ */
+private String buildCashVoucherEmailTemplate(String customerName, PaymentResponseDTO payment, String paymentMethod) {
+    return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }
+                .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .header { text-align: center; margin-bottom: 30px; }
+                .header h1 { color: #d4af37; margin: 0; }
+                .voucher-info { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #d4af37; }
+                .instructions { background: #fff3cd; padding: 15px; border-radius: 6px; margin: 20px 0; }
+                .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🎫 Millenium Termotanques</h1>
+                    <p>Tu voucher de pago ha sido generado</p>
+                </div>
+                
+                <p>Hola <strong>""" + customerName + """</strong>,</p>
+                
+                <p>Tu pago en efectivo ha sido procesado exitosamente. Aquí tienes los detalles:</p>
+                
+                <div class="voucher-info">
+                    <h3>📋 Información del Voucher</h3>
+                    <p><strong>Número de operación:</strong> """ + payment.getId() + """</p>
+                    <p><strong>Método de pago:</strong> """ + paymentMethod + """</p>
+                    <p><strong>Monto:</strong> $""" + payment.getTransactionAmount() + """</p>
+                    <p><strong>Estado:</strong> Pendiente de pago</p>
+                </div>
+                
+                <div class="instructions">
+                    <h3>📝 Instrucciones para pagar:</h3>
+                    <ol>
+                        <li>Acércate a cualquier sucursal de <strong>""" + paymentMethod + """</strong></li>
+                        <li>Presenta el número de operación o descarga el voucher</li>
+                        <li>Realiza el pago en efectivo</li>
+                        <li>Conserva el comprobante de pago</li>
+                    </ol>
+                    <p><strong>⏰ Tienes 3 días hábiles para realizar el pago</strong></p>
+                </div>
+                
+                <p>Puedes descargar tu voucher desde nuestro sitio web o presentando este número de operación en la sucursal.</p>
+                
+                <div class="footer">
+                    <p>Gracias por elegir Millenium Termotanques</p>
+                    <p>📍 Dirección: [Tu dirección]</p>
+                    <p>📞 Teléfono: [Tu teléfono]</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """;
+}
     
     public void sendPaymentCancellationEmail(String email, String name, Payment payment) {
         String subject = "🚫 Pago Cancelado - Millenium Termotanques";
