@@ -18,12 +18,13 @@ let customerData = {
     phone: ''
 };
 
-//  FUNCIÓN MEJORADA: Validar formulario del comprador
+//  FUNCIÓN MEJORADA: Validar formulario del comprador - NO ROMPE EL FLUJO
 function validateCustomerForm() {
     const firstName = document.getElementById('customer-first-name').value.trim();
     const lastName = document.getElementById('customer-last-name').value.trim();
     const email = document.getElementById('customer-email').value.trim();
     
+    //  Validaciones que NO detienen el proceso
     const errors = [];
     
     if (!firstName) {
@@ -50,6 +51,7 @@ function validateCustomerForm() {
         highlightField('customer-email', false);
     }
     
+    //  Mostrar errores de forma amigable
     if (errors.length > 0) {
         showValidationErrors(errors);
         return false;
@@ -58,7 +60,7 @@ function validateCustomerForm() {
     return true;
 }
 
-//  FUNCIÓN: Resaltar campo con error
+// FUNCIÓN: Resaltar campo con error
 function highlightField(fieldId, hasError) {
     const field = document.getElementById(fieldId);
     if (field) {
@@ -72,8 +74,9 @@ function highlightField(fieldId, hasError) {
     }
 }
 
-//  FUNCIÓN: Mostrar errores de validación
+// FUNCIÓN: Mostrar errores de validación de forma elegante
 function showValidationErrors(errors) {
+    // Crear o actualizar contenedor de errores
     let errorContainer = document.getElementById('validation-errors');
     if (!errorContainer) {
         errorContainer = document.createElement('div');
@@ -91,6 +94,7 @@ function showValidationErrors(errors) {
         form.parentNode.insertBefore(errorContainer, form);
     }
     
+    // Construir mensaje de errores
     errorContainer.innerHTML = `
         <div style="display: flex; align-items: center; margin-bottom: 10px;">
             <span style="background: #c53030; color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px;">!</span>
@@ -101,6 +105,7 @@ function showValidationErrors(errors) {
         </ul>
     `;
     
+    // Auto-eliminar después de 5 segundos
     setTimeout(() => {
         if (errorContainer) {
             errorContainer.style.opacity = '0';
@@ -163,6 +168,7 @@ function updateSummaryTotal() {
 
 //  FUNCIÓN: Mostrar formulario del comprador
 function showCustomerForm() {
+    // Limpiar errores previos
     const existingErrors = document.getElementById('validation-errors');
     if (existingErrors) {
         existingErrors.remove();
@@ -175,7 +181,7 @@ function showCustomerForm() {
     updateCustomerCartSummary();
 }
 
-//  FUNCIÓN: Actualizar resumen del carrito en el formulario
+// FUNCIÓN: Actualizar resumen del carrito en el formulario
 function updateCustomerCartSummary() {
     const summaryContainer = document.getElementById('customer-cart-summary');
     const totalElement = document.getElementById('customer-cart-total');
@@ -202,6 +208,7 @@ function updateCustomerCartSummary() {
 
 // FUNCIÓN MEJORADA: Saltar formulario (opcional)
 function skipCustomerInfo() {
+    // Usar valores por defecto pero permitir edición
     customerData = {
         firstName: document.getElementById('customer-first-name').value.trim() || 'Cliente',
         lastName: document.getElementById('customer-last-name').value.trim() || 'Millenium',
@@ -214,12 +221,13 @@ function skipCustomerInfo() {
     goToPayment();
 }
 
-// CORREGIDO: Ir a métodos de pago
+//  CORREGIDO: Ir a métodos de pago - CON VALIDACIÓN MEJORADA
 function goToPayment() {
-    console.log(' Intentando ir a pagos...');
+    console.log('🚀 Intentando ir a pagos...');
     
+    // PREVENIR INICIALIZACIÓN DUPLICADA
     if (bricksInitialized) {
-        console.log('Bricks ya inicializados, solo mostrando sección');
+        console.log('ℹ️ Bricks ya inicializados, solo mostrando sección');
         document.querySelector('.container__cart').style.display = 'none';
         document.querySelector('#customer-form-section').style.display = 'none';
         document.querySelector('.container__payment').style.display = 'block';
@@ -236,7 +244,7 @@ function goToPayment() {
 //  CORREGIDO: Crear preferencia para Mercado Pago
 async function createMercadoPagoPreference(amount) {
     try {
-        console.log('Creando preferencia en Mercado Pago, monto:', amount);
+        console.log('🔄 Creando preferencia en Mercado Pago, monto:', amount);
         
         const response = await fetch('/process_payment/create_wallet_preference', {
             method: "POST",
@@ -261,7 +269,7 @@ async function createMercadoPagoPreference(amount) {
             throw new Error(result.error);
         }
         
-        console.log(' Preferencia creada:', result.id);
+        console.log('Preferencia creada:', result.id);
         return result.id;
         
     } catch (error) {
@@ -270,10 +278,11 @@ async function createMercadoPagoPreference(amount) {
     }
 }
 
-//  CORREGIDO COMPLETAMENTE: Inicializar ambos Bricks
+//  CORREGIDO: Inicializar ambos Bricks - UNA SOLA VEZ
 async function initializePaymentBricks() {
+    // PREVENIR EJECUCIÓN DUPLICADA
     if (bricksInitialized) {
-        console.log('Bricks ya inicializados, omitiendo...');
+        console.log(' Bricks ya inicializados, omitiendo...');
         return;
     }
     
@@ -284,6 +293,9 @@ async function initializePaymentBricks() {
     
     console.log(' Inicializando Bricks - Monto:', total, 'Email:', userEmail);
 
+    //  LIMPIAR CONTENEDORES PRIMERO
+    await cleanBrickContainers();
+
     try {
         //  WALLET BRICK CON PREFERENCIA
         const preferenceId = await createMercadoPagoPreference(total);
@@ -293,11 +305,34 @@ async function initializePaymentBricks() {
         }
         
     } catch (error) {
-        console.log('ℹ️ Wallet Brick no disponible');
+        console.log('Wallet Brick no disponible');
     }
 
-    //  PAYMENT BRICK (SIEMPRE)
+    // PAYMENT BRICK (SIEMPRE)
     await initializePaymentBrick(total, userEmail);
+}
+
+//  FUNCIÓN: Limpiar contenedores
+async function cleanBrickContainers() {
+    try {
+        const walletContainer = document.getElementById('walletBrick_container');
+        const paymentContainer = document.getElementById('paymentBrick_container');
+        
+        if (walletContainer) walletContainer.innerHTML = '';
+        if (paymentContainer) paymentContainer.innerHTML = '';
+
+        // Limpiar controllers existentes
+        if (window.walletBrickController) {
+            try { await window.walletBrickController.unmount(); } catch(e) {}
+        }
+        if (window.paymentBrickController) {
+            try { await window.paymentBrickController.unmount(); } catch(e) {}
+        }
+        
+        console.log(' Contenedores limpiados exitosamente');
+    } catch (error) {
+        console.error('Error limpiando contenedores:', error);
+    }
 }
 
 //  FUNCIÓN: Inicializar Wallet Brick
@@ -314,11 +349,13 @@ async function initializeWalletBrickWithPreference(preferenceId) {
             },
             callbacks: {
                 onReady: () => {
-                    console.log("Wallet Brick ready con preferencia");
+                    console.log(" Wallet Brick ready con preferencia");
                 },
                 onError: (error) => {
-                    console.error("Wallet Brick error:", error);
+                    console.error(" Wallet Brick error:", error);
+                    // Mostrar mensaje de error en el contenedor
                     walletContainer.innerHTML = `
+                    
                         <div style="background: #2d2d2d; color: #d4af37; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #444;">
                             <h5> Billetera No Disponible</h5>
                             <p>Utiliza el formulario de abajo para pagar con tarjetas, efectivo u otros métodos.</p>
@@ -342,7 +379,7 @@ async function initializeWalletBrickWithPreference(preferenceId) {
     }
 }
 
-//  CORREGIDO COMPLETAMENTE: Inicializar Payment Brick
+//  CORREGIDO: Inicializar Payment Brick
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
@@ -359,27 +396,15 @@ async function initializePaymentBrick(total, userEmail) {
             },
             callbacks: {
                 onReady: () => {
-                    console.log('Payment Brick ready');
+                    console.log(' Payment Brick ready');
                 },
                 onSubmit: (formData) => {
-                    console.log('Payment Brick onSubmit - Datos recibidos:', formData);
-                    //  VERIFICACIÓN INMEDIATA DE LOS DATOS
-                    if (!formData || typeof formData !== 'object') {
-                        console.error(' formData es inválido:', formData);
-                        alert('Error: Datos de pago inválidos');
-                        return;
-                    }
-                    
-                    if (!formData.token && !formData.paymentMethodId) {
-                        console.error(' Faltan datos críticos en formData:', formData);
-                        alert('Error: Faltan datos de pago esenciales');
-                        return;
-                    }
-                    
+                    console.log(' Payment Brick onSubmit:', formData);
                     handlePaymentSubmission(formData, 'payment');
                 },
                 onError: (error) => {
                     console.error(' Payment Brick error:', error);
+                    // Mostrar mensaje de error
                     paymentContainer.innerHTML = `
                         <div style="background: #2d2d2d; color: #dc3545; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #dc3545;">
                             <h5> Error en formulario de pago</h5>
@@ -431,13 +456,16 @@ async function initializePaymentBrick(total, userEmail) {
                     <button onclick="location.reload()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px;">
                         Recargar página
                     </button>
+                    <button onclick="goBackToPayments()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px;">
+                        Volver a pagos
+                    </button>
                 </div>
             `;
         }
     }
 }
 
-// CORREGIDO COMPLETAMENTE: Status Screen Brick
+// FUNCIÓN: Status Screen Brick
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
     paymentId = result.id;
     console.log('Payment ID:', paymentId);
@@ -448,6 +476,7 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
             statusContainer.innerHTML = '';
         }
 
+        // Desmontar status screen anterior si existe
         if (window.statusScreenBrickController) {
             try {
                 await window.statusScreenBrickController.unmount();
@@ -470,26 +499,17 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
             }
         });
     } catch (error) {
-        console.error('Error creando Status Screen:', error);
+        console.error(' Error creando Status Screen:', error);
     }
 };
 
-//  CORREGIDO COMPLETAMENTE: Manejo unificado de pagos - SIN ERROR DE TOKEN
+//  CORREGIDO: Manejo unificado de pagos
 async function handlePaymentSubmission(paymentData, brickType) {
     console.log(` Procesando pago desde ${brickType}:`, paymentData);
     
-    //  VALIDACIÓN MEJORADA - MÁS FLEXIBLE
-    if (!paymentData || typeof paymentData !== 'object') {
-        console.error(' Error: paymentData es inválido:', paymentData);
-        alert('Error: Datos de pago inválidos. Por favor, intenta nuevamente.');
-        return;
-    }
-
-    //  VERIFICAR DATOS CRÍTICOS (diferentes bricks envían diferentes estructuras)
-    const hasRequiredData = paymentData.token || paymentData.paymentMethodId;
-    if (!hasRequiredData) {
-        console.error(' Error: Faltan datos críticos en paymentData:', paymentData);
-        alert('Error: Datos de pago incompletos. Faltan token o paymentMethodId.');
+    if (!paymentData || !paymentData.token) {
+        console.error(' Error: paymentData es inválido o falta token');
+        alert('Error: Datos de pago incompletos. Por favor, intenta nuevamente.');
         return;
     }
 
@@ -497,9 +517,8 @@ async function handlePaymentSubmission(paymentData, brickType) {
         const total = calculateCartTotal();
         const userEmail = customerData.email || "cliente@millenium.com";
 
-        //  ESTRUCTURA COMPATIBLE CON AMBOS BRICKS
         const requestData = {
-            token: paymentData.token || paymentData.paymentMethodId,
+            token: paymentData.token,
             paymentMethodId: paymentData.payment_method_id || paymentData.paymentMethodId,
             installments: parseInt(paymentData.installments) || 1,
             issuerId: paymentData.issuer_id || null,
@@ -518,7 +537,7 @@ async function handlePaymentSubmission(paymentData, brickType) {
             }
         };
 
-        console.log(' Enviando datos de pago al servidor:', requestData);
+        console.log(' Enviando datos de pago:', requestData);
 
         const response = await fetch('/process_payment/process_bricks_payment', {
             method: "POST",
@@ -532,12 +551,12 @@ async function handlePaymentSubmission(paymentData, brickType) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('Error en respuesta:', errorData);
+            console.error(' Error en respuesta:', errorData);
             throw new Error(errorData.error_message || `Error del servidor: ${response.status}`);
         }
 
         const result = await response.json();
-        console.log(` Pago procesado exitosamente:`, result);
+        console.log(`Pago procesado exitosamente:`, result);
 
         if (result.error_message) {
             throw new Error(result.error_message);
@@ -662,19 +681,20 @@ function updateCartDisplay() {
     updateSummaryTotal();
 }
 
-//  EVENT LISTENERS MEJORADOS
+// EVENT LISTENERS MEJORADOS - CON VALIDACIONES QUE NO ROMPEN
 $(document).ready(function() {
     ensureAmountField();
     updateSummaryTotal();
     
-    // MANEJAR FORMULARIO DEL COMPRADOR
+    //  MANEJAR FORMULARIO DEL COMPRADOR - CON VALIDACIÓN MEJORADA
     const customerForm = document.getElementById('customer-info-form');
     if (customerForm) {
         customerForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
+            //  VALIDACIÓN QUE NO DETIENE EL FLUJO
             if (!validateCustomerForm()) {
-                return;
+                return; // Solo detiene el envío, no rompe la página
             }
             
             // Guardar datos del cliente
@@ -687,11 +707,12 @@ $(document).ready(function() {
                 phone: document.getElementById('customer-phone').value.trim()
             };
             
+            // Ir a la sección de pago
             goToPayment();
         });
     }
     
-    // BOTÓN "Ir a Pagar"
+    //  BOTÓN "Ir a Pagar" - CON VALIDACIÓN MEJORADA
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
         checkoutBtn.on('click', function() {
@@ -699,6 +720,7 @@ $(document).ready(function() {
             const hasItemsInCart = cart && cart.length > 0;
             
             if (!hasItemsInCart || cartTotal <= 0) {
+                //  MENSAJE AMIGABLE, NO ROMPE
                 showTemporaryMessage(' Error: El carrito está vacío o el monto es inválido.', 'error');
                 return;
             }
@@ -707,7 +729,7 @@ $(document).ready(function() {
         });
     }
 
-    //  BOTÓN "Volver al catálogo"
+    // BOTÓN "Volver al catálogo" - CON RESET
     const goBackBtn = $('#go-back');
     if (goBackBtn.length) {
         goBackBtn.on('click', function() {
@@ -719,7 +741,7 @@ $(document).ready(function() {
         });
     }
 
-    //  BOTÓN "Descargar Comprobante"
+    // BOTÓN "Descargar Comprobante"
     const downloadReceiptBtn = $('#download-receipt');
     if (downloadReceiptBtn.length) {
         downloadReceiptBtn.on('click', function() {
@@ -739,7 +761,7 @@ $(document).ready(function() {
         });
     }
 
-    // BOTÓN "Saltar formulario"
+    //  BOTÓN "Saltar formulario"
     const skipFormBtn = $('#skip-customer-form');
     if (skipFormBtn.length) {
         skipFormBtn.on('click', function() {
@@ -752,10 +774,10 @@ $(document).ready(function() {
         updateCartDisplay();
     }
 
-    console.log(' JavaScript cargado correctamente - Versión corregida');
+    console.log(' JavaScript cargado correctamente - Validaciones mejoradas');
 });
 
-//  FUNCIÓN ADICIONAL: Mostrar mensajes temporales
+// FUNCIÓN ADICIONAL: Mostrar mensajes temporales
 function showTemporaryMessage(message, type = 'info') {
     const messageDiv = document.createElement('div');
     const styles = {
@@ -785,6 +807,7 @@ function showTemporaryMessage(message, type = 'info') {
     messageDiv.textContent = message;
     document.body.appendChild(messageDiv);
     
+    // Auto-eliminar después de 4 segundos
     setTimeout(() => {
         messageDiv.style.opacity = '0';
         messageDiv.style.transition = 'opacity 0.5s ease';
@@ -794,31 +817,4 @@ function showTemporaryMessage(message, type = 'info') {
             }
         }, 500);
     }, 4000);
-}
-
-//  FUNCIÓN: Descargar comprobante
-function downloadReceipt(paymentId) {
-    const url = `/process_payment/download_receipt/${paymentId}`;
-    fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al descargar el comprobante');
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `comprobante-pago-${paymentId}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
-            console.log('Comprobante descargado exitosamente');
-        })
-        .catch(error => {
-            console.error('Error downloading receipt:', error);
-            alert('Error al descargar el comprobante: ' + error.message);
-        });
 }
