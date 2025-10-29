@@ -4,11 +4,7 @@ const mercadopago = new MercadoPago(mercadoPagoPublicKey, {
 });
 const bricksBuilder = mercadopago.bricks();
 let paymentId;
-
-// Control para evitar inicializaciones duplicadas
 let bricksInitialized = false;
-
-// Datos del comprador
 let customerData = {
     firstName: '',
     lastName: '', 
@@ -26,28 +22,12 @@ function validateCustomerForm() {
     
     const errors = [];
     
-    if (!firstName) {
-        errors.push('El nombre es requerido');
-        highlightField('customer-first-name', true);
-    } else {
-        highlightField('customer-first-name', false);
-    }
-    
-    if (!lastName) {
-        errors.push('El apellido es requerido');
-        highlightField('customer-last-name', true);
-    } else {
-        highlightField('customer-last-name', false);
-    }
-    
+    if (!firstName) errors.push('El nombre es requerido');
+    if (!lastName) errors.push('El apellido es requerido');
     if (!email) {
         errors.push('El email es requerido');
-        highlightField('customer-email', true);
     } else if (!isValidEmail(email)) {
         errors.push('El email no tiene un formato válido');
-        highlightField('customer-email', true);
-    } else {
-        highlightField('customer-email', false);
     }
     
     if (errors.length > 0) {
@@ -58,35 +38,23 @@ function validateCustomerForm() {
     return true;
 }
 
-// ✅ FUNCIÓN: Resaltar campo con error
 function highlightField(fieldId, hasError) {
     const field = document.getElementById(fieldId);
     if (field) {
-        if (hasError) {
-            field.style.borderColor = '#dc3545';
-            field.style.backgroundColor = '#fff5f5';
-        } else {
-            field.style.borderColor = '#28a745';
-            field.style.backgroundColor = '';
-        }
+        field.style.borderColor = hasError ? '#dc3545' : '#28a745';
+        field.style.backgroundColor = hasError ? '#fff5f5' : '';
     }
 }
 
-// ✅ FUNCIÓN: Mostrar errores de validación
 function showValidationErrors(errors) {
     let errorContainer = document.getElementById('validation-errors');
     if (!errorContainer) {
         errorContainer = document.createElement('div');
         errorContainer.id = 'validation-errors';
         errorContainer.style.cssText = `
-            background: #fff5f5;
-            border: 1px solid #feb2b2;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 15px 0;
-            color: #c53030;
+            background: #fff5f5; border: 1px solid #feb2b2; border-radius: 8px; 
+            padding: 15px; margin: 15px 0; color: #c53030;
         `;
-        
         const form = document.getElementById('customer-info-form');
         form.parentNode.insertBefore(errorContainer, form);
     }
@@ -104,7 +72,6 @@ function showValidationErrors(errors) {
     setTimeout(() => {
         if (errorContainer) {
             errorContainer.style.opacity = '0';
-            errorContainer.style.transition = 'opacity 0.5s ease';
             setTimeout(() => {
                 if (errorContainer && errorContainer.parentNode) {
                     errorContainer.parentNode.removeChild(errorContainer);
@@ -114,16 +81,13 @@ function showValidationErrors(errors) {
     }, 5000);
 }
 
-// ✅ FUNCIÓN MEJORADA: Validar email
 function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 }
 
-// ✅ FUNCIÓN: Asegurar que el campo amount existe
 function ensureAmountField() {
     let amountInput = document.getElementById('amount');
-    
     if (!amountInput) {
         amountInput = document.createElement('input');
         amountInput.id = 'amount';
@@ -131,11 +95,9 @@ function ensureAmountField() {
         amountInput.value = '0';
         document.body.appendChild(amountInput);
     }
-    
     return amountInput;
 }
 
-// ✅ FUNCIÓN MEJORADA: Calcular total del carrito de forma confiable
 function calculateCartTotal() {
     console.log('🛒 Calculando total del carrito...');
     
@@ -145,7 +107,6 @@ function calculateCartTotal() {
     }
     
     let total = 0;
-    
     cart.forEach((item, index) => {
         const itemTotal = item.price * item.quantity;
         total += itemTotal;
@@ -156,27 +117,18 @@ function calculateCartTotal() {
     return total;
 }
 
-// ✅ FUNCIÓN PARA ACTUALIZAR EL MONTO VISIBLE
 function updateSummaryTotal() {
     const amountInput = ensureAmountField();
     const summaryTotal = document.getElementById('summary-total');
-    
     if (summaryTotal) {
         const amount = parseFloat(amountInput.value);
-        if (!isNaN(amount) && amount > 0) {
-            summaryTotal.textContent = '$' + amount.toLocaleString('es-AR');
-        } else {
-            summaryTotal.textContent = '$0';
-        }
+        summaryTotal.textContent = amount > 0 ? '$' + amount.toLocaleString('es-AR') : '$0';
     }
 }
 
-// ✅ FUNCIÓN: Mostrar formulario del comprador
 function showCustomerForm() {
     const existingErrors = document.getElementById('validation-errors');
-    if (existingErrors) {
-        existingErrors.remove();
-    }
+    if (existingErrors) existingErrors.remove();
     
     document.querySelector('.container__cart').style.display = 'none';
     document.querySelector('#customer-form-section').style.display = 'block';
@@ -185,7 +137,6 @@ function showCustomerForm() {
     updateCustomerCartSummary();
 }
 
-// ✅ FUNCIÓN: Actualizar resumen del carrito en el formulario
 function updateCustomerCartSummary() {
     const summaryContainer = document.getElementById('customer-cart-summary');
     const totalElement = document.getElementById('customer-cart-total');
@@ -196,7 +147,6 @@ function updateCustomerCartSummary() {
     cart.forEach(item => {
         const itemTotal = item.price * item.quantity;
         total += itemTotal;
-        
         summaryContainer.innerHTML += `
             <div class="cart-item p-2">
                 <div class="d-flex justify-content-between">
@@ -210,7 +160,6 @@ function updateCustomerCartSummary() {
     totalElement.textContent = `$${total.toLocaleString()}`;
 }
 
-// ✅ FUNCIÓN MEJORADA: Saltar formulario (opcional)
 function skipCustomerInfo() {
     customerData = {
         firstName: document.getElementById('customer-first-name').value.trim() || 'Cliente',
@@ -220,16 +169,13 @@ function skipCustomerInfo() {
         dniNumber: document.getElementById('customer-dni-number').value.trim(),
         phone: document.getElementById('customer-phone').value.trim()
     };
-    
     goToPayment();
 }
 
-// ✅ CORREGIDO: Ir a métodos de pago
 function goToPayment() {
     console.log('🚀 Intentando ir a pagos...');
     
     if (bricksInitialized) {
-        console.log('ℹ️ Bricks ya inicializados, solo mostrando sección');
         document.querySelector('.container__cart').style.display = 'none';
         document.querySelector('#customer-form-section').style.display = 'none';
         document.querySelector('.container__payment').style.display = 'block';
@@ -243,16 +189,13 @@ function goToPayment() {
     initializePaymentBricks();
 }
 
-// ✅ CORREGIDO: Crear preferencia para Mercado Pago
 async function createMercadoPagoPreference(amount) {
     try {
         console.log('🔄 Creando preferencia en Mercado Pago, monto:', amount);
         
         const response = await fetch('/process_payment/create_wallet_preference', {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 amount: amount,
                 description: `Compra de ${cart.length} productos Millenium`
@@ -266,10 +209,7 @@ async function createMercadoPagoPreference(amount) {
         }
         
         const result = await response.json();
-        
-        if (result.error) {
-            throw new Error(result.error);
-        }
+        if (result.error) throw new Error(result.error);
         
         console.log('✅ Preferencia creada:', result.id);
         return result.id;
@@ -280,13 +220,8 @@ async function createMercadoPagoPreference(amount) {
     }
 }
 
-// ✅ CORREGIDO COMPLETAMENTE: Inicializar ambos Bricks
 async function initializePaymentBricks() {
-    if (bricksInitialized) {
-        console.log('ℹ️ Bricks ya inicializados, omitiendo...');
-        return;
-    }
-    
+    if (bricksInitialized) return;
     bricksInitialized = true;
     
     const total = calculateCartTotal();
@@ -295,22 +230,15 @@ async function initializePaymentBricks() {
     console.log('💰 Inicializando Bricks - Monto:', total, 'Email:', userEmail);
 
     try {
-        // ✅ WALLET BRICK CON PREFERENCIA
         const preferenceId = await createMercadoPagoPreference(total);
-        
-        if (preferenceId) {
-            await initializeWalletBrickWithPreference(preferenceId);
-        }
-        
+        if (preferenceId) await initializeWalletBrickWithPreference(preferenceId);
     } catch (error) {
         console.log('ℹ️ Wallet Brick no disponible');
     }
 
-    // ✅ PAYMENT BRICK (SIEMPRE) - CON PAGO FÁCIL Y RAPIPAGO
     await initializePaymentBrick(total, userEmail);
 }
 
-// ✅ FUNCIÓN: Inicializar Wallet Brick
 async function initializeWalletBrickWithPreference(preferenceId) {
     try {
         const walletContainer = document.getElementById('walletBrick_container');
@@ -319,13 +247,9 @@ async function initializeWalletBrickWithPreference(preferenceId) {
         console.log('👛 Inicializando Wallet Brick con preferencia:', preferenceId);
 
         window.walletBrickController = await bricksBuilder.create("wallet", "walletBrick_container", {
-            initialization: {
-                preferenceId: preferenceId,
-            },
+            initialization: { preferenceId: preferenceId },
             callbacks: {
-                onReady: () => {
-                    console.log("✅ Wallet Brick ready con preferencia");
-                },
+                onReady: () => console.log("✅ Wallet Brick ready con preferencia"),
                 onError: (error) => {
                     console.error("❌ Wallet Brick error:", error);
                     walletContainer.innerHTML = `
@@ -352,7 +276,7 @@ async function initializeWalletBrickWithPreference(preferenceId) {
     }
 }
 
-// ✅ ACTUALIZADA: Inicializar Payment Brick con Pago Fácil y Rapipago
+// ✅ FUNCIÓN ACTUALIZADA: Inicializar Payment Brick con captura correcta del método
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
@@ -377,16 +301,23 @@ async function initializePaymentBrick(total, userEmail) {
                     console.log('✅ Payment Brick ready - Formulario listo para usar');
                 },
                 onSubmit: (cardForm) => {
-                    console.log('🔄 Payment Brick onSubmit - Datos recibidos:', cardForm);
+                    console.log('🔄 Payment Brick onSubmit - Datos COMPLETOS:', cardForm);
                     
                     const { selectedPaymentMethod, formData } = cardForm;
                     
-                    // ✅ DETECTAR SI ES PAGO EN EFECTIVO (PAGO FÁCIL O RAPIPAGO)
+                    // ✅ DEBUG DETALLADO
+                    console.log('🔍 Método seleccionado:', selectedPaymentMethod);
+                    console.log('🔍 FormData recibido:', formData);
+                    console.log('🔍 Todas las keys de formData:', formData ? Object.keys(formData) : 'no formData');
+
+                    // ✅ DETECTAR PAGO EN EFECTIVO (PAGO FÁCIL O RAPIPAGO)
                     if (selectedPaymentMethod === 'ticket') {
-                        console.log('🎫 Procesando pago en efectivo:', formData);
-                        processCashPayment(formData);
+                        console.log('🎫 Procesando pago en efectivo');
+                        
+                        // ✅ EL BRICK NO ENVÍA EL payment_method_id, TENEMOS QUE DETECTARLO
+                        detectAndProcessCashPayment(formData);
                     } else {
-                        // ✅ PROCESAR PAGO CON TARJETA (CÓDIGO EXISTENTE)
+                        // ✅ PROCESAR PAGO CON TARJETA
                         console.log('💳 Procesando pago con tarjeta:', formData);
                         
                         if (!formData || typeof formData !== 'object') {
@@ -400,7 +331,7 @@ async function initializePaymentBrick(total, userEmail) {
                         const issuerId = formData.issuer_id;
                         const installments = formData.installments;
 
-                        console.log('🔍 DEBUG - Estructura de formData:', {
+                        console.log('🔍 DEBUG - Datos de tarjeta:', {
                             token: token,
                             paymentMethodId: paymentMethodId,
                             issuerId: issuerId,
@@ -476,55 +407,154 @@ async function initializePaymentBrick(total, userEmail) {
         }
     }
 }
-// ✅ AGREGAR ESTO A TU processCashPayment FUNCTION
-async function processCashPayment(formData) {
-    console.log('🎫 Iniciando procesamiento de pago en efectivo:', formData);
+
+// ✅ NUEVA FUNCIÓN: Detectar y procesar pago en efectivo
+async function detectAndProcessCashPayment(formData) {
+    try {
+        // ✅ OBSERVAR EL FORMULARIO PARA DETECTAR QUÉ OPCIÓN SELECCIONÓ EL USUARIO
+        const paymentContainer = document.getElementById('paymentBrick_container');
+        if (!paymentContainer) {
+            throw new Error('No se pudo acceder al formulario de pago');
+        }
+
+        // ✅ BUSCAR LOS BOTONES DE PAGO FÁCIL Y RAPIPAGO EN EL FORMULARIO
+        const cashButtons = paymentContainer.querySelectorAll('[data-testid*="rapipago"], [data-testid*="pagofacil"], .andes-money-amount, .mp-custom-ticket');
+        
+        console.log('🔍 Botones de efectivo encontrados:', cashButtons.length);
+        
+        let selectedMethod = null;
+        
+        // ✅ INTENTAR DETECTAR AUTOMÁTICAMENTE POR CLASES O ATRIBUTOS
+        for (let button of cashButtons) {
+            const buttonText = button.textContent || button.innerText;
+            const buttonHtml = button.outerHTML;
+            
+            console.log('🔍 Analizando botón:', {
+                text: buttonText,
+                html: buttonHtml.substring(0, 100)
+            });
+            
+            if (buttonText.includes('Rapipago') || buttonHtml.includes('rapipago')) {
+                selectedMethod = 'rapipago';
+                break;
+            } else if (buttonText.includes('Pago Fácil') || buttonHtml.includes('pagofacil')) {
+                selectedMethod = 'pagofacil';
+                break;
+            }
+        }
+        
+        // ✅ SI NO SE PUDO DETECTAR AUTOMÁTICAMENTE, PREGUNTAR AL USUARIO
+        if (!selectedMethod) {
+            selectedMethod = await askUserForCashMethod();
+        }
+        
+        if (!selectedMethod) {
+            throw new Error('No se pudo determinar el método de pago en efectivo');
+        }
+        
+        console.log('🎫 Método de efectivo detectado:', selectedMethod);
+        
+        // ✅ PROCESAR EL PAGO CON EL MÉTODO DETECTADO
+        await processCashPaymentWithMethod(formData, selectedMethod);
+        
+    } catch (error) {
+        console.error('❌ Error detectando método de pago:', error);
+        showTemporaryMessage(`Error: ${error.message}`, 'error');
+    }
+}
+
+// ✅ FUNCIÓN: Preguntar al usuario por el método de efectivo
+async function askUserForCashMethod() {
+    return new Promise((resolve) => {
+        const modalHTML = `
+            <div id="cash-method-modal" style="
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8); display: flex; align-items: center;
+                justify-content: center; z-index: 10000;
+            ">
+                <div style="
+                    background: #2d2d2d; padding: 30px; border-radius: 12px;
+                    border: 2px solid #d4af37; max-width: 400px; width: 90%;
+                ">
+                    <h3 class="text-gold text-center">🎫 ¿Dónde quieres pagar?</h3>
+                    <p class="text-white text-center">Selecciona el método de pago en efectivo:</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin: 20px 0;">
+                        <button onclick="selectCashMethod('rapipago')" style="
+                            padding: 15px; background: #1a365d; color: white;
+                            border: 2px solid #2d3748; border-radius: 8px;
+                            cursor: pointer; font-weight: bold; text-align: left;
+                        ">
+                            💰 <strong>Rapipago</strong><br>
+                            <small>Paga en sucursales de Rapipago</small>
+                        </button>
+                        <button onclick="selectCashMethod('pagofacil')" style="
+                            padding: 15px; background: #1a365d; color: white;
+                            border: 2px solid #2d3748; border-radius: 8px;
+                            cursor: pointer; font-weight: bold; text-align: left;
+                        ">
+                            💰 <strong>Pago Fácil</strong><br>
+                            <small>Paga en sucursales de Pago Fácil</small>
+                        </button>
+                    </div>
+                    
+                    <button onclick="closeCashMethodModal()" style="
+                        width: 100%; padding: 12px; background: #dc3545;
+                        color: white; border: none; border-radius: 6px; cursor: pointer;
+                    ">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        window.selectCashMethod = (method) => {
+            closeCashMethodModal();
+            resolve(method);
+        };
+        
+        window.closeCashMethodModal = () => {
+            const modal = document.getElementById('cash-method-modal');
+            if (modal) modal.remove();
+            resolve(null);
+        };
+    });
+}
+
+// ✅ FUNCIÓN ACTUALIZADA: Procesar pago en efectivo con método específico
+async function processCashPaymentWithMethod(formData, paymentMethodId) {
+    console.log('🎫 Procesando pago en efectivo con método:', paymentMethodId);
     
     try {
-        // ✅ DEBUG DETALLADO - ESTO ES CLAVE
-        console.log('🔍 DEBUG ANTES DE ENVIAR:');
-        console.log('1. Carrito:', cart);
-        console.log('2. Customer Data:', customerData);
-        console.log('3. Form Data recibido:', formData);
-        
         const total = calculateCartTotal();
-        const userEmail = customerData.email || "cliente@millenium.com";
-        const userFirstName = customerData.firstName || "Cliente";
-        const userLastName = customerData.lastName || "Millenium";
         
-        console.log('4. Total calculado:', total);
-        console.log('5. Email a usar:', userEmail);
-        console.log('6. Nombre a usar:', userFirstName, userLastName);
-        
+        console.log('💰 Total:', total);
+        console.log('💰 Método:', paymentMethodId);
+
+        // ✅ VALIDAR DATOS DEL CLIENTE
+        if (!customerData.email) {
+            throw new Error('Por favor completa tu información en el formulario del cliente');
+        }
+
         if (total <= 0) {
-            console.error('❌ ERROR: Total es menor o igual a cero:', total);
             throw new Error('El monto debe ser mayor a cero');
         }
 
-        // ✅ PREPARAR DATOS CON VALORES POR DEFECTO
+        // ✅ PREPARAR DATOS EXACTAMENTE COMO LA DOCUMENTACIÓN
         const paymentData = {
             amount: total,
-            paymentMethodId: formData.payment_method_id,
+            paymentMethodId: paymentMethodId, // "rapipago" o "pagofacil"
             description: `Compra de ${cart.length} productos Millenium`,
-            payerEmail: userEmail,
-            payerFirstName: userFirstName,
-            payerLastName: userLastName,
+            payerEmail: customerData.email,
+            payerFirstName: customerData.firstName || "Cliente",
+            payerLastName: customerData.lastName || "Millenium",
             identificationType: customerData.dniType || "DNI",
             identificationNumber: customerData.dniNumber || "00000000"
         };
 
-        console.log('📤 DATOS QUE SE ENVIARÁN AL SERVIDOR:', paymentData);
-
-        // ✅ VERIFICACIÓN FINAL ANTES DE ENVIAR
-        if (!paymentData.amount || paymentData.amount <= 0) {
-            console.error('❌ MONTO INVÁLIDO:', paymentData.amount);
-            throw new Error('Monto inválido: ' + paymentData.amount);
-        }
-
-        if (!paymentData.payerEmail) {
-            console.error('❌ EMAIL INVÁLIDO:', paymentData.payerEmail);
-            throw new Error('Email del cliente es requerido');
-        }
+        console.log('📤 DATOS ENVIADOS AL SERVIDOR:', paymentData);
 
         // ✅ ENVIAR AL SERVIDOR
         const response = await fetch('/process_payment/create_ticket_payment', {
@@ -538,7 +568,12 @@ async function processCashPayment(formData) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('❌ Error del servidor:', errorText);
-            throw new Error('Error del servidor al procesar pago en efectivo');
+            
+            if (response.status === 403) {
+                throw new Error('Mercado Pago ha rechazado la transacción. Por favor, utiliza otro método de pago.');
+            } else {
+                throw new Error('Error del servidor: ' + errorText);
+            }
         }
 
         const result = await response.json();
@@ -556,7 +591,7 @@ async function processCashPayment(formData) {
     }
 }
 
-// ✅ NUEVA FUNCIÓN: Mostrar resultado de pago en efectivo
+// ✅ FUNCIÓN: Mostrar resultado de pago en efectivo
 function showCashPaymentResult(paymentResult) {
     const paymentMethod = paymentResult.paymentMethodId || 'pagofacil';
     const paymentMethodName = paymentMethod === 'rapipago' ? 'Rapipago' : 'Pago Fácil';
@@ -629,14 +664,12 @@ function showCashPaymentResult(paymentResult) {
     });
 }
 
-// ✅ NUEVA FUNCIÓN: Descargar voucher de pago en efectivo
+// ✅ FUNCIÓN: Descargar voucher de pago en efectivo
 function downloadCashVoucher(paymentId) {
     const url = `/process_payment/download_voucher/${paymentId}`;
     fetch(url)
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al descargar el voucher');
-            }
+            if (!response.ok) throw new Error('Error al descargar el voucher');
             return response.blob();
         })
         .then(blob => {
@@ -656,17 +689,36 @@ function downloadCashVoucher(paymentId) {
         });
 }
 
-// ✅ FUNCIÓN DE DEBUGGING
-function debugCashPayment() {
-    console.log('🔍 DEBUG - Datos antes de enviar pago efectivo:');
-    console.log('- calculateCartTotal():', calculateCartTotal());
-    console.log('- cart:', cart);
-    console.log('- customerData:', customerData);
+// ✅ FUNCIÓN: Mostrar mensajes temporales
+function showTemporaryMessage(message, type = 'info') {
+    const messageDiv = document.createElement('div');
+    const styles = {
+        info: { background: '#d1ecf1', color: '#0c5460', border: '1px solid #bee5eb' },
+        error: { background: '#f8d7da', color: '#721c24', border: '1px solid #f5c6cb' },
+        warning: { background: '#fff3cd', color: '#856404', border: '1px solid #ffeaa7' },
+        success: { background: '#d4edda', color: '#155724', border: '1px solid #c3e6cb' }
+    };
     
-    const total = calculateCartTotal();
-    console.log('- Total calculado:', total);
-    console.log('- Tipo de total:', typeof total);
-    console.log('- Es mayor a cero?:', total > 0);
+    const style = styles[type] || styles.info;
+    
+    messageDiv.style.cssText = `
+        position: fixed; top: 20px; right: 20px; padding: 15px 20px;
+        border-radius: 8px; z-index: 10000; font-weight: bold;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        background: ${style.background}; color: ${style.color};
+        border: ${style.border}; max-width: 300px;
+    `;
+    
+    messageDiv.textContent = message;
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        messageDiv.style.opacity = '0';
+        messageDiv.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => {
+            if (messageDiv.parentNode) messageDiv.parentNode.removeChild(messageDiv);
+        }, 500);
+    }, 4000);
 }
 
 // ✅ VERIFICAR CARRITO ANTES DE PAGAR
@@ -674,10 +726,7 @@ function verifyCartBeforePayment() {
     const total = calculateCartTotal();
     const hasItems = cart && cart.length > 0;
     
-    console.log('🔍 Verificación pre-pago:');
-    console.log('- Carrito tiene items?:', hasItems);
-    console.log('- Total calculado:', total);
-    console.log('- Carrito completo:', cart);
+    console.log('🔍 Verificación pre-pago:', { hasItems, total });
     
     if (!hasItems || total <= 0) {
         showTemporaryMessage('❌ Error: El carrito está vacío', 'error');
@@ -687,38 +736,24 @@ function verifyCartBeforePayment() {
     return true;
 }
 
-// ... (el resto de tus funciones existentes se mantienen igual)
-
-// ✅ CORREGIDO COMPLETAMENTE: Status Screen Brick
+// ✅ Status Screen Brick
 const renderStatusScreenBrick = async (bricksBuilder, result) => {
     paymentId = result.id;
     console.log('Payment ID:', paymentId);
 
     try {
         const statusContainer = document.getElementById('statusScreenBrick_container');
-        if (statusContainer) {
-            statusContainer.innerHTML = '';
-        }
+        if (statusContainer) statusContainer.innerHTML = '';
 
         if (window.statusScreenBrickController) {
-            try {
-                await window.statusScreenBrickController.unmount();
-            } catch (e) {
-                console.log('ℹ️ No se pudo desmontar Status Screen anterior');
-            }
+            try { await window.statusScreenBrickController.unmount(); } catch (e) {}
         }
 
         window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
-            initialization: {
-                paymentId: paymentId
-            },
+            initialization: { paymentId: paymentId },
             callbacks: {
-                onReady: () => {
-                    console.log('Status Screen Brick ready');
-                },
-                onError: (error) => {
-                    console.error('Error en Status Screen Brick:', error);
-                }
+                onReady: () => console.log('Status Screen Brick ready'),
+                onError: (error) => console.error('Error en Status Screen Brick:', error)
             }
         });
     } catch (error) {
@@ -726,24 +761,9 @@ const renderStatusScreenBrick = async (bricksBuilder, result) => {
     }
 };
 
-// ✅ ACTUALIZADA: handlePaymentSubmission para manejar ambos tipos de pago
+// ✅ handlePaymentSubmission para tarjetas
 async function handlePaymentSubmission(paymentData, brickType) {
     console.log(`🔄 Procesando pago desde ${brickType}:`, paymentData);
-    
-    // Si es pago en efectivo, ya se manejó en processCashPayment
-    if (paymentData.payment_type === 'ticket') {
-        console.log('🎫 Pago en efectivo ya procesado');
-        return;
-    }
-    
-    // Validación detallada para debugging
-    console.log('🔍 DEBUG - Estructura de paymentData:', {
-        tienePaymentData: !!paymentData,
-        tipo: typeof paymentData,
-        keys: paymentData ? Object.keys(paymentData) : 'no paymentData',
-        token: paymentData?.token,
-        tokenTipo: typeof paymentData?.token
-    });
     
     if (!paymentData || !paymentData.token) {
         console.error('❌ Token no disponible en handlePaymentSubmission:', paymentData);
@@ -794,18 +814,6 @@ async function handlePaymentSubmission(paymentData, brickType) {
     }
 }
 
-// ✅ FUNCIÓN PARA VOLVER A PAGOS.HTML
-function goBackToPayments() {
-    console.log('Volviendo a pagos.html');
-    window.location.href = 'pagos.html';
-}
-
-// ✅ RESET para cuando se vuelve al carrito
-function resetBricksState() {
-    bricksInitialized = false;
-    console.log('🔄 Estado de Bricks reseteado');
-}
-
 // ✅ FUNCIONES DEL CARRITO
 function addToCart(productId) {
     const quantityInput = document.getElementById(`quantity-${productId}`);
@@ -832,7 +840,6 @@ function updateCart(productId, quantity) {
         cart = cart.filter(item => item.id !== productId);
     } else {
         const existingItem = cart.find(item => item.id === productId);
-        
         if (existingItem) {
             existingItem.quantity = quantityNum;
         } else {
@@ -845,14 +852,12 @@ function updateCart(productId, quantity) {
             });
         }
     }
-    
     updateCartDisplay();
 }
 
 function updateCartDisplay() {
     const cartItemsContainer = document.getElementById('cart-items');
     const checkoutBtn = document.getElementById('checkout-btn');
-    
     const amountInput = ensureAmountField();
     
     cartItemsContainer.innerHTML = '';
@@ -869,8 +874,7 @@ function updateCartDisplay() {
         cart.forEach(item => {
             const itemTotal = item.price * item.quantity;
             total += itemTotal;
-            
-            const cartItemElement = `
+            cartItemsContainer.innerHTML += `
                 <div class="cart-item p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -881,26 +885,21 @@ function updateCartDisplay() {
                     </div>
                 </div>
             `;
-            cartItemsContainer.innerHTML += cartItemElement;
         });
         
         if (checkoutBtn) {
             checkoutBtn.disabled = false;
             checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
         }
-        
         amountInput.value = total.toFixed(2);
     }
     
     const cartTotalElement = document.getElementById('cart-total');
-    if (cartTotalElement) {
-        cartTotalElement.textContent = `$${total.toLocaleString()}`;
-    }
-    
+    if (cartTotalElement) cartTotalElement.textContent = `$${total.toLocaleString()}`;
     updateSummaryTotal();
 }
 
-// ✅ EVENT LISTENERS MEJORADOS
+// ✅ EVENT LISTENERS
 $(document).ready(function() {
     ensureAmountField();
     updateSummaryTotal();
@@ -910,12 +909,8 @@ $(document).ready(function() {
     if (customerForm) {
         customerForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            if (!validateCustomerForm()) return;
             
-            if (!validateCustomerForm()) {
-                return;
-            }
-            
-            // Guardar datos del cliente
             customerData = {
                 firstName: document.getElementById('customer-first-name').value.trim(),
                 lastName: document.getElementById('customer-last-name').value.trim(),
@@ -924,23 +919,19 @@ $(document).ready(function() {
                 dniNumber: document.getElementById('customer-dni-number').value.trim(),
                 phone: document.getElementById('customer-phone').value.trim()
             };
-            
             goToPayment();
         });
     }
     
-    // ✅ BOTÓN "Ir a Pagar" CON VERIFICACIÓN
+    // ✅ BOTONES
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
         checkoutBtn.on('click', function() {
-            if (!verifyCartBeforePayment()) {
-                return;
-            }
+            if (!verifyCartBeforePayment()) return;
             showCustomerForm();
         });
     }
 
-    // ✅ BOTÓN "Volver al catálogo"
     const goBackBtn = $('#go-back');
     if (goBackBtn.length) {
         goBackBtn.on('click', function() {
@@ -952,7 +943,6 @@ $(document).ready(function() {
         });
     }
 
-    // ✅ BOTÓN "Descargar Comprobante"
     const downloadReceiptBtn = $('#download-receipt');
     if (downloadReceiptBtn.length) {
         downloadReceiptBtn.on('click', function() {
@@ -964,7 +954,6 @@ $(document).ready(function() {
         });
     }
 
-    // ✅ BOTÓN "Volver a Pagos"
     const backToPaymentsBtn = $('#back-to-payments');
     if (backToPaymentsBtn.length) {
         backToPaymentsBtn.on('click', function() {
@@ -972,7 +961,6 @@ $(document).ready(function() {
         });
     }
 
-    // ✅ BOTÓN "Saltar formulario"
     const skipFormBtn = $('#skip-customer-form');
     if (skipFormBtn.length) {
         skipFormBtn.on('click', function() {
@@ -980,63 +968,28 @@ $(document).ready(function() {
         });
     }
 
-    // ✅ INICIALIZAR CARRITO AL CARGAR
-    if (typeof updateCartDisplay === 'function') {
-        updateCartDisplay();
-    }
+    // ✅ INICIALIZAR CARRITO
+    if (typeof updateCartDisplay === 'function') updateCartDisplay();
 
     console.log('✅ JavaScript cargado correctamente - CON PAGO FÁCIL Y RAPIPAGO CORREGIDO');
 });
 
-// ✅ FUNCIÓN ADICIONAL: Mostrar mensajes temporales
-function showTemporaryMessage(message, type = 'info') {
-    const messageDiv = document.createElement('div');
-    const styles = {
-        info: { background: '#d1ecf1', color: '#0c5460', border: '1px solid #bee5eb' },
-        error: { background: '#f8d7da', color: '#721c24', border: '1px solid #f5c6cb' },
-        warning: { background: '#fff3cd', color: '#856404', border: '1px solid #ffeaa7' },
-        success: { background: '#d4edda', color: '#155724', border: '1px solid #c3e6cb' }
-    };
-    
-    const style = styles[type] || styles.info;
-    
-    messageDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 20px;
-        border-radius: 8px;
-        z-index: 10000;
-        font-weight: bold;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        background: ${style.background};
-        color: ${style.color};
-        border: ${style.border};
-        max-width: 300px;
-    `;
-    
-    messageDiv.textContent = message;
-    document.body.appendChild(messageDiv);
-    
-    setTimeout(() => {
-        messageDiv.style.opacity = '0';
-        messageDiv.style.transition = 'opacity 0.5s ease';
-        setTimeout(() => {
-            if (messageDiv.parentNode) {
-                messageDiv.parentNode.removeChild(messageDiv);
-            }
-        }, 500);
-    }, 4000);
+// ✅ FUNCIONES ADICIONALES
+function goBackToPayments() {
+    console.log('Volviendo a pagos.html');
+    window.location.href = 'pagos.html';
 }
 
-// ✅ FUNCIÓN: Descargar comprobante
+function resetBricksState() {
+    bricksInitialized = false;
+    console.log('🔄 Estado de Bricks reseteado');
+}
+
 function downloadReceipt(paymentId) {
     const url = `/process_payment/download_receipt/${paymentId}`;
     fetch(url)
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al descargar el comprobante');
-            }
+            if (!response.ok) throw new Error('Error al descargar el comprobante');
             return response.blob();
         })
         .then(blob => {
