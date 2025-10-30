@@ -3,8 +3,11 @@ const mercadopago = new MercadoPago(mercadoPagoPublicKey, {
     locale: 'es-AR'
 });
 const bricksBuilder = mercadopago.bricks();
+
+// Variables globales
 let paymentId;
 let bricksInitialized = false;
+let cart = [];
 let customerData = {
     firstName: '',
     lastName: '', 
@@ -14,7 +17,7 @@ let customerData = {
     phone: ''
 };
 
-// ✅ FUNCIÓN MEJORADA: Validar formulario del comprador
+// ========== FUNCIONES DE VALIDACIÓN ==========
 function validateCustomerForm() {
     const firstName = document.getElementById('customer-first-name').value.trim();
     const lastName = document.getElementById('customer-last-name').value.trim();
@@ -38,12 +41,9 @@ function validateCustomerForm() {
     return true;
 }
 
-function highlightField(fieldId, hasError) {
-    const field = document.getElementById(fieldId);
-    if (field) {
-        field.style.borderColor = hasError ? '#dc3545' : '#28a745';
-        field.style.backgroundColor = hasError ? '#fff5f5' : '';
-    }
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
 }
 
 function showValidationErrors(errors) {
@@ -81,21 +81,89 @@ function showValidationErrors(errors) {
     }, 5000);
 }
 
-function isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+// ========== FUNCIONES DEL CARRITO ==========
+function addToCart(productId) {
+    const quantityInput = document.getElementById(`quantity-${productId}`);
+    const quantity = parseInt(quantityInput.value);
+    const feedback = document.getElementById(`feedback-${productId}`);
+    
+    if (quantity > 0) {
+        updateCart(productId, quantity);
+        feedback.textContent = "✓ Agregado al carrito";
+        feedback.style.color = "#28a745";
+        setTimeout(() => feedback.textContent = "", 2000);
+    } else {
+        feedback.textContent = "Selecciona una cantidad";
+        feedback.style.color = "#dc3545";
+        setTimeout(() => feedback.textContent = "", 2000);
+    }
 }
 
-function ensureAmountField() {
-    let amountInput = document.getElementById('amount');
-    if (!amountInput) {
-        amountInput = document.createElement('input');
-        amountInput.id = 'amount';
-        amountInput.type = 'hidden';
-        amountInput.value = '0';
-        document.body.appendChild(amountInput);
+function updateCart(productId, quantity) {
+    const quantityNum = parseInt(quantity);
+    const product = products.find(p => p.id === productId);
+    
+    if (quantityNum === 0) {
+        cart = cart.filter(item => item.id !== productId);
+    } else {
+        const existingItem = cart.find(item => item.id === productId);
+        if (existingItem) {
+            existingItem.quantity = quantityNum;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: quantityNum,
+                image: product.image
+            });
+        }
     }
-    return amountInput;
+    updateCartDisplay();
+}
+
+function updateCartDisplay() {
+    const cartItemsContainer = document.getElementById('cart-items');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const amountInput = ensureAmountField();
+    
+    cartItemsContainer.innerHTML = '';
+    let total = 0;
+    
+    if (!cart || cart.length === 0) {
+        cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
+        if (checkoutBtn) {
+            checkoutBtn.disabled = true;
+            checkoutBtn.innerHTML = '💳 Ir a Pagar';
+        }
+        amountInput.value = '0';
+    } else {
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            cartItemsContainer.innerHTML += `
+                <div class="cart-item p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="font-weight-bold">${item.name}</small><br>
+                            <small class="text-muted">${item.quantity} x $${item.price.toLocaleString()}</small>
+                        </div>
+                        <span class="font-weight-bold price">$${itemTotal.toLocaleString()}</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        if (checkoutBtn) {
+            checkoutBtn.disabled = false;
+            checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
+        }
+        amountInput.value = total.toFixed(2);
+    }
+    
+    const cartTotalElement = document.getElementById('cart-total');
+    if (cartTotalElement) cartTotalElement.textContent = `$${total.toLocaleString()}`;
+    updateSummaryTotal();
 }
 
 function calculateCartTotal() {
@@ -117,29 +185,7 @@ function calculateCartTotal() {
     return total;
 }
 
-function updateSummaryTotal() {
-    const amountInput = ensureAmountField();
-    const summaryTotal = document.getElementById('summary-total');
-    if (summaryTotal) {
-        const amount = parseFloat(amountInput.value);
-        summaryTotal.textContent = amount > 0 ? '$' + amount.toLocaleString('es-AR') : '$0';
-    }
-}
-
-// ✅ NUEVA FUNCIÓN: Capturar datos del formulario inmediatamente
-function captureCustomerFormData() {
-    customerData = {
-        firstName: document.getElementById('customer-first-name').value.trim() || 'Cliente',
-        lastName: document.getElementById('customer-last-name').value.trim() || 'Millenium',
-        email: document.getElementById('customer-email').value.trim() || 'cliente@millenium.com',
-        dniType: document.getElementById('customer-dni-type').value || 'DNI',
-        dniNumber: document.getElementById('customer-dni-number').value.trim() || '00000000',
-        phone: document.getElementById('customer-phone').value.trim() || ''
-    };
-    
-    console.log('📝 Datos del comprador capturados:', customerData);
-}
-
+// ========== FUNCIONES DE NAVEGACIÓN ==========
 function showCustomerForm() {
     const existingErrors = document.getElementById('validation-errors');
     if (existingErrors) existingErrors.remove();
@@ -149,8 +195,6 @@ function showCustomerForm() {
     document.querySelector('.container__payment').style.display = 'none';
     
     updateCustomerCartSummary();
-    
-    // ✅ CAPTURAR DATOS DEL FORMULARIO INMEDIATAMENTE
     captureCustomerFormData();
 }
 
@@ -177,8 +221,20 @@ function updateCustomerCartSummary() {
     totalElement.textContent = `$${total.toLocaleString()}`;
 }
 
+function captureCustomerFormData() {
+    customerData = {
+        firstName: document.getElementById('customer-first-name').value.trim() || 'Cliente',
+        lastName: document.getElementById('customer-last-name').value.trim() || 'Millenium',
+        email: document.getElementById('customer-email').value.trim() || 'cliente@millenium.com',
+        dniType: document.getElementById('customer-dni-type').value || 'DNI',
+        dniNumber: document.getElementById('customer-dni-number').value.trim() || '00000000',
+        phone: document.getElementById('customer-phone').value.trim() || ''
+    };
+    
+    console.log('📝 Datos del comprador capturados:', customerData);
+}
+
 function skipCustomerInfo() {
-    // ✅ CAPTURAR DATOS ANTES DE IR A PAGOS
     captureCustomerFormData();
     goToPayment();
 }
@@ -201,6 +257,21 @@ function goToPayment() {
     initializePaymentBricks();
 }
 
+function verifyCartBeforePayment() {
+    const total = calculateCartTotal();
+    const hasItems = cart && cart.length > 0;
+    
+    console.log('🔍 Verificación pre-pago:', { hasItems, total });
+    
+    if (!hasItems || total <= 0) {
+        showTemporaryMessage('❌ Error: El carrito está vacío', 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+// ========== FUNCIONES DE MERCADO PAGO ==========
 async function createMercadoPagoPreference(amount) {
     try {
         console.log('🔄 Creando preferencia en Mercado Pago, monto:', amount);
@@ -289,7 +360,6 @@ async function initializeWalletBrickWithPreference(preferenceId) {
     }
 }
 
-// ✅ CONFIGURACIÓN CORREGIDA - Con debugging extensivo
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
@@ -319,9 +389,7 @@ async function initializePaymentBrick(total, userEmail) {
                     console.log('🔄 ========== ENVIANDO AL BACKEND JAVA ==========');
                     console.log('🔍 selectedPaymentMethod:', selectedPaymentMethod);
                     console.log('🔍 formData completo:', formData);
-                    console.log('👤 customerData disponible:', customerData);
                     
-                    // ✅ IMPLEMENTACIÓN CORREGIDA
                     return new Promise(async (resolve, reject) => {
                         try {
                             let endpoint = '';
@@ -332,18 +400,15 @@ async function initializePaymentBrick(total, userEmail) {
                                 endpoint = '/process_payment/create_ticket_payment';
                                 console.log('🎫 Enviando a endpoint de efectivo:', endpoint);
                                 
-                                // ✅ VERIFICAR SI payment_method_id ES NULL
-                                let paymentMethodId = formData.payment_method_id;
+                                // ✅ OBTENER MÉTODO ESPECÍFICO DE EFECTIVO
+                                let paymentMethodId = await askUserForCashMethod();
                                 
                                 if (!paymentMethodId) {
-                                    console.warn('⚠️ payment_method_id es null, mostrando selector...');
-                                    paymentMethodId = await askUserForCashMethod();
-                                    if (!paymentMethodId) {
-                                        throw new Error('No se seleccionó ningún método de pago');
-                                    }
+                                    throw new Error('No se seleccionó ningún método de pago en efectivo');
                                 }
 
-                                // ✅ USAR DATOS DEL FORMULARIO DEL COMPRADOR
+                                console.log('✅ Método de pago seleccionado:', paymentMethodId);
+
                                 requestData = {
                                     paymentMethodId: paymentMethodId,
                                     amount: formData.transactionAmount ? parseFloat(formData.transactionAmount) : total,
@@ -355,7 +420,6 @@ async function initializePaymentBrick(total, userEmail) {
                                     description: `Compra de ${cart.length} productos Millenium`
                                 };
                                 
-                                console.log('📤 Datos para efectivo:', requestData);
                             } else {
                                 // ✅ PAGO CON TARJETA
                                 endpoint = '/process_payment/process_bricks_payment';
@@ -376,37 +440,27 @@ async function initializePaymentBrick(total, userEmail) {
                                 };
                             }
 
-                            // ✅ VALIDACIÓN FINAL DE DATOS CRÍTICOS
+                            // Validaciones finales
                             if (!requestData.amount || requestData.amount <= 0) {
-                                console.warn('⚠️ Monto inválido, usando total del carrito');
                                 requestData.amount = calculateCartTotal();
                             }
                             
-                            if (!requestData.payerEmail) {
-                                requestData.payerEmail = customerData.email || "cliente@millenium.com";
-                            }
-
                             console.log('🎯 Datos finales a enviar:', requestData);
 
-                            // ✅ ENVIAR DATOS AL BACKEND JAVA
                             const response = await fetch(endpoint, {
                                 method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json",
-                                },
+                                headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify(requestData),
                             });
 
                             if (!response.ok) {
                                 const errorText = await response.text();
-                                console.error('❌ Error del servidor:', errorText);
                                 throw new Error(`HTTP ${response.status}: ${errorText}`);
                             }
 
                             const result = await response.json();
                             console.log('✅ Respuesta del backend Java:', result);
                             
-                            // ✅ MANEJAR RESPUESTA EXITOSA
                             if (result.id) {
                                 paymentId = result.id;
                                 
@@ -460,12 +514,7 @@ async function initializePaymentBrick(total, userEmail) {
             }
         };
 
-        window.paymentBrickController = await bricksBuilder.create(
-            "payment",
-            "paymentBrick_container", 
-            settings
-        );
-        
+        window.paymentBrickController = await bricksBuilder.create("payment", "paymentBrick_container", settings);
         console.log('✅ Payment Brick creado exitosamente');
         
     } catch (error) {
@@ -474,7 +523,7 @@ async function initializePaymentBrick(total, userEmail) {
     }
 }
 
-// ✅ FUNCIÓN: Preguntar al usuario por el método de efectivo
+// ========== FUNCIONES AUXILIARES ==========
 async function askUserForCashMethod() {
     return new Promise((resolve) => {
         const modalId = 'cash-method-modal-' + Date.now();
@@ -560,7 +609,6 @@ async function askUserForCashMethod() {
     });
 }
 
-// ✅ FUNCIÓN: Mostrar resultado de pago en efectivo
 function showCashPaymentResult(paymentResult) {
     const paymentMethod = paymentResult.paymentMethodId || 'pagofacil';
     const paymentMethodName = paymentMethod === 'rapipago' ? 'Rapipago' : 'Pago Fácil';
@@ -630,7 +678,6 @@ function showCashPaymentResult(paymentResult) {
     });
 }
 
-// ✅ FUNCIÓN: Descargar voucher de pago en efectivo
 function downloadCashVoucher(paymentId) {
     const url = `/process_payment/download_voucher/${paymentId}`;
     fetch(url)
@@ -655,7 +702,52 @@ function downloadCashVoucher(paymentId) {
         });
 }
 
-// ✅ FUNCIÓN: Mostrar mensajes temporales
+const renderStatusScreenBrick = async (bricksBuilder, result) => {
+    paymentId = result.id;
+    console.log('Payment ID:', paymentId);
+
+    try {
+        const statusContainer = document.getElementById('statusScreenBrick_container');
+        if (statusContainer) statusContainer.innerHTML = '';
+
+        if (window.statusScreenBrickController) {
+            try { await window.statusScreenBrickController.unmount(); } catch (e) {}
+        }
+
+        window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
+            initialization: { paymentId: paymentId },
+            callbacks: {
+                onReady: () => console.log('Status Screen Brick ready'),
+                onError: (error) => console.error('Error en Status Screen Brick:', error)
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error creando Status Screen:', error);
+    }
+};
+
+// ========== FUNCIONES DE UTILIDAD ==========
+function ensureAmountField() {
+    let amountInput = document.getElementById('amount');
+    if (!amountInput) {
+        amountInput = document.createElement('input');
+        amountInput.id = 'amount';
+        amountInput.type = 'hidden';
+        amountInput.value = '0';
+        document.body.appendChild(amountInput);
+    }
+    return amountInput;
+}
+
+function updateSummaryTotal() {
+    const amountInput = ensureAmountField();
+    const summaryTotal = document.getElementById('summary-total');
+    if (summaryTotal) {
+        const amount = parseFloat(amountInput.value);
+        summaryTotal.textContent = amount > 0 ? '$' + amount.toLocaleString('es-AR') : '$0';
+    }
+}
+
 function showTemporaryMessage(message, type = 'info') {
     const messageDiv = document.createElement('div');
     const styles = {
@@ -687,215 +779,63 @@ function showTemporaryMessage(message, type = 'info') {
     }, 4000);
 }
 
-// ✅ VERIFICAR CARRITO ANTES DE PAGAR
-function verifyCartBeforePayment() {
-    const total = calculateCartTotal();
-    const hasItems = cart && cart.length > 0;
-    
-    console.log('🔍 Verificación pre-pago:', { hasItems, total });
-    
-    if (!hasItems || total <= 0) {
-        showTemporaryMessage('❌ Error: El carrito está vacío', 'error');
-        return false;
-    }
-    
-    return true;
-}
-
-// ✅ Status Screen Brick
-const renderStatusScreenBrick = async (bricksBuilder, result) => {
-    paymentId = result.id;
-    console.log('Payment ID:', paymentId);
-
-    try {
-        const statusContainer = document.getElementById('statusScreenBrick_container');
-        if (statusContainer) statusContainer.innerHTML = '';
-
-        if (window.statusScreenBrickController) {
-            try { await window.statusScreenBrickController.unmount(); } catch (e) {}
-        }
-
-        window.statusScreenBrickController = await bricksBuilder.create('statusScreen', 'statusScreenBrick_container', {
-            initialization: { paymentId: paymentId },
-            callbacks: {
-                onReady: () => console.log('Status Screen Brick ready'),
-                onError: (error) => console.error('Error en Status Screen Brick:', error)
-            }
-        });
-    } catch (error) {
-        console.error('❌ Error creando Status Screen:', error);
-    }
-};
-
-// ✅ FUNCIONES DEL CARRITO
-function addToCart(productId) {
-    const quantityInput = document.getElementById(`quantity-${productId}`);
-    const quantity = parseInt(quantityInput.value);
-    const feedback = document.getElementById(`feedback-${productId}`);
-    
-    if (quantity > 0) {
-        updateCart(productId, quantity);
-        feedback.textContent = "✓ Agregado al carrito";
-        feedback.style.color = "#28a745";
-        setTimeout(() => feedback.textContent = "", 2000);
-    } else {
-        feedback.textContent = "Selecciona una cantidad";
-        feedback.style.color = "#dc3545";
-        setTimeout(() => feedback.textContent = "", 2000);
-    }
-}
-
-function updateCart(productId, quantity) {
-    const quantityNum = parseInt(quantity);
-    const product = products.find(p => p.id === productId);
-    
-    if (quantityNum === 0) {
-        cart = cart.filter(item => item.id !== productId);
-    } else {
-        const existingItem = cart.find(item => item.id === productId);
-        if (existingItem) {
-            existingItem.quantity = quantityNum;
-        } else {
-            cart.push({
-                id: product.id,
-                name: product.name,
-                price: product.price,
-                quantity: quantityNum,
-                image: product.image
-            });
-        }
-    }
-    updateCartDisplay();
-}
-
-function updateCartDisplay() {
-    const cartItemsContainer = document.getElementById('cart-items');
-    const checkoutBtn = document.getElementById('checkout-btn');
-    const amountInput = ensureAmountField();
-    
-    cartItemsContainer.innerHTML = '';
-    let total = 0;
-    
-    if (!cart || cart.length === 0) {
-        cartItemsContainer.innerHTML = '<p class="text-muted text-center">Tu carrito está vacío</p>';
-        if (checkoutBtn) {
-            checkoutBtn.disabled = true;
-            checkoutBtn.innerHTML = '💳 Ir a Pagar';
-        }
-        amountInput.value = '0';
-    } else {
-        cart.forEach(item => {
-            const itemTotal = item.price * item.quantity;
-            total += itemTotal;
-            cartItemsContainer.innerHTML += `
-                <div class="cart-item p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <small class="font-weight-bold">${item.name}</small><br>
-                            <small class="text-muted">${item.quantity} x $${item.price.toLocaleString()}</small>
-                        </div>
-                        <span class="font-weight-bold price">$${itemTotal.toLocaleString()}</span>
-                    </div>
-                </div>
-            `;
-        });
-        
-        if (checkoutBtn) {
-            checkoutBtn.disabled = false;
-            checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
-        }
-        amountInput.value = total.toFixed(2);
-    }
-    
-    const cartTotalElement = document.getElementById('cart-total');
-    if (cartTotalElement) cartTotalElement.textContent = `$${total.toLocaleString()}`;
-    updateSummaryTotal();
-}
-
-// ✅ FUNCIÓN: Resetear estado de los Bricks
 function resetBricksState() {
     bricksInitialized = false;
     if (window.paymentBrickController) {
-        try {
-            window.paymentBrickController.unmount();
-        } catch (error) {
-            console.log('Error unmounting payment brick:', error);
-        }
+        try { window.paymentBrickController.unmount(); } catch (error) {}
     }
     if (window.walletBrickController) {
-        try {
-            window.walletBrickController.unmount();
-        } catch (error) {
-            console.log('Error unmounting wallet brick:', error);
-        }
+        try { window.walletBrickController.unmount(); } catch (error) {}
     }
     if (window.statusScreenBrickController) {
-        try {
-            window.statusScreenBrickController.unmount();
-        } catch (error) {
-            console.log('Error unmounting status screen brick:', error);
-        }
+        try { window.statusScreenBrickController.unmount(); } catch (error) {}
     }
 }
 
-// ✅ EVENT LISTENERS
+// ========== INICIALIZACIÓN ==========
 $(document).ready(function() {
     ensureAmountField();
     updateSummaryTotal();
     
-    // ✅ MANEJAR FORMULARIO DEL COMPRADOR - CORREGIDO
+    // Manejar formulario del comprador
     const customerForm = document.getElementById('customer-info-form');
     if (customerForm) {
         customerForm.addEventListener('submit', function(e) {
             e.preventDefault();
             if (!validateCustomerForm()) return;
-            
-            // ✅ CAPTURAR DATOS ANTES DE IR A PAGOS
             captureCustomerFormData();
             console.log('✅ Datos enviados a pago:', customerData);
             goToPayment();
         });
     }
     
-    // ✅ BOTONES
-    const checkoutBtn = $('#checkout-btn');
-    if (checkoutBtn.length) {
-        checkoutBtn.on('click', function() {
-            if (!verifyCartBeforePayment()) return;
-            showCustomerForm();
-        });
-    }
+    // Event listeners de botones
+    $('#checkout-btn').on('click', function() {
+        if (!verifyCartBeforePayment()) return;
+        showCustomerForm();
+    });
 
-    const goBackBtn = $('#go-back');
-    if (goBackBtn.length) {
-        goBackBtn.on('click', function() {
-            $('.container__payment').fadeOut(500);
-            setTimeout(() => {
-                $('.container__cart').show(500).fadeIn();
-                resetBricksState();
-            }, 500);
-        });
-    }
+    $('#go-back').on('click', function() {
+        $('.container__payment').fadeOut(500);
+        setTimeout(() => {
+            $('.container__cart').show(500).fadeIn();
+            resetBricksState();
+        }, 500);
+    });
 
-    const skipCustomerBtn = $('#skip-customer-info');
-    if (skipCustomerBtn.length) {
-        skipCustomerBtn.on('click', function() {
-            skipCustomerInfo();
-        });
-    }
+    $('#skip-customer-info').on('click', function() {
+        skipCustomerInfo();
+    });
 
-    const editCartBtn = $('#edit-cart');
-    if (editCartBtn.length) {
-        editCartBtn.on('click', function() {
-            $('.container__payment').fadeOut(500);
-            setTimeout(() => {
-                $('.container__cart').show(500).fadeIn();
-                resetBricksState();
-            }, 500);
-        });
-    }
+    $('#edit-cart').on('click', function() {
+        $('.container__payment').fadeOut(500);
+        setTimeout(() => {
+            $('.container__cart').show(500).fadeIn();
+            resetBricksState();
+        }, 500);
+    });
 
-    // ✅ Inicializar carrito
+    // Inicializar carrito
     if (typeof cart === 'undefined') {
         cart = [];
     }
