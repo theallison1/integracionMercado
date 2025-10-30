@@ -276,7 +276,7 @@ async function initializeWalletBrickWithPreference(preferenceId) {
     }
 }
 
-// ✅ CONFIGURACIÓN CORREGIDA - Enviar datos en formato que Java espera
+// ✅ CONFIGURACIÓN CORREGIDA - Usar datos del formulario del comprador
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
@@ -301,94 +301,120 @@ async function initializePaymentBrick(total, userEmail) {
                     console.log('✅ Payment Brick ready');
                     showTemporaryMessage('Formulario de pago listo', 'success');
                 },
-                onSubmit: ({ selectedPaymentMethod, formData }) => {
+                onSubmit: async ({ selectedPaymentMethod, formData }) => {
                     console.log('🔄 ========== ENVIANDO AL BACKEND JAVA ==========');
                     console.log('🔍 selectedPaymentMethod:', selectedPaymentMethod);
                     console.log('🔍 formData completo:', formData);
                     
-                    // ✅ IMPLEMENTACIÓN CORREGIDA - Transformar datos para Java
-                    return new Promise((resolve, reject) => {
-                        let endpoint = '';
-                        let requestData = {};
+                    // ✅ IMPLEMENTACIÓN CORREGIDA - Usar datos del formulario del comprador
+                    return new Promise(async (resolve, reject) => {
+                        try {
+                            let endpoint = '';
+                            let requestData = {};
 
-                        if (selectedPaymentMethod === 'ticket') {
-                            endpoint = '/process_payment/create_ticket_payment';
-                            console.log('🎫 Enviando a endpoint de efectivo:', endpoint);
-                            
-                            // ✅ TRANSFORMAR DATOS PARA JAVA - FORMATO CORRECTO
-                            requestData = {
-                                paymentMethodId: formData.payment_method_id,
-                                amount: formData.transactionAmount ? parseFloat(formData.transactionAmount) : total,
-                                payerEmail: formData.payer?.email || customerData.email,
-                                payerFirstName: formData.payer?.firstName || customerData.firstName || "Cliente",
-                                payerLastName: formData.payer?.lastName || customerData.lastName || "Millenium",
-                                identificationType: customerData.dniType || "DNI",
-                                identificationNumber: customerData.dniNumber || "00000000",
-                                description: `Compra de ${cart.length} productos Millenium`
-                            };
-                            
-                            console.log('📤 Datos transformados para efectivo:', requestData);
-                        } else {
-                            endpoint = '/process_payment/process_bricks_payment';
-                            console.log('💳 Enviando a endpoint de tarjeta:', endpoint);
-                            
-                            // ✅ TRANSFORMAR DATOS PARA TARJETA TAMBIÉN
-                            requestData = {
-                                token: formData.token,
-                                paymentMethodId: formData.payment_method_id,
-                                installments: parseInt(formData.installments) || 1,
-                                issuerId: formData.issuer_id,
-                                paymentType: formData.payment_type || 'credit_card',
-                                amount: parseFloat(formData.transactionAmount) || total,
-                                brickType: 'payment',
-                                description: `Compra de ${cart.length} productos Millenium`,
-                                payerEmail: formData.payer?.email || customerData.email,
-                                payerFirstName: formData.payer?.firstName || customerData.firstName || "Cliente",
-                                payerLastName: formData.payer?.lastName || customerData.lastName || "Millenium"
-                            };
-                        }
+                            if (selectedPaymentMethod === 'ticket') {
+                                endpoint = '/process_payment/create_ticket_payment';
+                                console.log('🎫 Enviando a endpoint de efectivo:', endpoint);
+                                
+                                // ✅ USAR DATOS DEL FORMULARIO DEL COMPRADOR
+                                let paymentMethodId = formData.payment_method_id;
+                                
+                                if (!paymentMethodId) {
+                                    console.warn('⚠️ payment_method_id es null, mostrando selector...');
+                                    // ✅ MOSTRAR SELECTOR DE MÉTODO DE PAGO
+                                    paymentMethodId = await askUserForCashMethod();
+                                    if (!paymentMethodId) {
+                                        throw new Error('No se seleccionó ningún método de pago');
+                                    }
+                                }
 
-                        // ✅ VALIDACIÓN FINAL DE DATOS CRÍTICOS
-                        if (!requestData.amount || requestData.amount <= 0) {
-                            console.warn('⚠️ Monto inválido, usando total del carrito');
-                            requestData.amount = calculateCartTotal();
-                        }
-                        
-                        if (!requestData.payerEmail) {
-                            requestData.payerEmail = customerData.email || "cliente@millenium.com";
-                        }
-
-                        console.log('🎯 Datos finales a enviar:', requestData);
-
-                        // ✅ ENVIAR DATOS TRANSFORMADOS AL BACKEND JAVA
-                        fetch(endpoint, {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify(requestData),
-                        })
-                        .then((response) => {
-                            if (!response.ok) {
-                                return response.text().then(errorText => {
-                                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                                // ✅ USAR DATOS DEL FORMULARIO DEL COMPRADOR - FORMATO CORRECTO
+                                requestData = {
+                                    paymentMethodId: paymentMethodId,
+                                    amount: formData.transactionAmount ? parseFloat(formData.transactionAmount) : total,
+                                    // ✅ USAR DATOS DEL FORMULARIO EN LUGAR DE LOS DEL BRICK
+                                    payerEmail: customerData.email || "cliente@millenium.com",
+                                    payerFirstName: customerData.firstName || "Cliente",
+                                    payerLastName: customerData.lastName || "Millenium",
+                                    identificationType: customerData.dniType || "DNI",
+                                    identificationNumber: customerData.dniNumber || "00000000",
+                                    description: `Compra de ${cart.length} productos Millenium`
+                                };
+                                
+                                console.log('📤 Datos transformados para efectivo:', requestData);
+                                console.log('👤 Datos del comprador usados:', {
+                                    email: customerData.email,
+                                    firstName: customerData.firstName,
+                                    lastName: customerData.lastName,
+                                    dniType: customerData.dniType,
+                                    dniNumber: customerData.dniNumber
                                 });
+                            } else {
+                                endpoint = '/process_payment/process_bricks_payment';
+                                console.log('💳 Enviando a endpoint de tarjeta:', endpoint);
+                                
+                                // ✅ TRANSFORMAR DATOS PARA TARJETA USANDO DATOS DEL FORMULARIO
+                                requestData = {
+                                    token: formData.token,
+                                    paymentMethodId: formData.payment_method_id,
+                                    installments: parseInt(formData.installments) || 1,
+                                    issuerId: formData.issuer_id,
+                                    paymentType: formData.payment_type || 'credit_card',
+                                    amount: parseFloat(formData.transactionAmount) || total,
+                                    brickType: 'payment',
+                                    description: `Compra de ${cart.length} productos Millenium`,
+                                    // ✅ USAR DATOS DEL FORMULARIO EN LUGAR DE LOS DEL BRICK
+                                    payerEmail: customerData.email || "cliente@millenium.com",
+                                    payerFirstName: customerData.firstName || "Cliente",
+                                    payerLastName: customerData.lastName || "Millenium"
+                                };
                             }
-                            return response.json();
-                        })
-                        .then((response) => {
-                            console.log('✅ Respuesta del backend Java:', response);
+
+                            // ✅ VALIDACIÓN FINAL DE DATOS CRÍTICOS
+                            if (!requestData.amount || requestData.amount <= 0) {
+                                console.warn('⚠️ Monto inválido, usando total del carrito');
+                                requestData.amount = calculateCartTotal();
+                            }
+                            
+                            // ✅ VALIDAR QUE TENEMOS EMAIL DEL FORMULARIO
+                            if (!requestData.payerEmail || requestData.payerEmail === "cliente@millenium.com") {
+                                if (customerData.email) {
+                                    requestData.payerEmail = customerData.email;
+                                } else {
+                                    throw new Error('Email del comprador es requerido');
+                                }
+                            }
+
+                            console.log('🎯 Datos finales a enviar:', requestData);
+
+                            // ✅ ENVIAR DATOS TRANSFORMADOS AL BACKEND JAVA
+                            const response = await fetch(endpoint, {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify(requestData),
+                            });
+
+                            if (!response.ok) {
+                                const errorText = await response.text();
+                                console.error('❌ Error del servidor:', errorText);
+                                throw new Error(`HTTP ${response.status}: ${errorText}`);
+                            }
+
+                            const result = await response.json();
+                            console.log('✅ Respuesta del backend Java:', result);
                             
                             // ✅ MANEJAR RESPUESTA EXITOSA
-                            if (response.id) {
-                                paymentId = response.id;
+                            if (result.id) {
+                                paymentId = result.id;
                                 
                                 if (selectedPaymentMethod === 'ticket') {
                                     // ✅ MOSTRAR STATUS SCREEN PARA PAGOS EN EFECTIVO
-                                    showCashPaymentResult(response);
+                                    showCashPaymentResult(result);
                                 } else {
                                     // ✅ MOSTRAR STATUS SCREEN PARA TARJETAS
-                                    renderStatusScreenBrick(bricksBuilder, response);
+                                    renderStatusScreenBrick(bricksBuilder, result);
                                 }
                                 
                                 $('.container__payment').fadeOut(500, () => {
@@ -399,12 +425,11 @@ async function initializePaymentBrick(total, userEmail) {
                             }
                             
                             resolve();
-                        })
-                        .catch((error) => {
+                        } catch (error) {
                             console.error('❌ Error en el pago:', error);
                             showTemporaryMessage(`Error: ${error.message}`, 'error');
                             reject();
-                        });
+                        }
                     });
                 },
                 onError: (error) => {
@@ -448,6 +473,95 @@ async function initializePaymentBrick(total, userEmail) {
         console.error('❌ Error creando Payment Brick:', error);
         showTemporaryMessage('Error al cargar formulario de pago', 'error');
     }
+}
+
+// ✅ FUNCIÓN: Preguntar al usuario por el método de efectivo
+async function askUserForCashMethod() {
+    return new Promise((resolve) => {
+        const modalId = 'cash-method-modal-' + Date.now();
+        
+        const modalHTML = `
+            <div id="${modalId}" style="
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.9); display: flex; align-items: center;
+                justify-content: center; z-index: 10000; font-family: Arial, sans-serif;
+            ">
+                <div style="
+                    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+                    padding: 30px; border-radius: 16px;
+                    border: 2px solid #d4af37; max-width: 450px; width: 90%;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                ">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🎫</div>
+                        <h3 style="color: #d4af37; margin: 0 0 10px 0;">Selecciona dónde pagar</h3>
+                        <p style="color: #ccc; margin: 0;">Elije el método de pago en efectivo:</p>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px; margin: 25px 0;">
+                        <button onclick="window.selectCashMethodCallback('rapipago')" style="
+                            padding: 18px; background: #1a365d; color: white;
+                            border: 2px solid #2d3748; border-radius: 10px;
+                            cursor: pointer; font-weight: bold; text-align: left;
+                            transition: all 0.3s ease; font-size: 16px;
+                        " onmouseover="this.style.background='#2d3748'; this.style.borderColor='#d4af37'" 
+                        onmouseout="this.style.background='#1a365d'; this.style.borderColor='#2d3748'">
+                            <span style="font-size: 20px; margin-right: 10px;">💰</span>
+                            <div>
+                                <strong>Rapipago</strong><br>
+                                <small style="opacity: 0.8;">Paga en sucursales de Rapipago</small>
+                            </div>
+                        </button>
+                        
+                        <button onclick="window.selectCashMethodCallback('pagofacil')" style="
+                            padding: 18px; background: #1a365d; color: white;
+                            border: 2px solid #2d3748; border-radius: 10px;
+                            cursor: pointer; font-weight: bold; text-align: left;
+                            transition: all 0.3s ease; font-size: 16px;
+                        " onmouseover="this.style.background='#2d3748'; this.style.borderColor='#d4af37'" 
+                        onmouseout="this.style.background='#1a365d'; this.style.borderColor='#2d3748'">
+                            <span style="font-size: 20px; margin-right: 10px;">💰</span>
+                            <div>
+                                <strong>Pago Fácil</strong><br>
+                                <small style="opacity: 0.8;">Paga en sucursales de Pago Fácil</small>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <button onclick="window.closeCashMethodModalCallback()" style="
+                        width: 100%; padding: 14px; background: #dc3545;
+                        color: white; border: none; border-radius: 8px; cursor: pointer;
+                        font-weight: bold; font-size: 16px; transition: background 0.3s;
+                    " onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // ✅ CALLBACKS CON NOMBRES ÚNICOS PARA EVITAR CONFLICTOS
+        window.selectCashMethodCallback = (method) => {
+            console.log('✅ Usuario seleccionó:', method);
+            const modal = document.getElementById(modalId);
+            if (modal) modal.remove();
+            // Limpiar callbacks
+            delete window.selectCashMethodCallback;
+            delete window.closeCashMethodModalCallback;
+            resolve(method);
+        };
+        
+        window.closeCashMethodModalCallback = () => {
+            console.log('❌ Usuario canceló la selección');
+            const modal = document.getElementById(modalId);
+            if (modal) modal.remove();
+            // Limpiar callbacks
+            delete window.selectCashMethodCallback;
+            delete window.closeCashMethodModalCallback;
+            resolve(null);
+        };
+    });
 }
 
 // ✅ FUNCIÓN ORIGINAL: Mostrar resultado de pago en efectivo
@@ -733,13 +847,13 @@ $(document).ready(function() {
     ensureAmountField();
     updateSummaryTotal();
     
-    // ✅ MANEJAR FORMULARIO DEL COMPRADOR
+    // ✅ MANEJAR FORMULARIO DEL COMPRADOR - GUARDAR EN VARIABLE GLOBAL
     const customerForm = document.getElementById('customer-info-form');
     if (customerForm) {
         customerForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            if (!validateCustomerForm()) return;
             
+            // ✅ GUARDAR EN VARIABLE GLOBAL customerData
             customerData = {
                 firstName: document.getElementById('customer-first-name').value.trim(),
                 lastName: document.getElementById('customer-last-name').value.trim(),
@@ -748,6 +862,22 @@ $(document).ready(function() {
                 dniNumber: document.getElementById('customer-dni-number').value.trim(),
                 phone: document.getElementById('customer-phone').value.trim()
             };
+            
+            // Validar campos obligatorios
+            if (!customerData.firstName || !customerData.lastName || !customerData.email) {
+                alert('❌ Por favor completa los campos obligatorios (*)');
+                return;
+            }
+            
+            // Validar email
+            if (!isValidEmail(customerData.email)) {
+                alert('❌ Por favor ingresa un email válido');
+                return;
+            }
+            
+            console.log('✅ Datos del comprador guardados:', customerData);
+            
+            // Ir a la sección de pago
             goToPayment();
         });
     }
