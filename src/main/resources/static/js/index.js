@@ -4,10 +4,11 @@ const mercadopago = new MercadoPago(mercadoPagoPublicKey, {
 });
 const bricksBuilder = mercadopago.bricks();
 
-// Variables globales
+// Variables globales - CORREGIDAS
 let paymentId;
 let bricksInitialized = false;
-let cart = [];
+// SOLUCIÓN: Verificar si cart ya existe antes de declararlo
+let cart = window.cart || [];
 let customerData = {
     firstName: '',
     lastName: '', 
@@ -879,9 +880,7 @@ $(document).ready(function() {
         }, 500);
     });
 
-    // Inicializar carrito
-    if (typeof cart === 'undefined') {
-        cart = [];
-    }
+    // Inicializar carrito - CORREGIDO
+    // Ya no necesitamos esta línea porque cart se inicializa arriba
     updateCartDisplay();
 });
