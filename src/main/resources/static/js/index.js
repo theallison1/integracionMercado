@@ -301,45 +301,77 @@ async function initializePaymentBrick(total, userEmail) {
                     console.log('✅ Payment Brick ready - Formulario listo para usar');
                 },
                 onSubmit: (cardForm) => {
-                    console.log('🔄 Payment Brick onSubmit - Datos COMPLETOS:', cardForm);
+                    console.log('🔄 ========== DEBUG BRICK COMPLETO ==========');
+                    console.log('🔍 selectedPaymentMethod:', cardForm.selectedPaymentMethod);
+                    console.log('🔍 formData:', cardForm.formData);
+                    
+                    // ✅ DEBUG EXTENDIDO - VER TODOS LOS CAMPOS
+                    if (cardForm.formData) {
+                        console.log('🔍 TODOS los campos de formData:');
+                        Object.keys(cardForm.formData).forEach(key => {
+                            console.log(`   ${key}:`, cardForm.formData[key]);
+                        });
+                        
+                        // ✅ VERIFICAR ESPECÍFICAMENTE EL PAYMENT_METHOD_ID
+                        console.log('🔍 payment_method_id específico:', cardForm.formData.payment_method_id);
+                        console.log('🔍 Tipo de payment_method_id:', typeof cardForm.formData.payment_method_id);
+                    }
+                    
+                    console.log('🔍 Objeto cardForm completo:', cardForm);
+                    console.log('========== FIN DEBUG ==========');
                     
                     const { selectedPaymentMethod, formData } = cardForm;
                     
-                    // ✅ DEBUG EXTENDIDO - VER QUÉ ENVÍA REALMENTE EL BRICK
-                    console.log('🔍 selectedPaymentMethod:', selectedPaymentMethod);
-                    console.log('🔍 formData:', formData);
-                    console.log('🔍 formData keys:', formData ? Object.keys(formData) : 'no formData');
-                    
-                    if (formData) {
-                        console.log('🔍 payment_method_id:', formData.payment_method_id);
-                        console.log('🔍 token:', formData.token);
-                    }
-
-                    // ✅ SI ES PAGO EN EFECTIVO (PAGO FÁCIL O RAPIPAGO)
-                    if (formData && formData.payment_method_id && 
-                        (formData.payment_method_id === 'rapipago' || formData.payment_method_id === 'pagofacil')) {
+                    // ✅ SI ES PAGO EN EFECTIVO
+                    if (selectedPaymentMethod === 'ticket') {
+                        console.log('🎫 Pago en efectivo detectado');
                         
-                        console.log('🎫 Procesando pago en efectivo:', formData.payment_method_id);
-                        processCashPayment(formData);
-                        return;
-                    }
-
-                    // ✅ SI ES TARJETA
-                    if (formData && formData.token) {
-                        console.log('💳 Procesando pago con tarjeta:', formData);
-                        
-                        if (!formData.token) {
-                            alert('Error: No se pudo generar el token de seguridad.');
-                            return;
+                        // ✅ VERIFICAR SI EL BRICK ENVÍA EL PAYMENT_METHOD_ID
+                        if (formData && formData.payment_method_id) {
+                            console.log('✅ Brick envió payment_method_id:', formData.payment_method_id);
+                            
+                            if (formData.payment_method_id === 'rapipago' || formData.payment_method_id === 'pagofacil') {
+                                console.log('🎯 Método de efectivo válido');
+                                processCashPayment(formData);
+                                return;
+                            }
                         }
                         
-                        handlePaymentSubmission(formData, 'payment');
+                        // ✅ SI NO ENVÍA EL MÉTODO, MOSTRAR MODAL
+                        console.log('⚠️ Brick NO envió payment_method_id, mostrando modal...');
+                        askUserForCashMethod().then((selectedMethod) => {
+                            if (selectedMethod) {
+                                console.log('🎯 Usuario seleccionó:', selectedMethod);
+                                // ✅ CREAR NUEVO FORM_DATA CON EL MÉTODO CORRECTO
+                                const correctedFormData = {
+                                    ...formData,
+                                    payment_method_id: selectedMethod
+                                };
+                                processCashPayment(correctedFormData);
+                            }
+                        });
                         return;
                     }
-
-                    // ✅ SI LLEGA AQUÍ, ES UN ERROR
-                    console.error('❌ No se pudo determinar el tipo de pago:', { selectedPaymentMethod, formData });
-                    alert('Error: No se pudieron procesar los datos de pago. Por favor, intenta nuevamente.');
+                    
+                    // ✅ PROCESAR PAGO CON TARJETA
+                    console.log('💳 Procesando pago con tarjeta:', formData);
+                    
+                    if (!formData || typeof formData !== 'object') {
+                        console.error('❌ formData es inválido:', formData);
+                        alert('Error: Datos de pago inválidos. Por favor, intenta nuevamente.');
+                        return;
+                    }
+                    
+                    const token = formData.token;
+                    
+                    if (!token) {
+                        console.error('❌ Token no disponible');
+                        alert('Error: No se pudo generar el token de seguridad. Verifica que todos los datos de la tarjeta estén completos y correctos.');
+                        return;
+                    }
+                    
+                    console.log('✅ Token encontrado correctamente:', token);
+                    handlePaymentSubmission(formData, 'payment');
                 },
                 onError: (error) => {
                     console.error('❌ Payment Brick error:', error);
@@ -357,9 +389,12 @@ async function initializePaymentBrick(total, userEmail) {
             customization: {
                 paymentMethods: {
                     creditCard: "all",
-                    debitCard: "all", 
+                    debitCard: "all",
                     ticket: "all",
-                    bankTransfer: ["pagoefectivo_atm"]
+                    bankTransfer: "all",
+                    onboarding_credits: "all",
+                    wallet_purchase: "all",
+                    maxInstallments: 1
                 },
                 visual: {
                     style: {
@@ -381,9 +416,84 @@ async function initializePaymentBrick(total, userEmail) {
             settings
         );
         
+        console.log('✅ Payment Brick creado exitosamente');
+        
     } catch (error) {
-        console.error('❌ Error creando Payment Brick:', error);
+        console.error('❌ Error crítico creando Payment Brick:', error);
+        const paymentContainer = document.getElementById('paymentBrick_container');
+        if (paymentContainer) {
+            paymentContainer.innerHTML = `
+                <div style="background: #2d2d2d; color: #dc3545; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #dc3545;">
+                    <h5>❌ Error crítico</h5>
+                    <p>No se pudo cargar el formulario de pago.</p>
+                    <p>Error: ${error.message}</p>
+                    <button onclick="location.reload()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px;">
+                        Recargar página
+                    </button>
+                </div>
+            `;
+        }
     }
+}
+
+// ✅ FUNCIÓN: Preguntar al usuario por el método de efectivo
+async function askUserForCashMethod() {
+    return new Promise((resolve) => {
+        const modalHTML = `
+            <div id="cash-method-modal" style="
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8); display: flex; align-items: center;
+                justify-content: center; z-index: 10000;
+            ">
+                <div style="
+                    background: #2d2d2d; padding: 30px; border-radius: 12px;
+                    border: 2px solid #d4af37; max-width: 400px; width: 90%;
+                ">
+                    <h3 class="text-gold text-center">🎫 ¿Dónde quieres pagar?</h3>
+                    <p class="text-white text-center">Selecciona el método de pago en efectivo:</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin: 20px 0;">
+                        <button onclick="selectCashMethod('rapipago')" style="
+                            padding: 15px; background: #1a365d; color: white;
+                            border: 2px solid #2d3748; border-radius: 8px;
+                            cursor: pointer; font-weight: bold; text-align: left;
+                        ">
+                            💰 <strong>Rapipago</strong><br>
+                            <small>Paga en sucursales de Rapipago</small>
+                        </button>
+                        <button onclick="selectCashMethod('pagofacil')" style="
+                            padding: 15px; background: #1a365d; color: white;
+                            border: 2px solid #2d3748; border-radius: 8px;
+                            cursor: pointer; font-weight: bold; text-align: left;
+                        ">
+                            💰 <strong>Pago Fácil</strong><br>
+                            <small>Paga en sucursales de Pago Fácil</small>
+                        </button>
+                    </div>
+                    
+                    <button onclick="closeCashMethodModal()" style="
+                        width: 100%; padding: 12px; background: #dc3545;
+                        color: white; border: none; border-radius: 6px; cursor: pointer;
+                    ">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        window.selectCashMethod = (method) => {
+            closeCashMethodModal();
+            resolve(method);
+        };
+        
+        window.closeCashMethodModal = () => {
+            const modal = document.getElementById('cash-method-modal');
+            if (modal) modal.remove();
+            resolve(null);
+        };
+    });
 }
 
 // ✅ FUNCIÓN CORREGIDA: Procesar pago en efectivo
@@ -420,20 +530,11 @@ async function processCashPayment(formData) {
 
         // ✅ LOG DETALLADO DEL JSON QUE SE ENVÍA
         console.log('📤 ========== JSON ENVIADO AL BACKEND ==========');
-        console.log('🔍 URL: /process_payment/create_ticket_payment');
-        console.log('🔍 Método: POST');
-        console.log('🔍 Headers: { "Content-Type": "application/json" }');
-        console.log('🔍 Body (JSON):', JSON.stringify(paymentData, null, 2));
-        console.log('🔍 Estructura del JSON:');
-        console.log('   - amount:', paymentData.amount);
-        console.log('   - paymentMethodId:', paymentData.paymentMethodId);
-        console.log('   - description:', paymentData.description);
-        console.log('   - payerEmail:', paymentData.payerEmail);
-        console.log('   - payerFirstName:', paymentData.payerFirstName);
-        console.log('   - payerLastName:', paymentData.payerLastName);
-        console.log('   - identificationType:', paymentData.identificationType);
-        console.log('   - identificationNumber:', paymentData.identificationNumber);
-        console.log('========== FIN DEL LOG ==========');
+        console.log('🔍 Datos completos:', JSON.stringify(paymentData, null, 2));
+        console.log('🔍 paymentMethodId enviado:', paymentData.paymentMethodId);
+        console.log('🔍 payerEmail enviado:', paymentData.payerEmail);
+        console.log('🔍 amount enviado:', paymentData.amount);
+        console.log('========== FIN JSON ENVIADO ==========');
 
         // ✅ ENVIAR AL SERVIDOR
         const response = await fetch('/process_payment/create_ticket_payment', {
@@ -451,7 +552,7 @@ async function processCashPayment(formData) {
             if (response.status === 400) {
                 throw new Error('Datos inválidos enviados al servidor: ' + errorText);
             } else if (response.status === 403) {
-                throw new Error('Mercado Pago ha rechazado la transacción.');
+                throw new Error('Mercado Pago ha rechazado la transacción. Por favor, utiliza otro método de pago.');
             } else {
                 throw new Error('Error del servidor: ' + errorText);
             }
@@ -468,7 +569,7 @@ async function processCashPayment(formData) {
 
     } catch (error) {
         console.error('❌ Error procesando pago en efectivo:', error);
-        showTemporaryMessage(`Error: ${error.message}`, 'error');
+        showTemporaryMessage(`Error en pago en efectivo: ${error.message}`, 'error');
     }
 }
 
@@ -666,12 +767,7 @@ async function handlePaymentSubmission(paymentData, brickType) {
             }
         };
 
-        // ✅ LOG DETALLADO PARA PAGOS CON TARJETA
-        console.log('📤 ========== JSON ENVIADO AL BACKEND (TARJETA) ==========');
-        console.log('🔍 URL: /process_payment/process_bricks_payment');
-        console.log('🔍 Método: POST');
-        console.log('🔍 Body (JSON):', JSON.stringify(requestData, null, 2));
-        console.log('========== FIN DEL LOG ==========');
+        console.log('📤 Enviando datos al servidor:', requestData);
 
         const response = await fetch('/process_payment/process_bricks_payment', {
             method: "POST",
@@ -683,6 +779,7 @@ async function handlePaymentSubmission(paymentData, brickType) {
         
         if (!response.ok) throw new Error(result.error_message || 'Error del servidor');
 
+        // ✅ ÉXITO
         paymentId = result.id;
         await renderStatusScreenBrick(bricksBuilder, result);
         
@@ -786,6 +883,7 @@ $(document).ready(function() {
     ensureAmountField();
     updateSummaryTotal();
     
+    // ✅ MANEJAR FORMULARIO DEL COMPRADOR
     const customerForm = document.getElementById('customer-info-form');
     if (customerForm) {
         customerForm.addEventListener('submit', function(e) {
@@ -804,6 +902,7 @@ $(document).ready(function() {
         });
     }
     
+    // ✅ BOTONES
     const checkoutBtn = $('#checkout-btn');
     if (checkoutBtn.length) {
         checkoutBtn.on('click', function() {
@@ -821,69 +920,3 @@ $(document).ready(function() {
                 resetBricksState();
             }, 500);
         });
-    }
-
-    const downloadReceiptBtn = $('#download-receipt');
-    if (downloadReceiptBtn.length) {
-        downloadReceiptBtn.on('click', function() {
-            if (!paymentId) {
-                showTemporaryMessage('No hay un ID de pago disponible para descargar el comprobante.', 'warning');
-                return;
-            }
-            downloadReceipt(paymentId);
-        });
-    }
-
-    const backToPaymentsBtn = $('#back-to-payments');
-    if (backToPaymentsBtn.length) {
-        backToPaymentsBtn.on('click', function() {
-            goBackToPayments();
-        });
-    }
-
-    const skipFormBtn = $('#skip-customer-form');
-    if (skipFormBtn.length) {
-        skipFormBtn.on('click', function() {
-            skipCustomerInfo();
-        });
-    }
-
-    if (typeof updateCartDisplay === 'function') updateCartDisplay();
-
-    console.log('✅ JavaScript cargado correctamente');
-});
-
-// ✅ FUNCIONES ADICIONALES
-function goBackToPayments() {
-    console.log('Volviendo a pagos.html');
-    window.location.href = 'pagos.html';
-}
-
-function resetBricksState() {
-    bricksInitialized = false;
-    console.log('🔄 Estado de Bricks reseteado');
-}
-
-function downloadReceipt(paymentId) {
-    const url = `/process_payment/download_receipt/${paymentId}`;
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error('Error al descargar el comprobante');
-            return response.blob();
-        })
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `comprobante-pago-${paymentId}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
-            console.log('Comprobante descargado exitosamente');
-        })
-        .catch(error => {
-            console.error('Error downloading receipt:', error);
-            alert('Error al descargar el comprobante: ' + error.message);
-        });
-}
