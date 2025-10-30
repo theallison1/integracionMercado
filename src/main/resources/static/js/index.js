@@ -878,6 +878,32 @@ function updateCartDisplay() {
     updateSummaryTotal();
 }
 
+// ✅ FUNCIÓN: Resetear estado de los Bricks
+function resetBricksState() {
+    bricksInitialized = false;
+    if (window.paymentBrickController) {
+        try {
+            window.paymentBrickController.unmount();
+        } catch (error) {
+            console.log('Error unmounting payment brick:', error);
+        }
+    }
+    if (window.walletBrickController) {
+        try {
+            window.walletBrickController.unmount();
+        } catch (error) {
+            console.log('Error unmounting wallet brick:', error);
+        }
+    }
+    if (window.statusScreenBrickController) {
+        try {
+            window.statusScreenBrickController.unmount();
+        } catch (error) {
+            console.log('Error unmounting status screen brick:', error);
+        }
+    }
+}
+
 // ✅ EVENT LISTENERS
 $(document).ready(function() {
     ensureAmountField();
@@ -920,3 +946,29 @@ $(document).ready(function() {
                 resetBricksState();
             }, 500);
         });
+    }
+
+    const skipCustomerBtn = $('#skip-customer-info');
+    if (skipCustomerBtn.length) {
+        skipCustomerBtn.on('click', function() {
+            skipCustomerInfo();
+        });
+    }
+
+    const editCartBtn = $('#edit-cart');
+    if (editCartBtn.length) {
+        editCartBtn.on('click', function() {
+            $('.container__payment').fadeOut(500);
+            setTimeout(() => {
+                $('.container__cart').show(500).fadeIn();
+                resetBricksState();
+            }, 500);
+        });
+    }
+
+    // ✅ Inicializar carrito
+    if (typeof cart === 'undefined') {
+        cart = [];
+    }
+    updateCartDisplay();
+});
