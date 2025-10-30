@@ -126,6 +126,20 @@ function updateSummaryTotal() {
     }
 }
 
+// ✅ NUEVA FUNCIÓN: Capturar datos del formulario inmediatamente
+function captureCustomerFormData() {
+    customerData = {
+        firstName: document.getElementById('customer-first-name').value.trim() || 'Cliente',
+        lastName: document.getElementById('customer-last-name').value.trim() || 'Millenium',
+        email: document.getElementById('customer-email').value.trim() || 'cliente@millenium.com',
+        dniType: document.getElementById('customer-dni-type').value || 'DNI',
+        dniNumber: document.getElementById('customer-dni-number').value.trim() || '00000000',
+        phone: document.getElementById('customer-phone').value.trim() || ''
+    };
+    
+    console.log('📝 Datos del comprador capturados:', customerData);
+}
+
 function showCustomerForm() {
     const existingErrors = document.getElementById('validation-errors');
     if (existingErrors) existingErrors.remove();
@@ -135,6 +149,9 @@ function showCustomerForm() {
     document.querySelector('.container__payment').style.display = 'none';
     
     updateCustomerCartSummary();
+    
+    // ✅ CAPTURAR DATOS DEL FORMULARIO INMEDIATAMENTE
+    captureCustomerFormData();
 }
 
 function updateCustomerCartSummary() {
@@ -161,19 +178,14 @@ function updateCustomerCartSummary() {
 }
 
 function skipCustomerInfo() {
-    customerData = {
-        firstName: document.getElementById('customer-first-name').value.trim() || 'Cliente',
-        lastName: document.getElementById('customer-last-name').value.trim() || 'Millenium',
-        email: document.getElementById('customer-email').value.trim() || 'cliente@millenium.com',
-        dniType: document.getElementById('customer-dni-type').value,
-        dniNumber: document.getElementById('customer-dni-number').value.trim(),
-        phone: document.getElementById('customer-phone').value.trim()
-    };
+    // ✅ CAPTURAR DATOS ANTES DE IR A PAGOS
+    captureCustomerFormData();
     goToPayment();
 }
 
 function goToPayment() {
     console.log('🚀 Intentando ir a pagos...');
+    console.log('👤 CustomerData al ir a pagos:', customerData);
     
     if (bricksInitialized) {
         document.querySelector('.container__cart').style.display = 'none';
@@ -228,6 +240,7 @@ async function initializePaymentBricks() {
     const userEmail = customerData.email || "cliente@millenium.com";
     
     console.log('💰 Inicializando Bricks - Monto:', total, 'Email:', userEmail);
+    console.log('👤 CustomerData en Bricks:', customerData);
 
     try {
         const preferenceId = await createMercadoPagoPreference(total);
@@ -276,7 +289,7 @@ async function initializeWalletBrickWithPreference(preferenceId) {
     }
 }
 
-// ✅ CONFIGURACIÓN CORREGIDA - Usar endpoints correctos
+// ✅ CONFIGURACIÓN CORREGIDA - Con debugging extensivo
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
@@ -286,6 +299,7 @@ async function initializePaymentBrick(total, userEmail) {
         }
 
         console.log('💳 Inicializando Payment Brick corregido');
+        console.log('👤 CustomerData en Payment Brick:', customerData);
 
         const settings = {
             initialization: {
@@ -305,8 +319,9 @@ async function initializePaymentBrick(total, userEmail) {
                     console.log('🔄 ========== ENVIANDO AL BACKEND JAVA ==========');
                     console.log('🔍 selectedPaymentMethod:', selectedPaymentMethod);
                     console.log('🔍 formData completo:', formData);
+                    console.log('👤 customerData disponible:', customerData);
                     
-                    // ✅ IMPLEMENTACIÓN CORREGIDA - Usar endpoints correctos
+                    // ✅ IMPLEMENTACIÓN CORREGIDA
                     return new Promise(async (resolve, reject) => {
                         try {
                             let endpoint = '';
@@ -317,7 +332,7 @@ async function initializePaymentBrick(total, userEmail) {
                                 endpoint = '/process_payment/create_ticket_payment';
                                 console.log('🎫 Enviando a endpoint de efectivo:', endpoint);
                                 
-                                // ✅ USAR DATOS DEL FORMULARIO DEL COMPRADOR
+                                // ✅ VERIFICAR SI payment_method_id ES NULL
                                 let paymentMethodId = formData.payment_method_id;
                                 
                                 if (!paymentMethodId) {
@@ -342,7 +357,7 @@ async function initializePaymentBrick(total, userEmail) {
                                 
                                 console.log('📤 Datos para efectivo:', requestData);
                             } else {
-                                // ✅ PAGO CON TARJETA - USAR ENDPOINT CORRECTO
+                                // ✅ PAGO CON TARJETA
                                 endpoint = '/process_payment/process_bricks_payment';
                                 console.log('💳 Enviando a endpoint de tarjeta:', endpoint);
                                 
@@ -828,21 +843,16 @@ $(document).ready(function() {
     ensureAmountField();
     updateSummaryTotal();
     
-    // ✅ MANEJAR FORMULARIO DEL COMPRADOR
+    // ✅ MANEJAR FORMULARIO DEL COMPRADOR - CORREGIDO
     const customerForm = document.getElementById('customer-info-form');
     if (customerForm) {
         customerForm.addEventListener('submit', function(e) {
             e.preventDefault();
             if (!validateCustomerForm()) return;
             
-            customerData = {
-                firstName: document.getElementById('customer-first-name').value.trim(),
-                lastName: document.getElementById('customer-last-name').value.trim(),
-                email: document.getElementById('customer-email').value.trim(),
-                dniType: document.getElementById('customer-dni-type').value,
-                dniNumber: document.getElementById('customer-dni-number').value.trim(),
-                phone: document.getElementById('customer-phone').value.trim()
-            };
+            // ✅ CAPTURAR DATOS ANTES DE IR A PAGOS
+            captureCustomerFormData();
+            console.log('✅ Datos enviados a pago:', customerData);
             goToPayment();
         });
     }
