@@ -386,9 +386,12 @@ async function initializePaymentBrick(total, userEmail) {
                     showTemporaryMessage('Formulario de pago listo', 'success');
                 },
                 onSubmit: async ({ selectedPaymentMethod, formData }) => {
-                    console.log('🔄 ========== ENVIANDO AL BACKEND JAVA ==========');
+                    console.log('🔄 ========== INICIANDO ENVÍO AL BACKEND ==========');
                     console.log('🔍 selectedPaymentMethod:', selectedPaymentMethod);
-                    console.log('🔍 formData completo:', formData);
+                    console.log('🔍 formData COMPLETO:', JSON.stringify(formData, null, 2));
+                    console.log('👤 customerData disponible:', customerData);
+                    console.log('💰 Total del carrito:', calculateCartTotal());
+                    console.log('📦 Items en carrito:', cart);
                     
                     return new Promise(async (resolve, reject) => {
                         try {
@@ -400,14 +403,39 @@ async function initializePaymentBrick(total, userEmail) {
                                 endpoint = '/process_payment/create_ticket_payment';
                                 console.log('🎫 Enviando a endpoint de efectivo:', endpoint);
                                 
-                                // ✅ OBTENER MÉTODO ESPECÍFICO DE EFECTIVO
-                                let paymentMethodId = await askUserForCashMethod();
+                                // ✅ VERIFICAR QUÉ MÉTODO ESPECÍFICO VIENE EN formData
+                                console.log('🔍 Revisando formData para método de pago:');
+                                console.log('   - payment_method_id:', formData.payment_method_id);
+                                console.log('   - payment_method_type:', formData.payment_method_type);
+                                console.log('   - payment_type:', formData.payment_type);
                                 
+                                let paymentMethodId = formData.payment_method_id;
+                                
+                                if (!paymentMethodId) {
+                                    console.warn('⚠️ payment_method_id es null/undefined en formData');
+                                    console.log('🔍 Buscando método en otros campos...');
+                                    
+                                    // Intentar encontrar el método en otros campos
+                                    if (formData.payment_method_type) {
+                                        paymentMethodId = formData.payment_method_type;
+                                        console.log('✅ Usando payment_method_type:', paymentMethodId);
+                                    } else if (formData.payment_type) {
+                                        paymentMethodId = formData.payment_type;
+                                        console.log('✅ Usando payment_type:', paymentMethodId);
+                                    } else {
+                                        // Si no hay método, mostrar selector
+                                        console.log('🔍 Mostrando selector de método...');
+                                        paymentMethodId = await askUserForCashMethod();
+                                    }
+                                } else {
+                                    console.log('✅ Método obtenido de formData.payment_method_id:', paymentMethodId);
+                                }
+
                                 if (!paymentMethodId) {
                                     throw new Error('No se seleccionó ningún método de pago en efectivo');
                                 }
 
-                                console.log('✅ Método de pago seleccionado:', paymentMethodId);
+                                console.log('🎯 Método final a enviar:', paymentMethodId);
 
                                 requestData = {
                                     paymentMethodId: paymentMethodId,
@@ -419,6 +447,8 @@ async function initializePaymentBrick(total, userEmail) {
                                     identificationNumber: customerData.dniNumber || "00000000",
                                     description: `Compra de ${cart.length} productos Millenium`
                                 };
+                                
+                                console.log('📤 DATOS A ENVIAR AL BACKEND (EFECTIVO):', JSON.stringify(requestData, null, 2));
                                 
                             } else {
                                 // ✅ PAGO CON TARJETA
@@ -438,35 +468,48 @@ async function initializePaymentBrick(total, userEmail) {
                                     payerFirstName: customerData.firstName || "Cliente",
                                     payerLastName: customerData.lastName || "Millenium"
                                 };
+                                
+                                console.log('📤 DATOS A ENVIAR AL BACKEND (TARJETA):', JSON.stringify(requestData, null, 2));
                             }
 
                             // Validaciones finales
                             if (!requestData.amount || requestData.amount <= 0) {
+                                console.warn('⚠️ Monto inválido, usando total del carrito');
                                 requestData.amount = calculateCartTotal();
                             }
                             
-                            console.log('🎯 Datos finales a enviar:', requestData);
+                            console.log('🎯 ENDPOINT FINAL:', endpoint);
+                            console.log('🎯 REQUEST DATA FINAL:', JSON.stringify(requestData, null, 2));
 
+                            // ✅ ENVIAR DATOS AL BACKEND
+                            console.log('🚀 ENVIANDO REQUEST AL BACKEND...');
                             const response = await fetch(endpoint, {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify(requestData),
                             });
 
+                            console.log('📥 RESPONSE STATUS:', response.status);
+                            console.log('📥 RESPONSE OK:', response.ok);
+
                             if (!response.ok) {
                                 const errorText = await response.text();
+                                console.error('❌ ERROR DEL SERVIDOR:', errorText);
                                 throw new Error(`HTTP ${response.status}: ${errorText}`);
                             }
 
                             const result = await response.json();
-                            console.log('✅ Respuesta del backend Java:', result);
+                            console.log('✅ RESPUESTA EXITOSA DEL BACKEND:', JSON.stringify(result, null, 2));
                             
                             if (result.id) {
                                 paymentId = result.id;
+                                console.log('💰 PAYMENT ID OBTENIDO:', paymentId);
                                 
                                 if (selectedPaymentMethod === 'ticket') {
+                                    console.log('🎫 Mostrando resultado de pago en efectivo');
                                     showCashPaymentResult(result);
                                 } else {
+                                    console.log('💳 Mostrando Status Screen Brick');
                                     renderStatusScreenBrick(bricksBuilder, result);
                                 }
                                 
@@ -479,7 +522,8 @@ async function initializePaymentBrick(total, userEmail) {
                             
                             resolve();
                         } catch (error) {
-                            console.error('❌ Error en el pago:', error);
+                            console.error('❌ ERROR EN EL PROCESO DE PAGO:', error);
+                            console.error('❌ Stack trace:', error.stack);
                             showTemporaryMessage(`Error: ${error.message}`, 'error');
                             reject();
                         }
