@@ -276,7 +276,7 @@ async function initializeWalletBrickWithPreference(preferenceId) {
     }
 }
 
-// ✅ CONFIGURACIÓN CORREGIDA - Usar datos del formulario del comprador
+// ✅ CONFIGURACIÓN CORREGIDA - Usar endpoints correctos
 async function initializePaymentBrick(total, userEmail) {
     try {
         const paymentContainer = document.getElementById('paymentBrick_container');
@@ -306,13 +306,14 @@ async function initializePaymentBrick(total, userEmail) {
                     console.log('🔍 selectedPaymentMethod:', selectedPaymentMethod);
                     console.log('🔍 formData completo:', formData);
                     
-                    // ✅ IMPLEMENTACIÓN CORREGIDA - Usar datos del formulario del comprador
+                    // ✅ IMPLEMENTACIÓN CORREGIDA - Usar endpoints correctos
                     return new Promise(async (resolve, reject) => {
                         try {
                             let endpoint = '';
                             let requestData = {};
 
                             if (selectedPaymentMethod === 'ticket') {
+                                // ✅ PAGO EN EFECTIVO
                                 endpoint = '/process_payment/create_ticket_payment';
                                 console.log('🎫 Enviando a endpoint de efectivo:', endpoint);
                                 
@@ -321,18 +322,16 @@ async function initializePaymentBrick(total, userEmail) {
                                 
                                 if (!paymentMethodId) {
                                     console.warn('⚠️ payment_method_id es null, mostrando selector...');
-                                    // ✅ MOSTRAR SELECTOR DE MÉTODO DE PAGO
                                     paymentMethodId = await askUserForCashMethod();
                                     if (!paymentMethodId) {
                                         throw new Error('No se seleccionó ningún método de pago');
                                     }
                                 }
 
-                                // ✅ USAR DATOS DEL FORMULARIO DEL COMPRADOR - FORMATO CORRECTO
+                                // ✅ USAR DATOS DEL FORMULARIO DEL COMPRADOR
                                 requestData = {
                                     paymentMethodId: paymentMethodId,
                                     amount: formData.transactionAmount ? parseFloat(formData.transactionAmount) : total,
-                                    // ✅ USAR DATOS DEL FORMULARIO EN LUGAR DE LOS DEL BRICK
                                     payerEmail: customerData.email || "cliente@millenium.com",
                                     payerFirstName: customerData.firstName || "Cliente",
                                     payerLastName: customerData.lastName || "Millenium",
@@ -341,19 +340,12 @@ async function initializePaymentBrick(total, userEmail) {
                                     description: `Compra de ${cart.length} productos Millenium`
                                 };
                                 
-                                console.log('📤 Datos transformados para efectivo:', requestData);
-                                console.log('👤 Datos del comprador usados:', {
-                                    email: customerData.email,
-                                    firstName: customerData.firstName,
-                                    lastName: customerData.lastName,
-                                    dniType: customerData.dniType,
-                                    dniNumber: customerData.dniNumber
-                                });
+                                console.log('📤 Datos para efectivo:', requestData);
                             } else {
+                                // ✅ PAGO CON TARJETA - USAR ENDPOINT CORRECTO
                                 endpoint = '/process_payment/process_bricks_payment';
                                 console.log('💳 Enviando a endpoint de tarjeta:', endpoint);
                                 
-                                // ✅ TRANSFORMAR DATOS PARA TARJETA USANDO DATOS DEL FORMULARIO
                                 requestData = {
                                     token: formData.token,
                                     paymentMethodId: formData.payment_method_id,
@@ -363,7 +355,6 @@ async function initializePaymentBrick(total, userEmail) {
                                     amount: parseFloat(formData.transactionAmount) || total,
                                     brickType: 'payment',
                                     description: `Compra de ${cart.length} productos Millenium`,
-                                    // ✅ USAR DATOS DEL FORMULARIO EN LUGAR DE LOS DEL BRICK
                                     payerEmail: customerData.email || "cliente@millenium.com",
                                     payerFirstName: customerData.firstName || "Cliente",
                                     payerLastName: customerData.lastName || "Millenium"
@@ -376,18 +367,13 @@ async function initializePaymentBrick(total, userEmail) {
                                 requestData.amount = calculateCartTotal();
                             }
                             
-                            // ✅ VALIDAR QUE TENEMOS EMAIL DEL FORMULARIO
-                            if (!requestData.payerEmail || requestData.payerEmail === "cliente@millenium.com") {
-                                if (customerData.email) {
-                                    requestData.payerEmail = customerData.email;
-                                } else {
-                                    throw new Error('Email del comprador es requerido');
-                                }
+                            if (!requestData.payerEmail) {
+                                requestData.payerEmail = customerData.email || "cliente@millenium.com";
                             }
 
                             console.log('🎯 Datos finales a enviar:', requestData);
 
-                            // ✅ ENVIAR DATOS TRANSFORMADOS AL BACKEND JAVA
+                            // ✅ ENVIAR DATOS AL BACKEND JAVA
                             const response = await fetch(endpoint, {
                                 method: "POST",
                                 headers: {
@@ -410,10 +396,8 @@ async function initializePaymentBrick(total, userEmail) {
                                 paymentId = result.id;
                                 
                                 if (selectedPaymentMethod === 'ticket') {
-                                    // ✅ MOSTRAR STATUS SCREEN PARA PAGOS EN EFECTIVO
                                     showCashPaymentResult(result);
                                 } else {
-                                    // ✅ MOSTRAR STATUS SCREEN PARA TARJETAS
                                     renderStatusScreenBrick(bricksBuilder, result);
                                 }
                                 
@@ -541,12 +525,10 @@ async function askUserForCashMethod() {
         
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         
-        // ✅ CALLBACKS CON NOMBRES ÚNICOS PARA EVITAR CONFLICTOS
         window.selectCashMethodCallback = (method) => {
             console.log('✅ Usuario seleccionó:', method);
             const modal = document.getElementById(modalId);
             if (modal) modal.remove();
-            // Limpiar callbacks
             delete window.selectCashMethodCallback;
             delete window.closeCashMethodModalCallback;
             resolve(method);
@@ -556,7 +538,6 @@ async function askUserForCashMethod() {
             console.log('❌ Usuario canceló la selección');
             const modal = document.getElementById(modalId);
             if (modal) modal.remove();
-            // Limpiar callbacks
             delete window.selectCashMethodCallback;
             delete window.closeCashMethodModalCallback;
             resolve(null);
@@ -564,7 +545,7 @@ async function askUserForCashMethod() {
     });
 }
 
-// ✅ FUNCIÓN ORIGINAL: Mostrar resultado de pago en efectivo
+// ✅ FUNCIÓN: Mostrar resultado de pago en efectivo
 function showCashPaymentResult(paymentResult) {
     const paymentMethod = paymentResult.paymentMethodId || 'pagofacil';
     const paymentMethodName = paymentMethod === 'rapipago' ? 'Rapipago' : 'Pago Fácil';
@@ -847,13 +828,13 @@ $(document).ready(function() {
     ensureAmountField();
     updateSummaryTotal();
     
-    // ✅ MANEJAR FORMULARIO DEL COMPRADOR - GUARDAR EN VARIABLE GLOBAL
+    // ✅ MANEJAR FORMULARIO DEL COMPRADOR
     const customerForm = document.getElementById('customer-info-form');
     if (customerForm) {
         customerForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            if (!validateCustomerForm()) return;
             
-            // ✅ GUARDAR EN VARIABLE GLOBAL customerData
             customerData = {
                 firstName: document.getElementById('customer-first-name').value.trim(),
                 lastName: document.getElementById('customer-last-name').value.trim(),
@@ -862,22 +843,6 @@ $(document).ready(function() {
                 dniNumber: document.getElementById('customer-dni-number').value.trim(),
                 phone: document.getElementById('customer-phone').value.trim()
             };
-            
-            // Validar campos obligatorios
-            if (!customerData.firstName || !customerData.lastName || !customerData.email) {
-                alert('❌ Por favor completa los campos obligatorios (*)');
-                return;
-            }
-            
-            // Validar email
-            if (!isValidEmail(customerData.email)) {
-                alert('❌ Por favor ingresa un email válido');
-                return;
-            }
-            
-            console.log('✅ Datos del comprador guardados:', customerData);
-            
-            // Ir a la sección de pago
             goToPayment();
         });
     }
