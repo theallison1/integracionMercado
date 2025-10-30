@@ -4,11 +4,9 @@ const mercadopago = new MercadoPago(mercadoPagoPublicKey, {
 });
 const bricksBuilder = mercadopago.bricks();
 
-// Variables globales - CORREGIDAS
+// Variables globales
 let paymentId;
 let bricksInitialized = false;
-// ❌ ELIMINAR esta línea: let cart = [];
-// ✅ SOLO usar la variable cart que ya existe globalmente
 let customerData = {
     firstName: '',
     lastName: '', 
@@ -18,7 +16,6 @@ let customerData = {
     phone: ''
 };
 
-// El resto del código se mantiene igual, pero usando la variable cart global que ya existe
 // ========== FUNCIONES DE VALIDACIÓN ==========
 function validateCustomerForm() {
     const firstName = document.getElementById('customer-first-name').value.trim();
@@ -405,34 +402,10 @@ async function initializePaymentBrick(total, userEmail) {
                                 endpoint = '/process_payment/create_ticket_payment';
                                 console.log('🎫 Enviando a endpoint de efectivo:', endpoint);
                                 
-                                // ✅ VERIFICAR QUÉ MÉTODO ESPECÍFICO VIENE EN formData
-                                console.log('🔍 Revisando formData para método de pago:');
-                                console.log('   - payment_method_id:', formData.payment_method_id);
-                                console.log('   - payment_method_type:', formData.payment_method_type);
-                                console.log('   - payment_type:', formData.payment_type);
+                                // ✅ SIEMPRE MOSTRAR SELECTOR PARA EFECTIVO
+                                console.log('🔍 Mostrando selector de método de efectivo...');
+                                let paymentMethodId = await askUserForCashMethod();
                                 
-                                let paymentMethodId = formData.payment_method_id;
-                                
-                                if (!paymentMethodId) {
-                                    console.warn('⚠️ payment_method_id es null/undefined en formData');
-                                    console.log('🔍 Buscando método en otros campos...');
-                                    
-                                    // Intentar encontrar el método en otros campos
-                                    if (formData.payment_method_type) {
-                                        paymentMethodId = formData.payment_method_type;
-                                        console.log('✅ Usando payment_method_type:', paymentMethodId);
-                                    } else if (formData.payment_type) {
-                                        paymentMethodId = formData.payment_type;
-                                        console.log('✅ Usando payment_type:', paymentMethodId);
-                                    } else {
-                                        // Si no hay método, mostrar selector
-                                        console.log('🔍 Mostrando selector de método...');
-                                        paymentMethodId = await askUserForCashMethod();
-                                    }
-                                } else {
-                                    console.log('✅ Método obtenido de formData.payment_method_id:', paymentMethodId);
-                                }
-
                                 if (!paymentMethodId) {
                                     throw new Error('No se seleccionó ningún método de pago en efectivo');
                                 }
@@ -538,13 +511,12 @@ async function initializePaymentBrick(total, userEmail) {
             },
             customization: {
                 paymentMethods: {
-                    creditCard: "all",
-                    debitCard: "all",
-                    ticket: "all",
-                    bankTransfer: "all", 
-                    onboarding_credits: "all",
-                    wallet_purchase: "all",
-                    maxInstallments: 1
+                    // ✅ SOLO LOS MEDIOS DE PAGO QUE NECESITAS
+                    ticket: "all",           // Efectivo (Rapipago, Pago Fácil)
+                    creditCard: "all",       // Tarjetas de crédito
+                    debitCard: "all",        // Tarjetas de débito
+                    mercadoPago: "all",      // Cuenta Mercado Pago
+                    prepaidCard: "all"       // Tarjetas prepagas
                 },
                 visual: {
                     style: {
@@ -560,7 +532,12 @@ async function initializePaymentBrick(total, userEmail) {
             }
         };
 
-        window.paymentBrickController = await bricksBuilder.create("payment", "paymentBrick_container", settings);
+        window.paymentBrickController = await bricksBuilder.create(
+            "payment",
+            "paymentBrick_container", 
+            settings
+        );
+        
         console.log('✅ Payment Brick creado exitosamente');
         
     } catch (error) {
@@ -881,7 +858,6 @@ $(document).ready(function() {
         }, 500);
     });
 
-    // Inicializar carrito - CORREGIDO
-    // Ya no necesitamos esta línea porque cart se inicializa arriba
+    // Inicializar carrito
     updateCartDisplay();
 });
