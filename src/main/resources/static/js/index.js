@@ -7,8 +7,8 @@ const bricksBuilder = mercadopago.bricks();
 // Variables globales - CORREGIDAS
 let paymentId;
 let bricksInitialized = false;
-// SOLUCIÓN: Verificar si cart ya existe antes de declararlo
-let cart = window.cart || [];
+// ❌ ELIMINAR esta línea: let cart = [];
+// ✅ SOLO usar la variable cart que ya existe globalmente
 let customerData = {
     firstName: '',
     lastName: '', 
@@ -18,6 +18,7 @@ let customerData = {
     phone: ''
 };
 
+// El resto del código se mantiene igual, pero usando la variable cart global que ya existe
 // ========== FUNCIONES DE VALIDACIÓN ==========
 function validateCustomerForm() {
     const firstName = document.getElementById('customer-first-name').value.trim();
