@@ -53,78 +53,87 @@ public class CardPaymentController {
         this.cardPaymentService = cardPaymentService;
         this.resendEmailService = resendEmailService;
     }
-     /**
-     * ✅ NUEVO ENDPOINT: Crear pago en efectivo (Pago Fácil / Rapipago)
-     */
     @PostMapping("/create_ticket_payment")
-    public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPaymentDTO) {
-        try {
-            LOGGER.info("🎫 Recibiendo solicitud de pago en efectivo");
-            LOGGER.info("Método: {}", cashPaymentDTO.getPaymentMethodId());
-            LOGGER.info("Monto: {}", cashPaymentDTO.getAmount());
-            LOGGER.info("Email: {}", cashPaymentDTO.getPayerEmail());
-            LOGGER.info("Nombre: {} {}", cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
-            
-            // ✅ Validar método de pago
-            String paymentMethod = cashPaymentDTO.getPaymentMethodId();
-            if (!"rapipago".equals(paymentMethod) && !"pagofacil".equals(paymentMethod)) {
-                Map<String, String> errorResponse = new HashMap<>();
-                errorResponse.put("error", "Método de pago no válido. Use 'rapipago' o 'pagofacil'");
-                return ResponseEntity.badRequest().body(errorResponse);
-            }
-            
-            // ✅ Validar monto
-            if (cashPaymentDTO.getAmount() == null || cashPaymentDTO.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-                Map<String, String> errorResponse = new HashMap<>();
-                errorResponse.put("error", "El monto debe ser mayor a cero");
-                return ResponseEntity.badRequest().body(errorResponse);
-            }
-            
-            // ✅ Completar datos faltantes
-            if (cashPaymentDTO.getPayerFirstName() == null) {
-                cashPaymentDTO.setPayerFirstName("Cliente");
-            }
-            if (cashPaymentDTO.getPayerLastName() == null) {
-                cashPaymentDTO.setPayerLastName("Millenium");
-            }
-            if (cashPaymentDTO.getIdentificationType() == null) {
-                cashPaymentDTO.setIdentificationType("DNI");
-            }
-            if (cashPaymentDTO.getIdentificationNumber() == null) {
-                cashPaymentDTO.setIdentificationNumber("00000000");
-            }
-            
-            PaymentResponseDTO result = cardPaymentService.processCashPayment(cashPaymentDTO);
-            
-            LOGGER.info("✅ Pago en efectivo creado exitosamente - ID: {}", result.getId());
-            
-            // ✅ Enviar email de confirmación de voucher
-            try {
-                String customerName = cashPaymentDTO.getPayerFirstName() + " " + cashPaymentDTO.getPayerLastName();
-                resendEmailService.sendCashPaymentVoucherEmail(
-                    cashPaymentDTO.getPayerEmail(),
-                    customerName,
-                    result
-                );
-            } catch (Exception emailError) {
-                LOGGER.warn("⚠️ No se pudo enviar email de voucher: {}", emailError.getMessage());
-            }
-            
-            return ResponseEntity.ok(result);
-            
-        } catch (MercadoPagoException e) {
-            LOGGER.error("❌ Error Mercado Pago en pago efectivo: {}", e.getMessage());
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("error", "Error Mercado Pago: " + e.getMessage());
-            return ResponseEntity.status(500).body(errorResponse);
-        } catch (Exception e) {
-            LOGGER.error("❌ Error creando pago en efectivo: {}", e.getMessage());
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("error", "Error interno: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(errorResponse);
+public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPaymentDTO) {
+    try {
+        LOGGER.info("🎫 Recibiendo solicitud de pago en efectivo");
+        LOGGER.info("Método: {}", cashPaymentDTO.getPaymentMethodId());
+        LOGGER.info("Monto: {}", cashPaymentDTO.getAmount());
+        LOGGER.info("Email: {}", cashPaymentDTO.getPayerEmail());
+        LOGGER.info("Nombre: {} {}", cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
+        
+        // ✅✅✅ CORRECCIÓN CRÍTICA - SI ES NULL, USAR PAGOFACIL
+        if (cashPaymentDTO.getPaymentMethodId() == null) {
+            LOGGER.warn("⚠️ PaymentMethodId es null, asignando 'pagofacil' por defecto");
+            cashPaymentDTO.setPaymentMethodId("pagofacil");
         }
+        
+        // ✅ Validar método de pago
+        String paymentMethod = cashPaymentDTO.getPaymentMethodId().toLowerCase().trim();
+        if (!"rapipago".equals(paymentMethod) && !"pagofacil".equals(paymentMethod)) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Método de pago no válido. Use 'rapipago' o 'pagofacil'. Recibido: " + paymentMethod);
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+        
+        // ✅ Validar monto
+        if (cashPaymentDTO.getAmount() == null || cashPaymentDTO.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "El monto debe ser mayor a cero");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+        
+        // ✅ Completar datos faltantes
+        if (cashPaymentDTO.getPayerEmail() == null) {
+            cashPaymentDTO.setPayerEmail("cliente@millenium.com");
+        }
+        if (cashPaymentDTO.getPayerFirstName() == null) {
+            cashPaymentDTO.setPayerFirstName("Cliente");
+        }
+        if (cashPaymentDTO.getPayerLastName() == null) {
+            cashPaymentDTO.setPayerLastName("Millenium");
+        }
+        if (cashPaymentDTO.getIdentificationType() == null) {
+            cashPaymentDTO.setIdentificationType("DNI");
+        }
+        if (cashPaymentDTO.getIdentificationNumber() == null) {
+            cashPaymentDTO.setIdentificationNumber("00000000");
+        }
+        
+        LOGGER.info("✅ Datos corregidos - Método: {}, Email: {}, Nombre: {} {}", 
+                   cashPaymentDTO.getPaymentMethodId(), cashPaymentDTO.getPayerEmail(),
+                   cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
+        
+        PaymentResponseDTO result = cardPaymentService.processCashPayment(cashPaymentDTO);
+        
+        LOGGER.info("✅ Pago en efectivo creado exitosamente - ID: {}", result.getId());
+        
+        // ✅ Enviar email de confirmación
+        try {
+            String customerName = cashPaymentDTO.getPayerFirstName() + " " + cashPaymentDTO.getPayerLastName();
+            resendEmailService.sendCashPaymentVoucherEmail(
+                cashPaymentDTO.getPayerEmail(),
+                customerName,
+                result
+            );
+        } catch (Exception emailError) {
+            LOGGER.warn("⚠️ No se pudo enviar email de voucher: {}", emailError.getMessage());
+        }
+        
+        return ResponseEntity.ok(result);
+        
+    } catch (MercadoPagoException e) {
+        LOGGER.error("❌ Error Mercado Pago en pago efectivo: {}", e.getMessage());
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Error Mercado Pago: " + e.getMessage());
+        return ResponseEntity.status(500).body(errorResponse);
+    } catch (Exception e) {
+        LOGGER.error("❌ Error creando pago en efectivo: {}", e.getMessage());
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Error interno: " + e.getMessage());
+        return ResponseEntity.internalServerError().body(errorResponse);
     }
-
+}
     /**
      * ✅ NUEVO ENDPOINT: Obtener voucher de pago en efectivo
      */
