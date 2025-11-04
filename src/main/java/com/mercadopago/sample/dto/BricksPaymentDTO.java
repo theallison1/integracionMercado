@@ -5,6 +5,7 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Positive;
 import javax.validation.constraints.Email;
 import java.math.BigDecimal;
+import java.util.List;
 
 public class BricksPaymentDTO {
     
@@ -45,6 +46,13 @@ public class BricksPaymentDTO {
     
     @JsonProperty("identification_number")
     private String identificationNumber;
+
+    // ✅ NUEVOS CAMPOS PARA ITEMS DEL CARRITO
+    @JsonProperty("items")
+    private List<ProductItemDTO> items;
+    
+    @JsonProperty("order_number")
+    private String orderNumber;
 
     // Constructors
     public BricksPaymentDTO() {}
@@ -98,8 +106,15 @@ public class BricksPaymentDTO {
     
     public String getIdentificationNumber() { return identificationNumber; }
     public void setIdentificationNumber(String identificationNumber) { this.identificationNumber = identificationNumber; }
+
+    // ✅ NUEVOS GETTERS Y SETTERS
+    public List<ProductItemDTO> getItems() { return items; }
+    public void setItems(List<ProductItemDTO> items) { this.items = items; }
     
-    // ✅ MÉTODOS UTILITARIOS SIMPLIFICADOS
+    public String getOrderNumber() { return orderNumber; }
+    public void setOrderNumber(String orderNumber) { this.orderNumber = orderNumber; }
+    
+    // ✅ MÉTODOS UTILITARIOS ACTUALIZADOS
     
     public boolean isValid() {
         return amount != null && amount.compareTo(BigDecimal.ZERO) > 0 &&
@@ -132,6 +147,15 @@ public class BricksPaymentDTO {
         return identificationNumber != null ? identificationNumber : "00000000";
     }
     
+    // ✅ NUEVOS MÉTODOS UTILITARIOS
+    public boolean hasItems() {
+        return items != null && !items.isEmpty();
+    }
+    
+    public String getOrderNumberOrDefault() {
+        return orderNumber != null ? orderNumber : "ORDER_" + System.currentTimeMillis();
+    }
+    
     @Override
     public String toString() {
         return "BricksPaymentDTO{" +
@@ -146,6 +170,8 @@ public class BricksPaymentDTO {
                 ", description='" + description + '\'' +
                 ", identificationType='" + identificationType + '\'' +
                 ", identificationNumber='" + identificationNumber + '\'' +
+                ", items=" + (items != null ? items.size() : 0) + " items" +
+                ", orderNumber='" + orderNumber + '\'' +
                 '}';
     }
 }
