@@ -12,8 +12,10 @@ import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.sample.dto.CardPaymentDTO;
 import com.mercadopago.sample.dto.PaymentResponseDTO;
 import com.mercadopago.sample.exception.MercadoPagoException;
+import com.mercadopago.sample.util.MercadoPagoLogger; // ✅ IMPORT NUEVO
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired; // ✅ IMPORT NUEVO
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.itextpdf.kernel.pdf.PdfDocument;
@@ -27,8 +29,7 @@ import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import com.mercadopago.sample.dto.BricksPaymentDTO; // ✅ ESTE IMPORT
-import com.mercadopago.sample.dto.PaymentResponseDTO;
+import com.mercadopago.sample.dto.BricksPaymentDTO;
 
 @Service
 public class CardPaymentService {
@@ -40,7 +41,12 @@ public class CardPaymentService {
     @Value("${app.base.url:https://integracionmercado.onrender.com}")
     private String appBaseUrl;
 
+    @Autowired // ✅ INYECTAR EL LOGGER
+    private MercadoPagoLogger mercadoPagoLogger;
+
     public PaymentResponseDTO processPayment(CardPaymentDTO cardPaymentDTO) {
+        String endpoint = "/v1/payments";
+        
         try {
             MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
             PaymentClient client = new PaymentClient();
@@ -96,8 +102,14 @@ public class CardPaymentService {
                                             .build())
                             .build();
 
+            // ✅ LOG DEL REQUEST COMPLETO ANTES DE ENVIAR
+            mercadoPagoLogger.logRequest(endpoint, paymentCreateRequest, mercadoPagoAccessToken);
+
             // ✅ Usar requestOptions con idempotency key
             Payment payment = client.create(paymentCreateRequest, requestOptions);
+
+            // ✅ LOG DEL RESPONSE COMPLETO
+            mercadoPagoLogger.logResponse(endpoint, payment.toString(), 200);
 
             LOGGER.info("✅ Pago creado exitosamente - ID: {}, Estado: {}", 
                        payment.getId(), payment.getStatus());
@@ -113,6 +125,14 @@ public class CardPaymentService {
                     payment.getTransactionAmount());
 
         } catch (MPApiException apiException) {
+            // ✅ LOG DETALLADO DEL ERROR DE API
+            mercadoPagoLogger.logApiException(
+                endpoint, 
+                apiException.getMessage(),
+                apiException.getApiResponse().getContent(),
+                apiException.getStatusCode()
+            );
+            
             LOGGER.error("❌ Error API Mercado Pago - Status: {}", apiException.getStatusCode());
             LOGGER.error("❌ Error Message: {}", apiException.getMessage());
             LOGGER.error("❌ API Response: {}", apiException.getApiResponse().getContent());
@@ -142,6 +162,9 @@ public class CardPaymentService {
                 apiException
             );
         } catch (MPException exception) {
+            // ✅ LOG DE EXCEPCIÓN GENERAL
+            mercadoPagoLogger.logMPException(endpoint, exception.getMessage());
+            
             LOGGER.error("❌ Error Mercado Pago: {}", exception.getMessage());
             throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
         } catch (Exception exception) {
@@ -151,7 +174,395 @@ public class CardPaymentService {
     }
 
     /**
-     * ✅ NUEVO MÉTODO: Generar PDF específico para vouchers de pago en efectivo
+     * ✅ NUEVO MÉTODO: Procesar pagos desde Mercado Pago Bricks (Wallet & Payment)
+     */
+    public PaymentResponseDTO processBricksPayment(BricksPaymentDTO bricksPaymentDTO) {
+        String endpoint = "/v1/payments";
+        
+        try {
+            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+            PaymentClient client = new PaymentClient();
+
+            String notificationUrl = appBaseUrl + "/process_payment/webhooks/mercadopago";
+
+            LOGGER.info("=== CREANDO PAGO DESDE BRICKS ===");
+            LOGGER.info("Brick Type: {}", bricksPaymentDTO.getBrickType());
+            LOGGER.info("Monto: {}", bricksPaymentDTO.getAmount());
+            LOGGER.info("Token: {}", bricksPaymentDTO.getToken());
+            LOGGER.info("Payment Method: {}", bricksPaymentDTO.getPaymentMethodId());
+
+            // ✅ Configurar idempotency key para Bricks
+            Map<String, String> customHeaders = new HashMap<>();
+            String idempotencyKey = "BRICKS_" + UUID.randomUUID().toString();
+            customHeaders.put("x-idempotency-key", idempotencyKey);
+
+            MPRequestOptions requestOptions = MPRequestOptions.builder()
+                .customHeaders(customHeaders)
+                .build();
+
+            // ✅ Construir request específico para Bricks
+            PaymentCreateRequest paymentCreateRequest = buildBricksPaymentRequest(bricksPaymentDTO, notificationUrl);
+
+            // ✅ LOG DEL REQUEST COMPLETO
+            mercadoPagoLogger.logRequest(endpoint, paymentCreateRequest, mercadoPagoAccessToken);
+
+            Payment payment = client.create(paymentCreateRequest, requestOptions);
+
+            // ✅ LOG DEL RESPONSE COMPLETO
+            mercadoPagoLogger.logResponse(endpoint, payment.toString(), 200);
+
+            LOGGER.info("✅ Pago desde Bricks creado exitosamente - ID: {}, Estado: {}", 
+                       payment.getId(), payment.getStatus());
+
+            return new PaymentResponseDTO(
+                    payment.getId(),
+                    String.valueOf(payment.getStatus()),
+                    payment.getStatusDetail(),
+                    payment.getDateCreated(),
+                    payment.getTransactionAmount());
+
+        } catch (MPApiException apiException) {
+            // ✅ LOG DETALLADO DEL ERROR
+            mercadoPagoLogger.logApiException(
+                "/v1/payments", 
+                apiException.getMessage(),
+                apiException.getApiResponse().getContent(),
+                apiException.getStatusCode()
+            );
+            
+            LOGGER.error("❌ Error API Mercado Pago en Bricks - Status: {}", apiException.getStatusCode());
+            LOGGER.error("❌ API Response: {}", apiException.getApiResponse().getContent());
+            
+            throw new MercadoPagoException(
+                "Error Mercado Pago Bricks: " + apiException.getApiResponse().getContent(),
+                apiException
+            );
+        } catch (MPException exception) {
+            // ✅ LOG DE EXCEPCIÓN
+            mercadoPagoLogger.logMPException("/v1/payments", exception.getMessage());
+            
+            LOGGER.error("❌ Error Mercado Pago Bricks: {}", exception.getMessage());
+            throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
+        }
+    }
+
+    /**
+     * ✅ NUEVO MÉTODO: Procesar pagos en efectivo (Pago Fácil y Rapipago)
+     */
+    public PaymentResponseDTO processCashPayment(BricksPaymentDTO cashPaymentDTO) {
+        String endpoint = "/v1/payments";
+        
+        try {
+            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+            PaymentClient client = new PaymentClient();
+
+            String notificationUrl = appBaseUrl + "/process_payment/webhooks/mercadopago";
+
+            LOGGER.info("=== CREANDO PAGO EN EFECTIVO ===");
+            LOGGER.info("Método: {}", cashPaymentDTO.getPaymentMethodId());
+            LOGGER.info("Monto: {}", cashPaymentDTO.getAmount());
+            LOGGER.info("Email: {}", cashPaymentDTO.getPayerEmail());
+            LOGGER.info("Nombre: {} {}", cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
+
+            // ✅ Validar que sea un método de pago en efectivo válido
+            String paymentMethodId = cashPaymentDTO.getPaymentMethodId();
+            if (!"rapipago".equals(paymentMethodId) && !"pagofacil".equals(paymentMethodId)) {
+                throw new MercadoPagoException("Método de pago no válido para efectivo. Use 'rapipago' o 'pagofacil'");
+            }
+
+            // ✅ Configurar idempotency key
+            Map<String, String> customHeaders = new HashMap<>();
+            String idempotencyKey = "CASH_" + UUID.randomUUID().toString();
+            customHeaders.put("x-idempotency-key", idempotencyKey);
+
+            MPRequestOptions requestOptions = MPRequestOptions.builder()
+                .customHeaders(customHeaders)
+                .build();
+
+            // ✅ Fecha de expiración (3 días hábiles)
+            OffsetDateTime expirationDate = OffsetDateTime.now().plusDays(3);
+
+            // ✅ Construir request específico para pagos en efectivo
+            PaymentCreateRequest paymentCreateRequest = buildCashPaymentRequest(cashPaymentDTO, notificationUrl, expirationDate);
+
+            // ✅ LOG DEL REQUEST COMPLETO
+            mercadoPagoLogger.logRequest(endpoint, paymentCreateRequest, mercadoPagoAccessToken);
+
+            Payment payment = client.create(paymentCreateRequest, requestOptions);
+
+            // ✅ LOG DEL RESPONSE COMPLETO
+            mercadoPagoLogger.logResponse(endpoint, payment.toString(), 200);
+
+            LOGGER.info("✅ Pago en efectivo creado exitosamente - ID: {}, Estado: {}", 
+                       payment.getId(), payment.getStatus());
+            LOGGER.info("Fecha de expiración: {}", expirationDate);
+            LOGGER.info("URL externa: {}", payment.getTransactionDetails() != null ? 
+                       payment.getTransactionDetails().getExternalResourceUrl() : "N/A");
+
+            return new PaymentResponseDTO(
+                    payment.getId(),
+                    String.valueOf(payment.getStatus()),
+                    payment.getStatusDetail(),
+                    payment.getDateCreated(),
+                    payment.getTransactionAmount());
+
+        } catch (MPApiException apiException) {
+            // ✅ LOG DETALLADO DEL ERROR
+            mercadoPagoLogger.logApiException(
+                "/v1/payments", 
+                apiException.getMessage(),
+                apiException.getApiResponse().getContent(),
+                apiException.getStatusCode()
+            );
+            
+            LOGGER.error("❌ Error API Mercado Pago en pago efectivo - Status: {}", apiException.getStatusCode());
+            LOGGER.error("❌ API Response: {}", apiException.getApiResponse().getContent());
+            
+            throw new MercadoPagoException(
+                "Error Mercado Pago pago efectivo: " + apiException.getApiResponse().getContent(),
+                apiException
+            );
+        } catch (MPException exception) {
+            // ✅ LOG DE EXCEPCIÓN
+            mercadoPagoLogger.logMPException("/v1/payments", exception.getMessage());
+            
+            LOGGER.error("❌ Error Mercado Pago pago efectivo: {}", exception.getMessage());
+            throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
+        }
+    }
+
+    public Payment getPaymentById(Long paymentId) throws MPException, MPApiException {
+        String endpoint = "/v1/payments/" + paymentId;
+        
+        try {
+            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+            PaymentClient client = new PaymentClient();
+            LOGGER.info("Buscando pago con ID: {}", paymentId);
+            
+            // ✅ Agregar idempotency key para consultas también
+            Map<String, String> customHeaders = new HashMap<>();
+            customHeaders.put("x-idempotency-key", "GET_PAYMENT_" + paymentId + "_" + UUID.randomUUID().toString());
+            
+            MPRequestOptions requestOptions = MPRequestOptions.builder()
+                .customHeaders(customHeaders)
+                .build();
+            
+            // ✅ LOG DEL REQUEST DE CONSULTA
+            mercadoPagoLogger.logRequest(endpoint, "GET_PAYMENT_QUERY", mercadoPagoAccessToken);
+            
+            Payment payment = client.get(paymentId, requestOptions);
+            
+            // ✅ LOG DEL RESPONSE DE CONSULTA
+            mercadoPagoLogger.logResponse(endpoint, payment.toString(), 200);
+            
+            LOGGER.info("Pago encontrado - Estado: {}", payment.getStatus());
+            
+            return payment;
+        } catch (MPApiException apiException) {
+            // ✅ LOG DEL ERROR EN CONSULTA
+            mercadoPagoLogger.logApiException(
+                endpoint,
+                apiException.getMessage(),
+                apiException.getApiResponse().getContent(),
+                apiException.getStatusCode()
+            );
+            
+            LOGGER.error("Error al obtener pago {}: {}", paymentId, apiException.getApiResponse().getContent());
+            throw apiException;
+        } catch (MPException exception) {
+            // ✅ LOG DE EXCEPCIÓN EN CONSULTA
+            mercadoPagoLogger.logMPException(endpoint, exception.getMessage());
+            
+            LOGGER.error("Error al obtener pago {}: {}", paymentId, exception.getMessage());
+            throw exception;
+        }
+    }
+
+    /**
+     * ✅ Método para cancelar un pago
+     */
+    public PaymentResponseDTO cancelPayment(Long paymentId) {
+        String endpoint = "/v1/payments/" + paymentId + "/cancel";
+        
+        try {
+            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+            PaymentClient client = new PaymentClient();
+
+            // ✅ Agregar idempotency key para cancelación
+            Map<String, String> customHeaders = new HashMap<>();
+            customHeaders.put("x-idempotency-key", "CANCEL_" + paymentId + "_" + UUID.randomUUID().toString());
+
+            MPRequestOptions requestOptions = MPRequestOptions.builder()
+                .customHeaders(customHeaders)
+                .build();
+
+            // ✅ LOG DEL REQUEST DE CANCELACIÓN
+            mercadoPagoLogger.logRequest(endpoint, "CANCEL_PAYMENT_REQUEST", mercadoPagoAccessToken);
+
+            Payment cancelledPayment = client.cancel(paymentId, requestOptions);
+            
+            // ✅ LOG DEL RESPONSE DE CANCELACIÓN
+            mercadoPagoLogger.logResponse(endpoint, cancelledPayment.toString(), 200);
+            
+            LOGGER.info("✅ Pago cancelado exitosamente - ID: {}, Nuevo estado: {}", 
+                       cancelledPayment.getId(), cancelledPayment.getStatus());
+
+            return new PaymentResponseDTO(
+                    cancelledPayment.getId(),
+                    String.valueOf(cancelledPayment.getStatus()),
+                    cancelledPayment.getStatusDetail(),
+                    cancelledPayment.getDateCreated(),
+                    cancelledPayment.getTransactionAmount());
+
+        } catch (MPApiException apiException) {
+            // ✅ LOG DEL ERROR EN CANCELACIÓN
+            mercadoPagoLogger.logApiException(
+                "/v1/payments/" + paymentId + "/cancel",
+                apiException.getMessage(),
+                apiException.getApiResponse().getContent(),
+                apiException.getStatusCode()
+            );
+            
+            LOGGER.error("❌ Error cancelando pago {}: {}", paymentId, apiException.getApiResponse().getContent());
+            throw new MercadoPagoException("Error cancelando pago: " + apiException.getApiResponse().getContent(), apiException);
+        } catch (MPException exception) {
+            // ✅ LOG DE EXCEPCIÓN EN CANCELACIÓN
+            mercadoPagoLogger.logMPException("/v1/payments/" + paymentId + "/cancel", exception.getMessage());
+            
+            LOGGER.error("❌ Error cancelando pago {}: {}", paymentId, exception.getMessage());
+            throw new MercadoPagoException("Error cancelando pago: " + exception.getMessage(), exception);
+        }
+    }
+
+    // ========== MÉTODOS AUXILIARES (MANTENIDOS) ==========
+
+    /**
+     * ✅ Genera una clave de idempotencia única basada en los datos del pago
+     */
+    private String generateIdempotencyKey(CardPaymentDTO cardPaymentDTO) {
+        try {
+            String baseData = cardPaymentDTO.getPayer().getEmail() + 
+                             "_" + cardPaymentDTO.getTransactionAmount() + 
+                             "_" + cardPaymentDTO.getToken().hashCode() + 
+                             "_" + System.currentTimeMillis();
+            return "PAYMENT_" + UUID.nameUUIDFromBytes(baseData.getBytes()).toString();
+        } catch (Exception e) {
+            // Fallback a UUID aleatorio si hay algún error
+            LOGGER.warn("Error generando idempotency key, usando UUID aleatorio: {}", e.getMessage());
+            return "PAYMENT_" + UUID.randomUUID().toString();
+        }
+    }
+
+    /**
+     * ✅ Construir el PaymentCreateRequest para Bricks
+     */
+    private PaymentCreateRequest buildBricksPaymentRequest(BricksPaymentDTO bricksPaymentDTO, String notificationUrl) {
+        // ✅ Descripción basada en el tipo de Brick
+        String description = bricksPaymentDTO.getDescription() != null ? 
+                            bricksPaymentDTO.getDescription() : 
+                            "Pago desde " + bricksPaymentDTO.getBrickType() + " Brick";
+
+        // ✅ Para Wallet Brick, el payment method puede ser 'account_money'
+        String paymentMethodId = bricksPaymentDTO.getPaymentMethodId();
+        if ("wallet".equals(bricksPaymentDTO.getBrickType()) && paymentMethodId == null) {
+            paymentMethodId = "account_money";
+        }
+
+        // ✅ Payer information
+        PaymentPayerRequest payerRequest = PaymentPayerRequest.builder()
+                .email(bricksPaymentDTO.getPayerEmail() != null ? bricksPaymentDTO.getPayerEmail() : "guest@millenium.com")
+                .firstName(bricksPaymentDTO.getPayerFirstName() != null ? bricksPaymentDTO.getPayerFirstName() : "Cliente")
+                .lastName(bricksPaymentDTO.getPayerLastName() != null ? bricksPaymentDTO.getPayerLastName() : "Millenium")
+                .build();
+
+        // ✅ Construir el request del pago
+        return PaymentCreateRequest.builder()
+                .transactionAmount(bricksPaymentDTO.getAmount())
+                .token(bricksPaymentDTO.getToken())
+                .description(description)
+                .installments(bricksPaymentDTO.getInstallments() != null ? bricksPaymentDTO.getInstallments() : 1)
+                .paymentMethodId(paymentMethodId)
+                .notificationUrl(notificationUrl)
+                .payer(payerRequest)
+                .build();
+    }
+
+    /**
+     * ✅ Construir el PaymentCreateRequest para pagos en efectivo
+     */
+    private PaymentCreateRequest buildCashPaymentRequest(BricksPaymentDTO cashPaymentDTO, String notificationUrl, OffsetDateTime expirationDate) {
+        
+        // ✅ Descripción específica para pagos en efectivo
+        String paymentMethodName = "rapipago".equals(cashPaymentDTO.getPaymentMethodId()) ? "Rapipago" : "Pago Fácil";
+        String description = cashPaymentDTO.getDescription() != null ? 
+                            cashPaymentDTO.getDescription() : 
+                            "Pago en " + paymentMethodName + " - Millenium";
+
+        // ✅ Información del pagador con identificación
+        PaymentPayerRequest payerRequest = PaymentPayerRequest.builder()
+                .email(cashPaymentDTO.getPayerEmail() != null ? cashPaymentDTO.getPayerEmail() : "guest@millenium.com")
+                .firstName(cashPaymentDTO.getPayerFirstName() != null ? cashPaymentDTO.getPayerFirstName() : "Cliente")
+                .lastName(cashPaymentDTO.getPayerLastName() != null ? cashPaymentDTO.getPayerLastName() : "Millenium")
+                .identification(
+                    IdentificationRequest.builder()
+                        .type(cashPaymentDTO.getIdentificationType() != null ? cashPaymentDTO.getIdentificationType() : "DNI")
+                        .number(cashPaymentDTO.getIdentificationNumber() != null ? cashPaymentDTO.getIdentificationNumber() : "00000000")
+                        .build()
+                )
+                .build();
+
+        // ✅ Construir el request del pago en efectivo
+        // NOTA: Para pagos en efectivo NO se usa token
+        return PaymentCreateRequest.builder()
+                .transactionAmount(cashPaymentDTO.getAmount())
+                .description(description)
+                .paymentMethodId(cashPaymentDTO.getPaymentMethodId())
+                .dateOfExpiration(expirationDate) // ✅ Fecha de expiración importante
+                .notificationUrl(notificationUrl)
+                .payer(payerRequest)
+                .build();
+    }
+
+    /**
+     * ✅ Método auxiliar para construir el request
+     */
+    private PaymentCreateRequest buildPaymentCreateRequest(CardPaymentDTO cardPaymentDTO) {
+        String description = cardPaymentDTO.getProductDescription() != null ? 
+                           cardPaymentDTO.getProductDescription() : 
+                           "Compra de termotanques Millenium";
+
+        String firstName = cardPaymentDTO.getPayer().getFirstName() != null ? 
+                          cardPaymentDTO.getPayer().getFirstName() : "Cliente";
+        String lastName = cardPaymentDTO.getPayer().getLastName() != null ? 
+                         cardPaymentDTO.getPayer().getLastName() : "Millenium";
+
+        String notificationUrl = appBaseUrl + "/process_payment/webhooks/mercadopago";
+
+        return PaymentCreateRequest.builder()
+                .transactionAmount(cardPaymentDTO.getTransactionAmount())
+                .token(cardPaymentDTO.getToken())
+                .description(description)
+                .installments(cardPaymentDTO.getInstallments())
+                .paymentMethodId(cardPaymentDTO.getPaymentMethodId())
+                .notificationUrl(notificationUrl)
+                .payer(
+                        PaymentPayerRequest.builder()
+                                .email(cardPaymentDTO.getPayer().getEmail())
+                                .firstName(firstName)
+                                .lastName(lastName)
+                                .identification(
+                                        IdentificationRequest.builder()
+                                                .type(cardPaymentDTO.getPayer().getIdentification().getType())
+                                                .number(cardPaymentDTO.getPayer().getIdentification().getNumber())
+                                                .build())
+                                .build())
+                .build();
+    }
+
+    // ========== MÉTODOS PDF (MANTENIDOS SIN CAMBIOS) ==========
+
+    /**
+     * ✅ Generar PDF específico para vouchers de pago en efectivo
      */
     public byte[] generateCashVoucherPdf(Payment payment) throws IOException {
         LOGGER.info("Generando voucher PDF para pago en efectivo: {}", payment.getId());
@@ -221,32 +632,6 @@ public class CardPaymentService {
         } catch (Exception e) {
             LOGGER.error("Error generando voucher PDF para pago {}: {}", payment.getId(), e.getMessage());
             throw new IOException("Error al generar el voucher PDF para el pago: " + payment.getId(), e);
-        }
-    }
-    public Payment getPaymentById(Long paymentId) throws MPException, MPApiException {
-        try {
-            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
-            PaymentClient client = new PaymentClient();
-            LOGGER.info("Buscando pago con ID: {}", paymentId);
-            
-            // ✅ Agregar idempotency key para consultas también
-            Map<String, String> customHeaders = new HashMap<>();
-            customHeaders.put("x-idempotency-key", "GET_PAYMENT_" + paymentId + "_" + UUID.randomUUID().toString());
-            
-            MPRequestOptions requestOptions = MPRequestOptions.builder()
-                .customHeaders(customHeaders)
-                .build();
-            
-            Payment payment = client.get(paymentId, requestOptions);
-            LOGGER.info("Pago encontrado - Estado: {}", payment.getStatus());
-            
-            return payment;
-        } catch (MPApiException apiException) {
-            LOGGER.error("Error al obtener pago {}: {}", paymentId, apiException.getApiResponse().getContent());
-            throw apiException;
-        } catch (MPException exception) {
-            LOGGER.error("Error al obtener pago {}: {}", paymentId, exception.getMessage());
-            throw exception;
         }
     }
 
@@ -325,96 +710,6 @@ public class CardPaymentService {
     }
 
     /**
-     * ✅ Genera una clave de idempotencia única basada en los datos del pago
-     * Esto previene duplicados si se envía la misma request múltiples veces
-     */
-    private String generateIdempotencyKey(CardPaymentDTO cardPaymentDTO) {
-        try {
-            String baseData = cardPaymentDTO.getPayer().getEmail() + 
-                             "_" + cardPaymentDTO.getTransactionAmount() + 
-                             "_" + cardPaymentDTO.getToken().hashCode() + 
-                             "_" + System.currentTimeMillis();
-            return "PAYMENT_" + UUID.nameUUIDFromBytes(baseData.getBytes()).toString();
-        } catch (Exception e) {
-            // Fallback a UUID aleatorio si hay algún error
-            LOGGER.warn("Error generando idempotency key, usando UUID aleatorio: {}", e.getMessage());
-            return "PAYMENT_" + UUID.randomUUID().toString();
-        }
-    }
-
-    /**
-     * ✅ Método adicional para procesar pagos con opciones personalizadas
-     */
-    public PaymentResponseDTO processPaymentWithOptions(CardPaymentDTO cardPaymentDTO, MPRequestOptions customOptions) {
-        try {
-            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
-            PaymentClient client = new PaymentClient();
-
-            PaymentCreateRequest paymentCreateRequest = buildPaymentCreateRequest(cardPaymentDTO);
-            
-            // Usar las opciones personalizadas proporcionadas
-            Payment payment = client.create(paymentCreateRequest, customOptions);
-
-            LOGGER.info("✅ Pago creado con opciones personalizadas - ID: {}", payment.getId());
-            
-            return new PaymentResponseDTO(
-                    payment.getId(),
-                    String.valueOf(payment.getStatus()),
-                    payment.getStatusDetail(),
-                    payment.getDateCreated(),
-                    payment.getTransactionAmount());
-
-        } catch (MPApiException apiException) {
-            LOGGER.error("❌ Error API Mercado Pago con opciones personalizadas - Status: {}", apiException.getStatusCode());
-            LOGGER.error("❌ Error Message: {}", apiException.getMessage());
-            // ✅ CORREGIDO: Pasar la excepción como causa
-            throw new MercadoPagoException(
-                "Error Mercado Pago: " + apiException.getApiResponse().getContent(),
-                apiException
-            );
-        } catch (MPException exception) {
-            LOGGER.error("❌ Error Mercado Pago con opciones personalizadas: {}", exception.getMessage());
-            throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
-        }
-    }
-
-    /**
-     * ✅ Método auxiliar para construir el request
-     */
-    private PaymentCreateRequest buildPaymentCreateRequest(CardPaymentDTO cardPaymentDTO) {
-        String description = cardPaymentDTO.getProductDescription() != null ? 
-                           cardPaymentDTO.getProductDescription() : 
-                           "Compra de termotanques Millenium";
-
-        String firstName = cardPaymentDTO.getPayer().getFirstName() != null ? 
-                          cardPaymentDTO.getPayer().getFirstName() : "Cliente";
-        String lastName = cardPaymentDTO.getPayer().getLastName() != null ? 
-                         cardPaymentDTO.getPayer().getLastName() : "Millenium";
-
-        String notificationUrl = appBaseUrl + "/process_payment/webhooks/mercadopago";
-
-        return PaymentCreateRequest.builder()
-                .transactionAmount(cardPaymentDTO.getTransactionAmount())
-                .token(cardPaymentDTO.getToken())
-                .description(description)
-                .installments(cardPaymentDTO.getInstallments())
-                .paymentMethodId(cardPaymentDTO.getPaymentMethodId())
-                .notificationUrl(notificationUrl)
-                .payer(
-                        PaymentPayerRequest.builder()
-                                .email(cardPaymentDTO.getPayer().getEmail())
-                                .firstName(firstName)
-                                .lastName(lastName)
-                                .identification(
-                                        IdentificationRequest.builder()
-                                                .type(cardPaymentDTO.getPayer().getIdentification().getType())
-                                                .number(cardPaymentDTO.getPayer().getIdentification().getNumber())
-                                                .build())
-                                .build())
-                .build();
-    }
-
-    /**
      * ✅ Método para verificar el estado de un pago
      */
     public String checkPaymentStatus(Long paymentId) {
@@ -428,232 +723,59 @@ public class CardPaymentService {
             throw new MercadoPagoException("Error verificando estado del pago: " + e.getMessage(), e);
         }
     }
-// EN TU CardPaymentService.java - AGREGA ESTE MÉTODO:
-
-/**
- * ✅ NUEVO MÉTODO: Procesar pagos desde Mercado Pago Bricks (Wallet & Payment)
- * Este es el endpoint que te falta para los Bricks
- */
-public PaymentResponseDTO processBricksPayment(BricksPaymentDTO bricksPaymentDTO) {
-    try {
-        MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
-        PaymentClient client = new PaymentClient();
-
-        String notificationUrl = appBaseUrl + "/process_payment/webhooks/mercadopago";
-
-        LOGGER.info("=== CREANDO PAGO DESDE BRICKS ===");
-        LOGGER.info("Brick Type: {}", bricksPaymentDTO.getBrickType());
-        LOGGER.info("Monto: {}", bricksPaymentDTO.getAmount());
-        LOGGER.info("Token: {}", bricksPaymentDTO.getToken());
-        LOGGER.info("Payment Method: {}", bricksPaymentDTO.getPaymentMethodId());
-
-        // ✅ Configurar idempotency key para Bricks
-        Map<String, String> customHeaders = new HashMap<>();
-        String idempotencyKey = "BRICKS_" + UUID.randomUUID().toString();
-        customHeaders.put("x-idempotency-key", idempotencyKey);
-
-        MPRequestOptions requestOptions = MPRequestOptions.builder()
-            .customHeaders(customHeaders)
-            .build();
-
-        // ✅ Construir request específico para Bricks
-        PaymentCreateRequest paymentCreateRequest = buildBricksPaymentRequest(bricksPaymentDTO, notificationUrl);
-
-        Payment payment = client.create(paymentCreateRequest, requestOptions);
-
-        LOGGER.info("✅ Pago desde Bricks creado exitosamente - ID: {}, Estado: {}", 
-                   payment.getId(), payment.getStatus());
-
-        return new PaymentResponseDTO(
-                payment.getId(),
-                String.valueOf(payment.getStatus()),
-                payment.getStatusDetail(),
-                payment.getDateCreated(),
-                payment.getTransactionAmount());
-
-    } catch (MPApiException apiException) {
-        LOGGER.error("❌ Error API Mercado Pago en Bricks - Status: {}", apiException.getStatusCode());
-        LOGGER.error("❌ API Response: {}", apiException.getApiResponse().getContent());
-        
-        throw new MercadoPagoException(
-            "Error Mercado Pago Bricks: " + apiException.getApiResponse().getContent(),
-            apiException
-        );
-    } catch (MPException exception) {
-        LOGGER.error("❌ Error Mercado Pago Bricks: {}", exception.getMessage());
-        throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
-    }
-}
-
-/**
- * ✅ Construir el PaymentCreateRequest para Bricks
- */
-private PaymentCreateRequest buildBricksPaymentRequest(BricksPaymentDTO bricksPaymentDTO, String notificationUrl) {
-    // ✅ Descripción basada en el tipo de Brick
-    String description = bricksPaymentDTO.getDescription() != null ? 
-                        bricksPaymentDTO.getDescription() : 
-                        "Pago desde " + bricksPaymentDTO.getBrickType() + " Brick";
-
-    // ✅ Para Wallet Brick, el payment method puede ser 'account_money'
-    String paymentMethodId = bricksPaymentDTO.getPaymentMethodId();
-    if ("wallet".equals(bricksPaymentDTO.getBrickType()) && paymentMethodId == null) {
-        paymentMethodId = "account_money";
-    }
-
-    // ✅ Payer information
-    PaymentPayerRequest payerRequest = PaymentPayerRequest.builder()
-            .email(bricksPaymentDTO.getPayerEmail() != null ? bricksPaymentDTO.getPayerEmail() : "guest@millenium.com")
-            .firstName(bricksPaymentDTO.getPayerFirstName() != null ? bricksPaymentDTO.getPayerFirstName() : "Cliente")
-            .lastName(bricksPaymentDTO.getPayerLastName() != null ? bricksPaymentDTO.getPayerLastName() : "Millenium")
-            .build();
-
-    // ✅ Construir el request del pago
-    return PaymentCreateRequest.builder()
-            .transactionAmount(bricksPaymentDTO.getAmount())
-            .token(bricksPaymentDTO.getToken())
-            .description(description)
-            .installments(bricksPaymentDTO.getInstallments() != null ? bricksPaymentDTO.getInstallments() : 1)
-            .paymentMethodId(paymentMethodId)
-            .notificationUrl(notificationUrl)
-            .payer(payerRequest)
-            .build();
-}
 
     /**
- * ✅ NUEVO MÉTODO: Procesar pagos en efectivo (Pago Fácil y Rapipago)
- */
-public PaymentResponseDTO processCashPayment(BricksPaymentDTO cashPaymentDTO) {
-    try {
-        MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
-        PaymentClient client = new PaymentClient();
-
-        String notificationUrl = appBaseUrl + "/process_payment/webhooks/mercadopago";
-
-        LOGGER.info("=== CREANDO PAGO EN EFECTIVO ===");
-        LOGGER.info("Método: {}", cashPaymentDTO.getPaymentMethodId());
-        LOGGER.info("Monto: {}", cashPaymentDTO.getAmount());
-        LOGGER.info("Email: {}", cashPaymentDTO.getPayerEmail());
-        LOGGER.info("Nombre: {} {}", cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
-
-        // ✅ Validar que sea un método de pago en efectivo válido
-        String paymentMethodId = cashPaymentDTO.getPaymentMethodId();
-        if (!"rapipago".equals(paymentMethodId) && !"pagofacil".equals(paymentMethodId)) {
-            throw new MercadoPagoException("Método de pago no válido para efectivo. Use 'rapipago' o 'pagofacil'");
-        }
-
-        // ✅ Configurar idempotency key
-        Map<String, String> customHeaders = new HashMap<>();
-        String idempotencyKey = "CASH_" + UUID.randomUUID().toString();
-        customHeaders.put("x-idempotency-key", idempotencyKey);
-
-        MPRequestOptions requestOptions = MPRequestOptions.builder()
-            .customHeaders(customHeaders)
-            .build();
-
-        // ✅ Fecha de expiración (3 días hábiles)
-        OffsetDateTime expirationDate = OffsetDateTime.now().plusDays(3);
-
-        // ✅ Construir request específico para pagos en efectivo
-        PaymentCreateRequest paymentCreateRequest = buildCashPaymentRequest(cashPaymentDTO, notificationUrl, expirationDate);
-
-        Payment payment = client.create(paymentCreateRequest, requestOptions);
-
-        LOGGER.info("✅ Pago en efectivo creado exitosamente - ID: {}, Estado: {}", 
-                   payment.getId(), payment.getStatus());
-        LOGGER.info("Fecha de expiración: {}", expirationDate);
-        LOGGER.info("URL externa: {}", payment.getTransactionDetails() != null ? 
-                   payment.getTransactionDetails().getExternalResourceUrl() : "N/A");
-
-        return new PaymentResponseDTO(
-                payment.getId(),
-                String.valueOf(payment.getStatus()),
-                payment.getStatusDetail(),
-                payment.getDateCreated(),
-                payment.getTransactionAmount());
-
-    } catch (MPApiException apiException) {
-        LOGGER.error("❌ Error API Mercado Pago en pago efectivo - Status: {}", apiException.getStatusCode());
-        LOGGER.error("❌ API Response: {}", apiException.getApiResponse().getContent());
-        
-        throw new MercadoPagoException(
-            "Error Mercado Pago pago efectivo: " + apiException.getApiResponse().getContent(),
-            apiException
-        );
-    } catch (MPException exception) {
-        LOGGER.error("❌ Error Mercado Pago pago efectivo: {}", exception.getMessage());
-        throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
-    }
-}
-
-/**
- * ✅ Construir el PaymentCreateRequest para pagos en efectivo
- */
-private PaymentCreateRequest buildCashPaymentRequest(BricksPaymentDTO cashPaymentDTO, String notificationUrl, OffsetDateTime expirationDate) {
-    
-    // ✅ Descripción específica para pagos en efectivo
-    String paymentMethodName = "rapipago".equals(cashPaymentDTO.getPaymentMethodId()) ? "Rapipago" : "Pago Fácil";
-    String description = cashPaymentDTO.getDescription() != null ? 
-                        cashPaymentDTO.getDescription() : 
-                        "Pago en " + paymentMethodName + " - Millenium";
-
-    // ✅ Información del pagador con identificación
-    PaymentPayerRequest payerRequest = PaymentPayerRequest.builder()
-            .email(cashPaymentDTO.getPayerEmail() != null ? cashPaymentDTO.getPayerEmail() : "guest@millenium.com")
-            .firstName(cashPaymentDTO.getPayerFirstName() != null ? cashPaymentDTO.getPayerFirstName() : "Cliente")
-            .lastName(cashPaymentDTO.getPayerLastName() != null ? cashPaymentDTO.getPayerLastName() : "Millenium")
-            .identification(
-                IdentificationRequest.builder()
-                    .type(cashPaymentDTO.getIdentificationType() != null ? cashPaymentDTO.getIdentificationType() : "DNI")
-                    .number(cashPaymentDTO.getIdentificationNumber() != null ? cashPaymentDTO.getIdentificationNumber() : "00000000")
-                    .build()
-            )
-            .build();
-
-    // ✅ Construir el request del pago en efectivo
-    // NOTA: Para pagos en efectivo NO se usa token
-    return PaymentCreateRequest.builder()
-            .transactionAmount(cashPaymentDTO.getAmount())
-            .description(description)
-            .paymentMethodId(cashPaymentDTO.getPaymentMethodId())
-            .dateOfExpiration(expirationDate) // ✅ Fecha de expiración importante
-            .notificationUrl(notificationUrl)
-            .payer(payerRequest)
-            .build();
-}
-    /**
-     * ✅ Método para cancelar un pago
+     * ✅ Método adicional para procesar pagos con opciones personalizadas
      */
-    public PaymentResponseDTO cancelPayment(Long paymentId) {
+    public PaymentResponseDTO processPaymentWithOptions(CardPaymentDTO cardPaymentDTO, MPRequestOptions customOptions) {
+        String endpoint = "/v1/payments";
+        
         try {
             MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
             PaymentClient client = new PaymentClient();
 
-            // ✅ Agregar idempotency key para cancelación
-            Map<String, String> customHeaders = new HashMap<>();
-            customHeaders.put("x-idempotency-key", "CANCEL_" + paymentId + "_" + UUID.randomUUID().toString());
-
-            MPRequestOptions requestOptions = MPRequestOptions.builder()
-                .customHeaders(customHeaders)
-                .build();
-
-            Payment cancelledPayment = client.cancel(paymentId, requestOptions);
+            PaymentCreateRequest paymentCreateRequest = buildPaymentCreateRequest(cardPaymentDTO);
             
-            LOGGER.info("✅ Pago cancelado exitosamente - ID: {}, Nuevo estado: {}", 
-                       cancelledPayment.getId(), cancelledPayment.getStatus());
+            // ✅ LOG DEL REQUEST
+            mercadoPagoLogger.logRequest(endpoint, paymentCreateRequest, mercadoPagoAccessToken);
+            
+            // Usar las opciones personalizadas proporcionadas
+            Payment payment = client.create(paymentCreateRequest, customOptions);
 
+            // ✅ LOG DEL RESPONSE
+            mercadoPagoLogger.logResponse(endpoint, payment.toString(), 200);
+
+            LOGGER.info("✅ Pago creado con opciones personalizadas - ID: {}", payment.getId());
+            
             return new PaymentResponseDTO(
-                    cancelledPayment.getId(),
-                    String.valueOf(cancelledPayment.getStatus()),
-                    cancelledPayment.getStatusDetail(),
-                    cancelledPayment.getDateCreated(),
-                    cancelledPayment.getTransactionAmount());
+                    payment.getId(),
+                    String.valueOf(payment.getStatus()),
+                    payment.getStatusDetail(),
+                    payment.getDateCreated(),
+                    payment.getTransactionAmount());
 
         } catch (MPApiException apiException) {
-            LOGGER.error("❌ Error cancelando pago {}: {}", paymentId, apiException.getApiResponse().getContent());
-            throw new MercadoPagoException("Error cancelando pago: " + apiException.getApiResponse().getContent(), apiException);
+            // ✅ LOG DEL ERROR
+            mercadoPagoLogger.logApiException(
+                endpoint,
+                apiException.getMessage(),
+                apiException.getApiResponse().getContent(),
+                apiException.getStatusCode()
+            );
+            
+            LOGGER.error("❌ Error API Mercado Pago con opciones personalizadas - Status: {}", apiException.getStatusCode());
+            LOGGER.error("❌ Error Message: {}", apiException.getMessage());
+            
+            throw new MercadoPagoException(
+                "Error Mercado Pago: " + apiException.getApiResponse().getContent(),
+                apiException
+            );
         } catch (MPException exception) {
-            LOGGER.error("❌ Error cancelando pago {}: {}", paymentId, exception.getMessage());
-            throw new MercadoPagoException("Error cancelando pago: " + exception.getMessage(), exception);
+            // ✅ LOG DE EXCEPCIÓN
+            mercadoPagoLogger.logMPException(endpoint, exception.getMessage());
+            
+            LOGGER.error("❌ Error Mercado Pago con opciones personalizadas: {}", exception.getMessage());
+            throw new MercadoPagoException("Error de conexión con Mercado Pago: " + exception.getMessage(), exception);
         }
     }
 }
