@@ -9,12 +9,13 @@ import com.mercadopago.sample.dto.BricksPaymentDTO;
 import com.mercadopago.sample.dto.CardPaymentDTO;
 import com.mercadopago.sample.dto.PayerDTO;
 import com.mercadopago.sample.dto.PayerIdentificationDTO;
+import com.mercadopago.sample.dto.ProductItemDTO;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.sample.dto.PaymentResponseDTO;
 import com.mercadopago.sample.exception.MercadoPagoException;
 import com.mercadopago.sample.service.CardPaymentService;
 import com.mercadopago.sample.service.ResendEmailService;
-import com.mercadopago.sample.util.MercadoPagoLogger; // ✅ NUEVO IMPORT
+import com.mercadopago.sample.util.MercadoPagoLogger;
 import com.mercadopago.exceptions.MPApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +45,7 @@ public class CardPaymentController {
     @Autowired
     private ResendEmailService resendEmailService;
     
-    @Autowired // ✅ NUEVO: Inyectar el logger
+    @Autowired
     private MercadoPagoLogger mercadoPagoLogger;
     
     @Value("${mercado_pago_sample_access_token}")
@@ -69,6 +70,23 @@ public class CardPaymentController {
             LOGGER.info("Monto: {}", cashPaymentDTO.getAmount());
             LOGGER.info("Email: {}", cashPaymentDTO.getPayerEmail());
             LOGGER.info("Nombre: {} {}", cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
+            
+            // ✅ LOG DE ITEMS PARA PAGOS EN EFECTIVO
+            if (cashPaymentDTO.hasItems()) {
+                LOGGER.info("🛒 Items para pago en efectivo: {}", cashPaymentDTO.getItems().size());
+                cashPaymentDTO.getItems().forEach(item -> 
+                    LOGGER.info("   - {} x {} = ${} (Total: ${})", 
+                        item.getTitle(), 
+                        item.getQuantity(), 
+                        item.getUnitPrice(),
+                        item.getTotalPrice())
+                );
+            }
+            
+            // ✅ LOG DE ORDER NUMBER
+            if (cashPaymentDTO.getOrderNumber() != null) {
+                LOGGER.info("📋 Order number recibido: {}", cashPaymentDTO.getOrderNumber());
+            }
             
             // ✅✅✅ CORRECCIÓN CRÍTICA - SI ES NULL, USAR PAGOFACIL
             if (cashPaymentDTO.getPaymentMethodId() == null) {
@@ -338,6 +356,31 @@ public class CardPaymentController {
                 Map<String, String> errorResponse = new HashMap<>();
                 errorResponse.put("error_message", "Monto inválido");
                 return ResponseEntity.badRequest().body(errorResponse);
+            }
+
+            // ✅ LOG DETALLADO DE ITEMS RECIBIDOS
+            if (bricksPaymentDTO.hasItems()) {
+                LOGGER.info("🛒 Items recibidos del carrito: {}", bricksPaymentDTO.getItems().size());
+                bricksPaymentDTO.getItems().forEach(item -> 
+                    LOGGER.info("   - {} x {} = ${} (Total: ${})", 
+                        item.getTitle(), 
+                        item.getQuantity(), 
+                        item.getUnitPrice(),
+                        item.getTotalPrice())
+                );
+                
+                // ✅ Validar que los items sean válidos
+                boolean allItemsValid = bricksPaymentDTO.getItems().stream().allMatch(ProductItemDTO::isValid);
+                if (!allItemsValid) {
+                    LOGGER.warn("⚠️ Algunos items no son válidos (faltan título, cantidad o precio)");
+                }
+            } else {
+                LOGGER.info("🛒 No se recibieron items específicos, usando datos básicos");
+            }
+
+            // ✅ LOG DE ORDER NUMBER
+            if (bricksPaymentDTO.getOrderNumber() != null) {
+                LOGGER.info("📋 Order number recibido: {}", bricksPaymentDTO.getOrderNumber());
             }
 
             PaymentResponseDTO result = cardPaymentService.processBricksPayment(bricksPaymentDTO);
