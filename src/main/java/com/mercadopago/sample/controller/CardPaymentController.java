@@ -9,12 +9,12 @@ import com.mercadopago.sample.dto.BricksPaymentDTO;
 import com.mercadopago.sample.dto.CardPaymentDTO;
 import com.mercadopago.sample.dto.PayerDTO;
 import com.mercadopago.sample.dto.PayerIdentificationDTO;
-import com.mercadopago.exceptions.MPException; // ✅ AGREGAR ESTE IMPORT
-
+import com.mercadopago.exceptions.MPException;
 import com.mercadopago.sample.dto.PaymentResponseDTO;
 import com.mercadopago.sample.exception.MercadoPagoException;
 import com.mercadopago.sample.service.CardPaymentService;
 import com.mercadopago.sample.service.ResendEmailService;
+import com.mercadopago.sample.util.MercadoPagoLogger; // ✅ NUEVO IMPORT
 import com.mercadopago.exceptions.MPApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +44,9 @@ public class CardPaymentController {
     @Autowired
     private ResendEmailService resendEmailService;
     
+    @Autowired // ✅ NUEVO: Inyectar el logger
+    private MercadoPagoLogger mercadoPagoLogger;
+    
     @Value("${mercado_pago_sample_access_token}")
     private String mercadoPagoAccessToken;
     
@@ -53,87 +56,93 @@ public class CardPaymentController {
         this.cardPaymentService = cardPaymentService;
         this.resendEmailService = resendEmailService;
     }
+
     @PostMapping("/create_ticket_payment")
-public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPaymentDTO) {
-    try {
-        LOGGER.info("🎫 Recibiendo solicitud de pago en efectivo");
-        LOGGER.info("Método: {}", cashPaymentDTO.getPaymentMethodId());
-        LOGGER.info("Monto: {}", cashPaymentDTO.getAmount());
-        LOGGER.info("Email: {}", cashPaymentDTO.getPayerEmail());
-        LOGGER.info("Nombre: {} {}", cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
-        
-        // ✅✅✅ CORRECCIÓN CRÍTICA - SI ES NULL, USAR PAGOFACIL
-        if (cashPaymentDTO.getPaymentMethodId() == null) {
-            LOGGER.warn("⚠️ PaymentMethodId es null, asignando 'pagofacil' por defecto");
-            cashPaymentDTO.setPaymentMethodId("pagofacil");
-        }
-        
-        // ✅ Validar método de pago
-        String paymentMethod = cashPaymentDTO.getPaymentMethodId().toLowerCase().trim();
-        if (!"rapipago".equals(paymentMethod) && !"pagofacil".equals(paymentMethod)) {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("error", "Método de pago no válido. Use 'rapipago' o 'pagofacil'. Recibido: " + paymentMethod);
-            return ResponseEntity.badRequest().body(errorResponse);
-        }
-        
-        // ✅ Validar monto
-        if (cashPaymentDTO.getAmount() == null || cashPaymentDTO.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("error", "El monto debe ser mayor a cero");
-            return ResponseEntity.badRequest().body(errorResponse);
-        }
-        
-        // ✅ Completar datos faltantes
-        if (cashPaymentDTO.getPayerEmail() == null) {
-            cashPaymentDTO.setPayerEmail("cliente@millenium.com");
-        }
-        if (cashPaymentDTO.getPayerFirstName() == null) {
-            cashPaymentDTO.setPayerFirstName("Cliente");
-        }
-        if (cashPaymentDTO.getPayerLastName() == null) {
-            cashPaymentDTO.setPayerLastName("Millenium");
-        }
-        if (cashPaymentDTO.getIdentificationType() == null) {
-            cashPaymentDTO.setIdentificationType("DNI");
-        }
-        if (cashPaymentDTO.getIdentificationNumber() == null) {
-            cashPaymentDTO.setIdentificationNumber("00000000");
-        }
-        
-        LOGGER.info("✅ Datos corregidos - Método: {}, Email: {}, Nombre: {} {}", 
-                   cashPaymentDTO.getPaymentMethodId(), cashPaymentDTO.getPayerEmail(),
-                   cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
-        
-        PaymentResponseDTO result = cardPaymentService.processCashPayment(cashPaymentDTO);
-        
-        LOGGER.info("✅ Pago en efectivo creado exitosamente - ID: {}", result.getId());
-        
-        // ✅ Enviar email de confirmación
+    public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPaymentDTO) {
         try {
-            String customerName = cashPaymentDTO.getPayerFirstName() + " " + cashPaymentDTO.getPayerLastName();
-            resendEmailService.sendCashPaymentVoucherEmail(
-                cashPaymentDTO.getPayerEmail(),
-                customerName,
-                result
-            );
-        } catch (Exception emailError) {
-            LOGGER.warn("⚠️ No se pudo enviar email de voucher: {}", emailError.getMessage());
+            LOGGER.info("🎫 Recibiendo solicitud de pago en efectivo");
+            
+            // ✅ LOG DEL REQUEST RECIBIDO
+            mercadoPagoLogger.logRequest("CREATE_CASH_PAYMENT_INPUT", cashPaymentDTO, mercadoPagoAccessToken);
+            
+            LOGGER.info("Método: {}", cashPaymentDTO.getPaymentMethodId());
+            LOGGER.info("Monto: {}", cashPaymentDTO.getAmount());
+            LOGGER.info("Email: {}", cashPaymentDTO.getPayerEmail());
+            LOGGER.info("Nombre: {} {}", cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
+            
+            // ✅✅✅ CORRECCIÓN CRÍTICA - SI ES NULL, USAR PAGOFACIL
+            if (cashPaymentDTO.getPaymentMethodId() == null) {
+                LOGGER.warn("⚠️ PaymentMethodId es null, asignando 'pagofacil' por defecto");
+                cashPaymentDTO.setPaymentMethodId("pagofacil");
+            }
+            
+            // ✅ Validar método de pago
+            String paymentMethod = cashPaymentDTO.getPaymentMethodId().toLowerCase().trim();
+            if (!"rapipago".equals(paymentMethod) && !"pagofacil".equals(paymentMethod)) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Método de pago no válido. Use 'rapipago' o 'pagofacil'. Recibido: " + paymentMethod);
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            // ✅ Validar monto
+            if (cashPaymentDTO.getAmount() == null || cashPaymentDTO.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "El monto debe ser mayor a cero");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            // ✅ Completar datos faltantes
+            if (cashPaymentDTO.getPayerEmail() == null) {
+                cashPaymentDTO.setPayerEmail("cliente@millenium.com");
+            }
+            if (cashPaymentDTO.getPayerFirstName() == null) {
+                cashPaymentDTO.setPayerFirstName("Cliente");
+            }
+            if (cashPaymentDTO.getPayerLastName() == null) {
+                cashPaymentDTO.setPayerLastName("Millenium");
+            }
+            if (cashPaymentDTO.getIdentificationType() == null) {
+                cashPaymentDTO.setIdentificationType("DNI");
+            }
+            if (cashPaymentDTO.getIdentificationNumber() == null) {
+                cashPaymentDTO.setIdentificationNumber("00000000");
+            }
+            
+            LOGGER.info("✅ Datos corregidos - Método: {}, Email: {}, Nombre: {} {}", 
+                       cashPaymentDTO.getPaymentMethodId(), cashPaymentDTO.getPayerEmail(),
+                       cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
+            
+            PaymentResponseDTO result = cardPaymentService.processCashPayment(cashPaymentDTO);
+            
+            LOGGER.info("✅ Pago en efectivo creado exitosamente - ID: {}", result.getId());
+            
+            // ✅ Enviar email de confirmación
+            try {
+                String customerName = cashPaymentDTO.getPayerFirstName() + " " + cashPaymentDTO.getPayerLastName();
+                resendEmailService.sendCashPaymentVoucherEmail(
+                    cashPaymentDTO.getPayerEmail(),
+                    customerName,
+                    result
+                );
+            } catch (Exception emailError) {
+                LOGGER.warn("⚠️ No se pudo enviar email de voucher: {}", emailError.getMessage());
+            }
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (MercadoPagoException e) {
+            LOGGER.error("❌ Error Mercado Pago en pago efectivo: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error Mercado Pago: " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        } catch (Exception e) {
+            LOGGER.error("❌ Error creando pago en efectivo: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error interno: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(errorResponse);
         }
-        
-        return ResponseEntity.ok(result);
-        
-    } catch (MercadoPagoException e) {
-        LOGGER.error("❌ Error Mercado Pago en pago efectivo: {}", e.getMessage());
-        Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", "Error Mercado Pago: " + e.getMessage());
-        return ResponseEntity.status(500).body(errorResponse);
-    } catch (Exception e) {
-        LOGGER.error("❌ Error creando pago en efectivo: {}", e.getMessage());
-        Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", "Error interno: " + e.getMessage());
-        return ResponseEntity.internalServerError().body(errorResponse);
     }
-}
+
     /**
      * ✅ NUEVO ENDPOINT: Obtener voucher de pago en efectivo
      */
@@ -141,6 +150,9 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
     public ResponseEntity<?> downloadCashVoucher(@PathVariable Long paymentId) {
         try {
             LOGGER.info("📄 Solicitando voucher para pago: {}", paymentId);
+            
+            // ✅ LOG DE LA CONSULTA
+            mercadoPagoLogger.logRequest("GET_CASH_VOUCHER", Map.of("paymentId", paymentId), mercadoPagoAccessToken);
             
             // Obtener información del pago
             var payment = cardPaymentService.getPaymentById(paymentId);
@@ -153,6 +165,9 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
             headers.setContentDisposition(ContentDisposition.attachment()
                 .filename("voucher-pago-" + paymentId + ".pdf")
                 .build());
+            
+            // ✅ LOG DE RESPUESTA EXITOSA
+            mercadoPagoLogger.logResponse("GET_CASH_VOUCHER", "PDF generado exitosamente - Tamaño: " + pdfBytes.length + " bytes", 200);
             
             return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
             
@@ -181,6 +196,9 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
     public ResponseEntity<?> getCashPaymentInfo(@PathVariable Long paymentId) {
         try {
             LOGGER.info("🔍 Solicitando información de pago en efectivo: {}", paymentId);
+            
+            // ✅ LOG DE LA CONSULTA
+            mercadoPagoLogger.logRequest("GET_CASH_PAYMENT_INFO", Map.of("paymentId", paymentId), mercadoPagoAccessToken);
             
             var payment = cardPaymentService.getPaymentById(paymentId);
             
@@ -212,6 +230,9 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
                 response.put("payer", payerInfo);
             }
             
+            // ✅ LOG DE LA RESPUESTA
+            mercadoPagoLogger.logResponse("GET_CASH_PAYMENT_INFO", response.toString(), 200);
+            
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
@@ -222,12 +243,14 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
         }
     }
 
-
     // ✅ NUEVO ENDPOINT: Crear preferencia para Wallet Brick
     @PostMapping("/create_wallet_preference")
     public ResponseEntity<?> createWalletPreference(@RequestBody Map<String, Object> requestData) {
         try {
             LOGGER.info("🎯 Creando preferencia para Wallet Brick");
+            
+            // ✅ LOG DEL REQUEST RECIBIDO
+            mercadoPagoLogger.logRequest("CREATE_WALLET_PREFERENCE_INPUT", requestData, mercadoPagoAccessToken);
             
             // ✅ Obtener datos del request
             BigDecimal amount = new BigDecimal(requestData.get("amount").toString());
@@ -253,8 +276,14 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
                 .items(items)
                 .build();
 
+            // ✅ LOG DEL REQUEST A MERCADO PAGO
+            mercadoPagoLogger.logRequest("/checkout/preferences", request, mercadoPagoAccessToken);
+
             // ✅ Crear la preferencia en Mercado Pago
             Preference preference = client.create(request);
+            
+            // ✅ LOG DEL RESPONSE
+            mercadoPagoLogger.logResponse("/checkout/preferences", preference.toString(), 200);
             
             LOGGER.info("✅ Preferencia creada exitosamente - ID: {}", preference.getId());
             
@@ -265,6 +294,14 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
             return ResponseEntity.ok(response);
             
         } catch (MPApiException apiException) {
+            // ✅ LOG DETALLADO DEL ERROR
+            mercadoPagoLogger.logApiException(
+                "/checkout/preferences", 
+                apiException.getMessage(),
+                apiException.getApiResponse().getContent(),
+                apiException.getStatusCode()
+            );
+            
             LOGGER.error("❌ Error API creando preferencia - Status: {}", apiException.getStatusCode());
             LOGGER.error("❌ Error Message: {}", apiException.getMessage());
             LOGGER.error("❌ API Response: {}", apiException.getApiResponse().getContent());
@@ -286,6 +323,9 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
     public ResponseEntity<?> processBricksPayment(@RequestBody BricksPaymentDTO bricksPaymentDTO) {
         try {
             LOGGER.info("📥 Recibiendo pago desde Bricks - Tipo: {}", bricksPaymentDTO.getBrickType());
+            
+            // ✅ LOG DEL REQUEST RECIBIDO
+            mercadoPagoLogger.logRequest("PROCESS_BRICKS_PAYMENT_INPUT", bricksPaymentDTO, mercadoPagoAccessToken);
             
             // ✅ Validaciones básicas
             if (bricksPaymentDTO.getToken() == null) {
@@ -326,6 +366,12 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
         
         LOGGER.info("🔔 Notificación recibida de Mercado Pago - ID: {}, Tipo: {}", paymentId, eventType);
         
+        // ✅ LOG DEL WEBHOOK RECIBIDO
+        Map<String, Object> webhookData = new HashMap<>();
+        webhookData.put("paymentId", paymentId);
+        webhookData.put("eventType", eventType);
+        mercadoPagoLogger.logRequest("MERCADO_PAGO_WEBHOOK", webhookData, mercadoPagoAccessToken);
+        
         try {
             switch (eventType) {
                 case "payment":
@@ -345,10 +391,17 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
                     LOGGER.warn("⚠️ Tipo de evento no reconocido: {}", eventType);
             }
             
+            // ✅ LOG DE RESPUESTA EXITOSA
+            mercadoPagoLogger.logResponse("MERCADO_PAGO_WEBHOOK", "Notificación procesada exitosamente", 200);
+            
             return ResponseEntity.ok("Notificación procesada exitosamente");
             
         } catch (Exception e) {
             LOGGER.error("❌ Error procesando notificación: {}", e.getMessage(), e);
+            
+            // ✅ LOG DE ERROR EN WEBHOOK
+            mercadoPagoLogger.logMPException("MERCADO_PAGO_WEBHOOK", e.getMessage());
+            
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error procesando notificación");
         }
     }
@@ -357,6 +410,9 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
     private void processPaymentNotification(String paymentId) {
         try {
             LOGGER.info("🔄 Obteniendo información del pago ID: {}", paymentId);
+            
+            // ✅ LOG DE LA CONSULTA DEL PAGO
+            mercadoPagoLogger.logRequest("GET_PAYMENT_FOR_WEBHOOK", Map.of("paymentId", paymentId), mercadoPagoAccessToken);
             
             // Obtener información completa del pago
             com.mercadopago.resources.payment.Payment payment = cardPaymentService.getPaymentById(Long.parseLong(paymentId));
@@ -413,8 +469,15 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
                     LOGGER.warn("⚠️ Estado de pago no manejado: {}", status);
             }
             
+            // ✅ LOG DE PROCESAMIENTO EXITOSO
+            mercadoPagoLogger.logResponse("PROCESS_WEBHOOK_NOTIFICATION", 
+                "Notificación procesada - Estado: " + status + ", Email enviado: " + customerEmail, 200);
+            
         } catch (Exception e) {
             LOGGER.error("❌ Error procesando notificación de pago {}: {}", paymentId, e.getMessage(), e);
+            
+            // ✅ LOG DE ERROR EN PROCESAMIENTO
+            mercadoPagoLogger.logMPException("PROCESS_WEBHOOK_NOTIFICATION", e.getMessage());
         }
     }
 
@@ -422,12 +485,25 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
     @GetMapping("/webhooks/mercadopago")
     public ResponseEntity<String> verifyWebhook(@RequestParam("topic") String topic) {
         LOGGER.info("🔍 Verificación de webhook recibida - Tópico: {}", topic);
-        return ResponseEntity.ok("Webhook verificado - Tópico: " + topic);
+        
+        // ✅ LOG DE VERIFICACIÓN
+        mercadoPagoLogger.logRequest("VERIFY_WEBHOOK", Map.of("topic", topic), mercadoPagoAccessToken);
+        
+        String response = "Webhook verificado - Tópico: " + topic;
+        
+        // ✅ LOG DE RESPUESTA
+        mercadoPagoLogger.logResponse("VERIFY_WEBHOOK", response, 200);
+        
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping
     public ResponseEntity<PaymentResponseDTO> processPayment(@RequestBody CardPaymentDTO cardPaymentDTO) {
         LOGGER.info("=== SOLICITUD DE PAGO RECIBIDA ===");
+        
+        // ✅ LOG COMPLETO DEL REQUEST ENTRANTE
+        mercadoPagoLogger.logRequest("PROCESS_PAYMENT_INPUT", cardPaymentDTO, mercadoPagoAccessToken);
+        
         LOGGER.info("Token: {}", cardPaymentDTO.getToken());
         LOGGER.info("PaymentMethodId: {}", cardPaymentDTO.getPaymentMethodId());
         LOGGER.info("Installments: {}", cardPaymentDTO.getInstallments());
@@ -476,6 +552,11 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
     @GetMapping("/download_receipt/{paymentId}")
     public ResponseEntity<byte[]> downloadReceipt(@PathVariable Long paymentId) {
         try {
+            LOGGER.info("📄 Solicitando comprobante para pago: {}", paymentId);
+            
+            // ✅ LOG DE LA SOLICITUD
+            mercadoPagoLogger.logRequest("DOWNLOAD_RECEIPT", Map.of("paymentId", paymentId), mercadoPagoAccessToken);
+            
             com.mercadopago.resources.payment.Payment payment = cardPaymentService.getPaymentById(paymentId);
             byte[] pdfContent = cardPaymentService.generateReceiptPdf(payment);
 
@@ -483,10 +564,78 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDisposition(ContentDisposition.attachment().filename("comprobante_pago.pdf").build());
 
+            // ✅ LOG DE RESPUESTA EXITOSA
+            mercadoPagoLogger.logResponse("DOWNLOAD_RECEIPT", "PDF generado exitosamente - Tamaño: " + pdfContent.length + " bytes", 200);
+
             return new ResponseEntity<>(pdfContent, headers, HttpStatus.OK);
         } catch (Exception e) {
             LOGGER.error("Error generando comprobante para pago ID {}: {}", paymentId, e.getMessage());
+            
+            // ✅ LOG DE ERROR
+            mercadoPagoLogger.logMPException("DOWNLOAD_RECEIPT", e.getMessage());
+            
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ✅ NUEVO ENDPOINT: Cancelar pago
+    @PostMapping("/cancel_payment/{paymentId}")
+    public ResponseEntity<?> cancelPayment(@PathVariable Long paymentId) {
+        try {
+            LOGGER.info("🚫 Solicitando cancelación de pago: {}", paymentId);
+            
+            // ✅ LOG DE LA SOLICITUD
+            mercadoPagoLogger.logRequest("CANCEL_PAYMENT", Map.of("paymentId", paymentId), mercadoPagoAccessToken);
+            
+            PaymentResponseDTO result = cardPaymentService.cancelPayment(paymentId);
+            
+            LOGGER.info("✅ Pago cancelado exitosamente - ID: {}", result.getId());
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (MercadoPagoException e) {
+            LOGGER.error("❌ Error cancelando pago: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error cancelando pago: " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        } catch (Exception e) {
+            LOGGER.error("❌ Error inesperado cancelando pago: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error interno cancelando pago: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+
+    // ✅ NUEVO ENDPOINT: Verificar estado de pago
+    @GetMapping("/payment_status/{paymentId}")
+    public ResponseEntity<?> getPaymentStatus(@PathVariable Long paymentId) {
+        try {
+            LOGGER.info("🔍 Verificando estado de pago: {}", paymentId);
+            
+            // ✅ LOG DE LA CONSULTA
+            mercadoPagoLogger.logRequest("GET_PAYMENT_STATUS", Map.of("paymentId", paymentId), mercadoPagoAccessToken);
+            
+            String status = cardPaymentService.checkPaymentStatus(paymentId);
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("paymentId", paymentId.toString());
+            response.put("status", status);
+            
+            // ✅ LOG DE LA RESPUESTA
+            mercadoPagoLogger.logResponse("GET_PAYMENT_STATUS", response.toString(), 200);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (MercadoPagoException e) {
+            LOGGER.error("❌ Error verificando estado de pago: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error verificando estado: " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        } catch (Exception e) {
+            LOGGER.error("❌ Error inesperado verificando estado: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error interno verificando estado: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
 
@@ -494,6 +643,9 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
     @GetMapping("/holis")
     public ResponseEntity<String> getAuthenticationRequest() {
         LOGGER.info("Entro al endpoint de prueba ----------------------");
+        
+        // ✅ LOG DEL ENDPOINT DE PRUEBA
+        mercadoPagoLogger.logRequest("TEST_ENDPOINT", Map.of("action", "test_payment"), mercadoPagoAccessToken);
         
         try {
             CardPaymentDTO cardPaymentDTO1 = new CardPaymentDTO();
@@ -519,9 +671,16 @@ public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPay
             PaymentResponseDTO payment = cardPaymentService.processPayment(cardPaymentDTO1);
             LOGGER.info("Pago de prueba procesado - Estado: {}", payment.getStatus());
             
+            // ✅ LOG DE RESPUESTA EXITOSA
+            mercadoPagoLogger.logResponse("TEST_ENDPOINT", "Prueba exitosa - Estado: " + payment.getStatus(), 200);
+            
             return ResponseEntity.status(HttpStatus.CREATED).body("Prueba exitosa - Estado: " + payment.getStatus());
         } catch (Exception e) {
             LOGGER.error("Error en prueba: {}", e.getMessage());
+            
+            // ✅ LOG DE ERROR EN PRUEBA
+            mercadoPagoLogger.logMPException("TEST_ENDPOINT", e.getMessage());
+            
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error en prueba: " + e.getMessage());
         }
     }
