@@ -3,19 +3,19 @@ FROM maven:3.8.4-openjdk-11 AS builder
 WORKDIR /app
 COPY pom.xml .
 
-# ✅ FORZAR DESCARGAR DEPENDENCIAS SIN CACHE
+# FORZAR DESCARGAR DEPENDENCIAS SIN CACHE
 RUN mvn dependency:purge-local-repository -DactTransitively=false -DreResolve=false
 RUN mvn dependency:resolve
 
 # Copia el código fuente
 COPY src ./src
 
-# ✅ LIMPIAR Y COMPILAR CON LOGS DETALLADOS
+# LIMPIAR Y COMPILAR CON LOGS DETALLADOS
 RUN mvn clean compile -X -DskipTests
 RUN mvn package -DskipTests
 
-# Fase de ejecución (✅ CORREGIDO - EL PROBLEMA ESTÁ AQUÍ)
-FROM eclipse-temurin:11-jre  # ✅ SOLUCIÓN: Cambiar a eclipse-temurin
+# Fase de ejecución
+FROM eclipse-temurin:11-jre
 WORKDIR /app
 
 # Copiar el JAR desde la fase de construcción
