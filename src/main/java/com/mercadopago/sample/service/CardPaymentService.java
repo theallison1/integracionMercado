@@ -5,8 +5,6 @@ import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.payment.PaymentCreateRequest;
 import com.mercadopago.client.payment.PaymentPayerRequest;
-import com.mercadopago.client.payment.AdditionalInfoRequest;
-import com.mercadopago.client.payment.ItemRequest;
 import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
@@ -105,7 +103,7 @@ public class CardPaymentService {
                                                             .number(cardPaymentDTO.getPayer().getIdentification().getNumber())
                                                             .build())
                                             .build())
-                            .additionalInfo(buildAdditionalInfoFromCardPayment(cardPaymentDTO, description))
+                            // ❌ ELIMINADO: additionalInfo no está disponible en esta versión del SDK
                             .build();
 
             // ✅ Logging y ejecución
@@ -268,80 +266,12 @@ public class CardPaymentService {
     }
 
     /**
-     * ✅ CONSTRUIR ADDITIONAL_INFO PARA CARD PAYMENT
-     */
-    private AdditionalInfoRequest buildAdditionalInfoFromCardPayment(CardPaymentDTO cardPaymentDTO, String description) {
-        // ✅ Para CardPayment, creamos un item básico
-        List<ItemRequest> items = List.of(
-            ItemRequest.builder()
-                .id("MILLENIUM_" + System.currentTimeMillis())
-                .title(description)
-                .description("Productos Millenium")
-                .categoryId("home")
-                .quantity(1)
-                .unitPrice(cardPaymentDTO.getTransactionAmount())
-                .build()
-        );
-        
-        return AdditionalInfoRequest.builder()
-                .items(items)
-                .build();
-    }
-
-    /**
-     * ✅ CONSTRUIR ADDITIONAL_INFO PARA BRICKS (CON DATOS REALES)
-     */
-    private AdditionalInfoRequest buildBricksAdditionalInfo(BricksPaymentDTO bricksPaymentDTO, String description) {
-        List<ItemRequest> items;
-        
-        // ✅ SI TENEMOS ITEMS DEL CARRITO, USAR DATOS REALES
-        if (bricksPaymentDTO.getItems() != null && !bricksPaymentDTO.getItems().isEmpty()) {
-            items = bricksPaymentDTO.getItems().stream()
-                .map(this::convertProductItemToItemRequest)
-                .collect(Collectors.toList());
-        } else {
-            // ✅ FALLBACK: Item básico
-            items = List.of(
-                ItemRequest.builder()
-                    .id("MILLENIUM_" + System.currentTimeMillis())
-                    .title(description)
-                    .description("Productos Millenium")
-                    .categoryId("home")
-                    .quantity(1)
-                    .unitPrice(bricksPaymentDTO.getAmount())
-                    .build()
-            );
-        }
-        
-        return AdditionalInfoRequest.builder()
-                .items(items)
-                .build();
-    }
-
-    /**
-     * ✅ CONVERTIR ProductItemDTO A ItemRequest
-     */
-    private ItemRequest convertProductItemToItemRequest(ProductItemDTO productItem) {
-        return ItemRequest.builder()
-                .id(productItem.getId() != null ? productItem.getId() : "MILLENIUM_" + System.currentTimeMillis())
-                .title(productItem.getTitle() != null ? productItem.getTitle() : "Producto Millenium")
-                .description(productItem.getDescription() != null ? productItem.getDescription() : "Productos Millenium")
-                .categoryId(productItem.getCategoryId() != null ? productItem.getCategoryId() : "home")
-                .pictureUrl(productItem.getPictureUrl())
-                .quantity(productItem.getQuantity() != null ? productItem.getQuantity() : 1)
-                .unitPrice(productItem.getUnitPrice())
-                .build();
-    }
-
-    /**
-     * ✅ CONSTRUIR PAYMENT REQUEST PARA BRICKS
+     * ✅ CONSTRUIR PAYMENT REQUEST PARA BRICKS (SIMPLIFICADO)
      */
     private PaymentCreateRequest buildBricksPaymentRequest(BricksPaymentDTO bricksPaymentDTO, String notificationUrl) {
-        String description = bricksPaymentDTO.getDescription() != null ? 
-                            bricksPaymentDTO.getDescription() : 
-                            "Pago desde " + bricksPaymentDTO.getBrickType() + " Brick";
-
+        String description = bricksPaymentDTO.getDescriptionOrDefault();
         String paymentMethodId = bricksPaymentDTO.getPaymentMethodId();
+        
         if ("wallet".equals(bricksPaymentDTO.getBrickType()) && paymentMethodId == null) {
             paymentMethodId = "account_money";
         }
@@ -352,10 +282,8 @@ public class CardPaymentService {
                 .lastName(bricksPaymentDTO.getPayerLastName() != null ? bricksPaymentDTO.getPayerLastName() : "Millenium")
                 .build();
 
-        // ✅ Usar orderNumber si está disponible, si no generar uno
-        String externalReference = bricksPaymentDTO.getOrderNumber() != null ? 
-                                 bricksPaymentDTO.getOrderNumber() : 
-                                 "BRICKS_" + UUID.randomUUID().toString();
+        // ✅ Usar orderNumber si está disponible
+        String externalReference = bricksPaymentDTO.getOrderNumberOrDefault();
 
         return PaymentCreateRequest.builder()
                 .transactionAmount(bricksPaymentDTO.getAmount())
@@ -369,12 +297,12 @@ public class CardPaymentService {
                 .externalReference(externalReference)
                 .statementDescriptor("MILLENIUM")
                 .payer(payerRequest)
-                .additionalInfo(buildBricksAdditionalInfo(bricksPaymentDTO, description))
+                // ❌ ELIMINADO: additionalInfo no está disponible en esta versión del SDK
                 .build();
     }
 
     /**
-     * ✅ CONSTRUIR PAYMENT REQUEST PARA EFECTIVO
+     * ✅ CONSTRUIR PAYMENT REQUEST PARA EFECTIVO (SIMPLIFICADO)
      */
     private PaymentCreateRequest buildCashPaymentRequest(BricksPaymentDTO cashPaymentDTO, String notificationUrl, OffsetDateTime expirationDate) {
         String paymentMethodName = "rapipago".equals(cashPaymentDTO.getPaymentMethodId()) ? "Rapipago" : "Pago Fácil";
@@ -395,9 +323,7 @@ public class CardPaymentService {
                 .build();
 
         // ✅ Usar orderNumber si está disponible
-        String externalReference = cashPaymentDTO.getOrderNumber() != null ? 
-                                 cashPaymentDTO.getOrderNumber() : 
-                                 "CASH_" + UUID.randomUUID().toString();
+        String externalReference = cashPaymentDTO.getOrderNumberOrDefault();
 
         return PaymentCreateRequest.builder()
                 .transactionAmount(cashPaymentDTO.getAmount())
@@ -410,7 +336,7 @@ public class CardPaymentService {
                 .externalReference(externalReference)
                 .statementDescriptor("MILLENIUM")
                 .payer(payerRequest)
-                .additionalInfo(buildBricksAdditionalInfo(cashPaymentDTO, description))
+                // ❌ ELIMINADO: additionalInfo no está disponible en esta versión del SDK
                 .build();
     }
 
@@ -461,6 +387,66 @@ public class CardPaymentService {
             return "PAYMENT_" + UUID.nameUUIDFromBytes(baseData.getBytes()).toString();
         } catch (Exception e) {
             return "PAYMENT_" + UUID.randomUUID().toString();
+        }
+    }
+
+    /**
+     * ✅ MÉTODO PARA VERIFICAR ESTADO DE PAGO
+     */
+    public String checkPaymentStatus(Long paymentId) {
+        try {
+            Payment payment = getPaymentById(paymentId);
+            String status = String.valueOf(payment.getStatus());
+            LOGGER.info("Estado del pago {}: {}", paymentId, status);
+            return status;
+        } catch (MPException | MPApiException e) {
+            LOGGER.error("Error verificando estado del pago {}: {}", paymentId, e.getMessage());
+            throw new MercadoPagoException("Error verificando estado del pago: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * ✅ MÉTODO PARA CANCELAR PAGO
+     */
+    public PaymentResponseDTO cancelPayment(Long paymentId) {
+        String endpoint = "/v1/payments/" + paymentId + "/cancel";
+        
+        try {
+            MercadoPagoConfig.setAccessToken(mercadoPagoAccessToken);
+            PaymentClient client = new PaymentClient();
+
+            Map<String, String> customHeaders = new HashMap<>();
+            customHeaders.put("x-idempotency-key", "CANCEL_" + paymentId + "_" + UUID.randomUUID().toString());
+
+            MPRequestOptions requestOptions = MPRequestOptions.builder()
+                .customHeaders(customHeaders)
+                .build();
+
+            mercadoPagoLogger.logRequest(endpoint, "CANCEL_PAYMENT_REQUEST", mercadoPagoAccessToken);
+            Payment cancelledPayment = client.cancel(paymentId, requestOptions);
+            mercadoPagoLogger.logResponse(endpoint, cancelledPayment.toString(), 200);
+            
+            LOGGER.info("✅ Pago cancelado exitosamente - ID: {}, Nuevo estado: {}", 
+                       cancelledPayment.getId(), cancelledPayment.getStatus());
+
+            return new PaymentResponseDTO(
+                    cancelledPayment.getId(),
+                    String.valueOf(cancelledPayment.getStatus()),
+                    cancelledPayment.getStatusDetail(),
+                    cancelledPayment.getDateCreated(),
+                    cancelledPayment.getTransactionAmount());
+
+        } catch (MPApiException apiException) {
+            mercadoPagoLogger.logApiException(
+                endpoint,
+                apiException.getMessage(),
+                apiException.getApiResponse().getContent(),
+                apiException.getStatusCode()
+            );
+            throw new MercadoPagoException("Error cancelando pago: " + apiException.getApiResponse().getContent(), apiException);
+        } catch (MPException exception) {
+            mercadoPagoLogger.logMPException(endpoint, exception.getMessage());
+            throw new MercadoPagoException("Error cancelando pago: " + exception.getMessage(), exception);
         }
     }
 
