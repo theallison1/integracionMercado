@@ -14,8 +14,8 @@ COPY src ./src
 RUN mvn clean compile -X -DskipTests
 RUN mvn package -DskipTests
 
-# Fase de ejecución
-FROM openjdk:11-jre-slim
+# Fase de ejecución (✅ CORREGIDO - EL PROBLEMA ESTÁ AQUÍ)
+FROM eclipse-temurin:11-jre  # ✅ SOLUCIÓN: Cambiar a eclipse-temurin
 WORKDIR /app
 
 # Copiar el JAR desde la fase de construcción
