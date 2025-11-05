@@ -71,16 +71,22 @@ public class CardPaymentController {
             LOGGER.info("Email: {}", cashPaymentDTO.getPayerEmail());
             LOGGER.info("Nombre: {} {}", cashPaymentDTO.getPayerFirstName(), cashPaymentDTO.getPayerLastName());
             
-            // ✅ LOG DE ITEMS PARA PAGOS EN EFECTIVO
-            if (cashPaymentDTO.hasItems()) {
+            // ✅ LOG DE ITEMS PARA PAGOS EN EFECTIVO (CORREGIDO - SIN getTotalPrice())
+            if (cashPaymentDTO.getItems() != null && !cashPaymentDTO.getItems().isEmpty()) {
                 LOGGER.info("🛒 Items para pago en efectivo: {}", cashPaymentDTO.getItems().size());
-                cashPaymentDTO.getItems().forEach(item -> 
+                cashPaymentDTO.getItems().forEach(item -> {
+                    // ✅ CALCULAR TOTAL MANUALMENTE (CORRECCIÓN)
+                    BigDecimal totalPrice = BigDecimal.ZERO;
+                    if (item.getUnitPrice() != null && item.getQuantity() != null) {
+                        totalPrice = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                    }
+                    
                     LOGGER.info("   - {} x {} = ${} (Total: ${})", 
-                        item.getTitle(), 
-                        item.getQuantity(), 
-                        item.getUnitPrice(),
-                        item.getTotalPrice())
-                );
+                        item.getTitle() != null ? item.getTitle() : "Sin título", 
+                        item.getQuantity() != null ? item.getQuantity() : 0, 
+                        item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO,
+                        totalPrice);
+                });
             }
             
             // ✅ LOG DE ORDER NUMBER
@@ -358,19 +364,34 @@ public class CardPaymentController {
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
-            // ✅ LOG DETALLADO DE ITEMS RECIBIDOS
-            if (bricksPaymentDTO.hasItems()) {
+            // ✅ LOG DETALLADO DE ITEMS RECIBIDOS (CORREGIDO - SIN getTotalPrice() NI isValid())
+            if (bricksPaymentDTO.getItems() != null && !bricksPaymentDTO.getItems().isEmpty()) {
                 LOGGER.info("🛒 Items recibidos del carrito: {}", bricksPaymentDTO.getItems().size());
-                bricksPaymentDTO.getItems().forEach(item -> 
+                bricksPaymentDTO.getItems().forEach(item -> {
+                    // ✅ CALCULAR TOTAL MANUALMENTE (CORRECCIÓN)
+                    BigDecimal totalPrice = BigDecimal.ZERO;
+                    if (item.getUnitPrice() != null && item.getQuantity() != null) {
+                        totalPrice = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                    }
+                    
                     LOGGER.info("   - {} x {} = ${} (Total: ${})", 
-                        item.getTitle(), 
-                        item.getQuantity(), 
-                        item.getUnitPrice(),
-                        item.getTotalPrice())
-                );
+                        item.getTitle() != null ? item.getTitle() : "Sin título", 
+                        item.getQuantity() != null ? item.getQuantity() : 0, 
+                        item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO,
+                        totalPrice);
+                });
                 
-                // ✅ Validar que los items sean válidos
-                boolean allItemsValid = bricksPaymentDTO.getItems().stream().allMatch(ProductItemDTO::isValid);
+                // ✅ Validar que los items sean válidos (CORREGIDO - SIN method reference)
+                boolean allItemsValid = true;
+                for (ProductItemDTO item : bricksPaymentDTO.getItems()) {
+                    if (item.getTitle() == null || item.getTitle().trim().isEmpty() ||
+                        item.getQuantity() == null || item.getQuantity() <= 0 ||
+                        item.getUnitPrice() == null || item.getUnitPrice().compareTo(BigDecimal.ZERO) <= 0) {
+                        allItemsValid = false;
+                        break;
+                    }
+                }
+                
                 if (!allItemsValid) {
                     LOGGER.warn("⚠️ Algunos items no son válidos (faltan título, cantidad o precio)");
                 }
