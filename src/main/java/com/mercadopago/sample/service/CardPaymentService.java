@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -40,6 +41,9 @@ public class CardPaymentService {
     @Autowired
     private MercadoPagoLogger mercadoPagoLogger;
 
+    /**
+     * ✅ PROCESAR PAGO CON TARJETA
+     */
     public PaymentResponseDTO processPayment(CardPaymentDTO cardPaymentDTO) {
         String endpoint = "/v1/payments";
         
@@ -49,6 +53,7 @@ public class CardPaymentService {
 
             String notificationUrl = appBaseUrl + "/process_payment/webhooks/mercadopago";
 
+            // ✅ Datos básicos
             String description = cardPaymentDTO.getProductDescription() != null ? 
                                cardPaymentDTO.getProductDescription() : 
                                "Compra de termotanques Millenium";
@@ -62,6 +67,7 @@ public class CardPaymentService {
             LOGGER.info("Descripción: {}", description);
             LOGGER.info("Monto: {}", cardPaymentDTO.getTransactionAmount());
 
+            // ✅ Configurar headers
             Map<String, String> customHeaders = new HashMap<>();
             String idempotencyKey = generateIdempotencyKey(cardPaymentDTO);
             customHeaders.put("x-idempotency-key", idempotencyKey);
@@ -70,6 +76,7 @@ public class CardPaymentService {
                 .customHeaders(customHeaders)
                 .build();
 
+            // ✅ Construir request COMPLETO
             PaymentCreateRequest paymentCreateRequest =
                     PaymentCreateRequest.builder()
                             .transactionAmount(cardPaymentDTO.getTransactionAmount())
@@ -95,6 +102,7 @@ public class CardPaymentService {
                                             .build())
                             .build();
 
+            // ✅ Logging y ejecución
             mercadoPagoLogger.logRequest(endpoint, paymentCreateRequest, mercadoPagoAccessToken);
             Payment payment = client.create(paymentCreateRequest, requestOptions);
             mercadoPagoLogger.logResponse(endpoint, payment.toString(), 200);
@@ -126,6 +134,9 @@ public class CardPaymentService {
         }
     }
 
+    /**
+     * ✅ PROCESAR PAGO DESDE BRICKS
+     */
     public PaymentResponseDTO processBricksPayment(BricksPaymentDTO bricksPaymentDTO) {
         String endpoint = "/v1/payments";
         
@@ -139,6 +150,7 @@ public class CardPaymentService {
             LOGGER.info("Brick Type: {}", bricksPaymentDTO.getBrickType());
             LOGGER.info("Monto: {}", bricksPaymentDTO.getAmount());
 
+            // ✅ Configurar headers
             Map<String, String> customHeaders = new HashMap<>();
             String idempotencyKey = "BRICKS_" + UUID.randomUUID().toString();
             customHeaders.put("x-idempotency-key", idempotencyKey);
@@ -147,8 +159,10 @@ public class CardPaymentService {
                 .customHeaders(customHeaders)
                 .build();
 
+            // ✅ Construir request
             PaymentCreateRequest paymentCreateRequest = buildBricksPaymentRequest(bricksPaymentDTO, notificationUrl);
 
+            // ✅ Logging y ejecución
             mercadoPagoLogger.logRequest(endpoint, paymentCreateRequest, mercadoPagoAccessToken);
             Payment payment = client.create(paymentCreateRequest, requestOptions);
             mercadoPagoLogger.logResponse(endpoint, payment.toString(), 200);
@@ -179,6 +193,9 @@ public class CardPaymentService {
         }
     }
 
+    /**
+     * ✅ PROCESAR PAGO EN EFECTIVO
+     */
     public PaymentResponseDTO processCashPayment(BricksPaymentDTO cashPaymentDTO) {
         String endpoint = "/v1/payments";
         
@@ -192,11 +209,13 @@ public class CardPaymentService {
             LOGGER.info("Método: {}", cashPaymentDTO.getPaymentMethodId());
             LOGGER.info("Monto: {}", cashPaymentDTO.getAmount());
 
+            // ✅ Validar método de pago
             String paymentMethodId = cashPaymentDTO.getPaymentMethodId();
             if (!"rapipago".equals(paymentMethodId) && !"pagofacil".equals(paymentMethodId)) {
                 throw new MercadoPagoException("Método de pago no válido para efectivo. Use 'rapipago' o 'pagofacil'");
             }
 
+            // ✅ Configurar headers
             Map<String, String> customHeaders = new HashMap<>();
             String idempotencyKey = "CASH_" + UUID.randomUUID().toString();
             customHeaders.put("x-idempotency-key", idempotencyKey);
@@ -205,10 +224,13 @@ public class CardPaymentService {
                 .customHeaders(customHeaders)
                 .build();
 
+            // ✅ Fecha de expiración
             OffsetDateTime expirationDate = OffsetDateTime.now().plusDays(3);
 
+            // ✅ Construir request
             PaymentCreateRequest paymentCreateRequest = buildCashPaymentRequest(cashPaymentDTO, notificationUrl, expirationDate);
 
+            // ✅ Logging y ejecución
             mercadoPagoLogger.logRequest(endpoint, paymentCreateRequest, mercadoPagoAccessToken);
             Payment payment = client.create(paymentCreateRequest, requestOptions);
             mercadoPagoLogger.logResponse(endpoint, payment.toString(), 200);
@@ -239,6 +261,9 @@ public class CardPaymentService {
         }
     }
 
+    /**
+     * ✅ CONSTRUIR PAYMENT REQUEST PARA BRICKS
+     */
     private PaymentCreateRequest buildBricksPaymentRequest(BricksPaymentDTO bricksPaymentDTO, String notificationUrl) {
         String description = bricksPaymentDTO.getDescription() != null ? 
                             bricksPaymentDTO.getDescription() : 
@@ -255,6 +280,7 @@ public class CardPaymentService {
                 .lastName(bricksPaymentDTO.getPayerLastName() != null ? bricksPaymentDTO.getPayerLastName() : "Millenium")
                 .build();
 
+        // ✅ Usar orderNumber si está disponible
         String externalReference = bricksPaymentDTO.getOrderNumber() != null ? 
                                  bricksPaymentDTO.getOrderNumber() : 
                                  "BRICKS_" + UUID.randomUUID().toString();
@@ -274,6 +300,9 @@ public class CardPaymentService {
                 .build();
     }
 
+    /**
+     * ✅ CONSTRUIR PAYMENT REQUEST PARA EFECTIVO
+     */
     private PaymentCreateRequest buildCashPaymentRequest(BricksPaymentDTO cashPaymentDTO, String notificationUrl, OffsetDateTime expirationDate) {
         String paymentMethodName = "rapipago".equals(cashPaymentDTO.getPaymentMethodId()) ? "Rapipago" : "Pago Fácil";
         String description = cashPaymentDTO.getDescription() != null ? 
@@ -292,6 +321,7 @@ public class CardPaymentService {
                 )
                 .build();
 
+        // ✅ Usar orderNumber si está disponible
         String externalReference = cashPaymentDTO.getOrderNumber() != null ? 
                                  cashPaymentDTO.getOrderNumber() : 
                                  "CASH_" + UUID.randomUUID().toString();
@@ -343,6 +373,9 @@ public class CardPaymentService {
         }
     }
 
+    /**
+     * ✅ GENERAR IDEMPOTENCY KEY
+     */
     private String generateIdempotencyKey(CardPaymentDTO cardPaymentDTO) {
         try {
             String baseData = cardPaymentDTO.getPayer().getEmail() + 
@@ -355,6 +388,9 @@ public class CardPaymentService {
         }
     }
 
+    /**
+     * ✅ MÉTODO PARA VERIFICAR ESTADO DE PAGO
+     */
     public String checkPaymentStatus(Long paymentId) {
         try {
             Payment payment = getPaymentById(paymentId);
@@ -367,6 +403,9 @@ public class CardPaymentService {
         }
     }
 
+    /**
+     * ✅ MÉTODO PARA CANCELAR PAGO
+     */
     public PaymentResponseDTO cancelPayment(Long paymentId) {
         String endpoint = "/v1/payments/" + paymentId + "/cancel";
         
@@ -409,13 +448,14 @@ public class CardPaymentService {
         }
     }
 
+    // ... (MÉTODOS PDF SE MANTIENEN IGUAL)
     public byte[] generateCashVoucherPdf(Payment payment) throws IOException {
-        // Tu código existente para generar PDF
+        // Tu código existente
         return new byte[0];
     }
 
     public byte[] generateReceiptPdf(Payment payment) throws IOException {
-        // Tu código existente para generar PDF
+        // Tu código existente  
         return new byte[0];
     }
 }
