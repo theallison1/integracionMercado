@@ -398,19 +398,17 @@ async function initializePaymentBrick(total, userEmail) {
                             let requestData = {};
 
                             if (selectedPaymentMethod === 'ticket') {
-                                // ✅ PAGO EN EFECTIVO
+                                // ✅ PAGO EN EFECTIVO - Usar directamente el payment_method_id del formData
                                 endpoint = '/process_payment/create_ticket_payment';
                                 console.log('🎫 Enviando a endpoint de efectivo:', endpoint);
                                 
-                                // ✅ SIEMPRE MOSTRAR SELECTOR PARA EFECTIVO
-                                console.log('🔍 Mostrando selector de método de efectivo...');
-                                let paymentMethodId = await askUserForCashMethod();
-                                
-                                if (!paymentMethodId) {
-                                    throw new Error('No se seleccionó ningún método de pago en efectivo');
-                                }
+                                // ✅ USAR DIRECTAMENTE EL MÉTODO QUE YA SELECCIONÓ EL USUARIO
+                                const paymentMethodId = formData.payment_method_id;
+                                console.log('🎯 Método de pago seleccionado por el usuario:', paymentMethodId);
 
-                                console.log('🎯 Método final a enviar:', paymentMethodId);
+                                if (!paymentMethodId) {
+                                    throw new Error('No se recibió el método de pago en efectivo seleccionado');
+                                }
 
                                 requestData = {
                                     paymentMethodId: paymentMethodId,
@@ -547,93 +545,8 @@ async function initializePaymentBrick(total, userEmail) {
 }
 
 // ========== FUNCIONES AUXILIARES ==========
-async function askUserForCashMethod() {
-    return new Promise((resolve) => {
-        const modalId = 'cash-method-modal-' + Date.now();
-        
-        const modalHTML = `
-            <div id="${modalId}" style="
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.9); display: flex; align-items: center;
-                justify-content: center; z-index: 10000; font-family: Arial, sans-serif;
-            ">
-                <div style="
-                    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
-                    padding: 30px; border-radius: 16px;
-                    border: 2px solid #d4af37; max-width: 450px; width: 90%;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-                ">
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">🎫</div>
-                        <h3 style="color: #d4af37; margin: 0 0 10px 0;">Selecciona dónde pagar</h3>
-                        <p style="color: #ccc; margin: 0;">Elije el método de pago en efectivo:</p>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 12px; margin: 25px 0;">
-                        <button onclick="window.selectCashMethodCallback('rapipago')" style="
-                            padding: 18px; background: #1a365d; color: white;
-                            border: 2px solid #2d3748; border-radius: 10px;
-                            cursor: pointer; font-weight: bold; text-align: left;
-                            transition: all 0.3s ease; font-size: 16px;
-                        " onmouseover="this.style.background='#2d3748'; this.style.borderColor='#d4af37'" 
-                        onmouseout="this.style.background='#1a365d'; this.style.borderColor='#2d3748'">
-                            <span style="font-size: 20px; margin-right: 10px;">💰</span>
-                            <div>
-                                <strong>Rapipago</strong><br>
-                                <small style="opacity: 0.8;">Paga en sucursales de Rapipago</small>
-                            </div>
-                        </button>
-                        
-                        <button onclick="window.selectCashMethodCallback('pagofacil')" style="
-                            padding: 18px; background: #1a365d; color: white;
-                            border: 2px solid #2d3748; border-radius: 10px;
-                            cursor: pointer; font-weight: bold; text-align: left;
-                            transition: all 0.3s ease; font-size: 16px;
-                        " onmouseover="this.style.background='#2d3748'; this.style.borderColor='#d4af37'" 
-                        onmouseout="this.style.background='#1a365d'; this.style.borderColor='#2d3748'">
-                            <span style="font-size: 20px; margin-right: 10px;">💰</span>
-                            <div>
-                                <strong>Pago Fácil</strong><br>
-                                <small style="opacity: 0.8;">Paga en sucursales de Pago Fácil</small>
-                            </div>
-                        </button>
-                    </div>
-                    
-                    <button onclick="window.closeCashMethodModalCallback()" style="
-                        width: 100%; padding: 14px; background: #dc3545;
-                        color: white; border: none; border-radius: 8px; cursor: pointer;
-                        font-weight: bold; font-size: 16px; transition: background 0.3s;
-                    " onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
-                        Cancelar
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
-        window.selectCashMethodCallback = (method) => {
-            console.log('✅ Usuario seleccionó:', method);
-            const modal = document.getElementById(modalId);
-            if (modal) modal.remove();
-            delete window.selectCashMethodCallback;
-            delete window.closeCashMethodModalCallback;
-            resolve(method);
-        };
-        
-        window.closeCashMethodModalCallback = () => {
-            console.log('❌ Usuario canceló la selección');
-            const modal = document.getElementById(modalId);
-            if (modal) modal.remove();
-            delete window.selectCashMethodCallback;
-            delete window.closeCashMethodModalCallback;
-            resolve(null);
-        };
-    });
-}
-
 function showCashPaymentResult(paymentResult) {
-    const paymentMethod = paymentResult.paymentMethodId || 'pagofacil';
+    const paymentMethod = paymentResult.payment_method_id || paymentResult.paymentMethodId || 'pagofacil';
     const paymentMethodName = paymentMethod === 'rapipago' ? 'Rapipago' : 'Pago Fácil';
     
     document.querySelector('.container__payment').style.display = 'none';
@@ -657,7 +570,7 @@ function showCashPaymentResult(paymentResult) {
             </div>
             <div class="detail-item">
                 <span class="detail-label">Monto:</span>
-                <span class="detail-value">$${paymentResult.transactionAmount ? paymentResult.transactionAmount.toLocaleString('es-AR') : calculateCartTotal().toLocaleString('es-AR')}</span>
+                <span class="detail-value">$${paymentResult.transaction_amount ? paymentResult.transaction_amount.toLocaleString('es-AR') : (paymentResult.transactionAmount || calculateCartTotal()).toLocaleString('es-AR')}</span>
             </div>
             <div class="detail-item">
                 <span class="detail-label">Número de Operación:</span>
