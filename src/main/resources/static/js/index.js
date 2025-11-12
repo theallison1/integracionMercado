@@ -270,6 +270,26 @@ function verifyCartBeforePayment() {
     return true;
 }
 
+// ========== FUNCIÓN AUXILIAR PARA DETECTAR TIPO DE TARJETA ==========
+function detectPaymentType(formData) {
+    // Si ya viene el payment_type en formData, usarlo
+    if (formData.payment_type) {
+        return formData.payment_type;
+    }
+    
+    // Detectar por payment_method_id
+    const paymentMethodId = formData.payment_method_id ? formData.payment_method_id.toLowerCase() : '';
+    const debitPrefixes = ['deb', 'debito', 'debit'];
+    
+    // Si el payment_method_id comienza con prefijos de débito
+    if (debitPrefixes.some(prefix => paymentMethodId.startsWith(prefix))) {
+        return 'debit_card';
+    }
+    
+    // Por defecto, crédito
+    return 'credit_card';
+}
+
 // ========== FUNCIONES DE MERCADO PAGO ==========
 async function createMercadoPagoPreference(amount) {
     try {
@@ -428,12 +448,16 @@ async function initializePaymentBrick(total, userEmail) {
                                 endpoint = '/process_payment/process_bricks_payment';
                                 console.log('💳 Enviando a endpoint de tarjeta:', endpoint);
                                 
+                                // ✅ CORRECCIÓN: DETECCIÓN AUTOMÁTICA DEL TIPO DE TARJETA
+                                const detectedPaymentType = detectPaymentType(formData);
+                                console.log('🎯 Tipo de tarjeta detectado:', detectedPaymentType);
+                                
                                 requestData = {
                                     token: formData.token,
                                     paymentMethodId: formData.payment_method_id,
                                     installments: parseInt(formData.installments) || 1,
                                     issuerId: formData.issuer_id,
-                                    paymentType: formData.payment_type || 'credit_card',
+                                    paymentType: detectedPaymentType, // ✅ USAR LA DETECCIÓN CORRECTA
                                     amount: parseFloat(formData.transactionAmount) || total,
                                     brickType: 'payment',
                                     description: `Compra de ${cart.length} productos Millenium`,
