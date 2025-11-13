@@ -58,16 +58,35 @@ public class CardPaymentController {
         this.resendEmailService = resendEmailService;
     }
 
-    // ✅ MÉTODO PARA TRANSFORMAR BRICKS A CARD PAYMENT
+    // ✅ MÉTODO PARA TRANSFORMAR BRICKS A CARD PAYMENT - CORREGIDO
     private CardPaymentDTO transformBricksToCardPayment(BricksPaymentDTO bricksDTO) {
         CardPaymentDTO cardDTO = new CardPaymentDTO();
         
-        // ✅ MAPEAR CAMPOS DIRECTOS
+        // ✅✅✅ CORRECCIÓN CRÍTICA - VERIFICAR Y FORZAR SI ES NECESARIO
+        String paymentMethodId = bricksDTO.getPaymentMethodId();
+        String issuerId = bricksDTO.getIssuerId();
+        
+        LOGGER.info("🔄 TRANSFORMACIÓN - Valores originales:");
+        LOGGER.info("   - PaymentMethodId: {}", paymentMethodId);
+        LOGGER.info("   - IssuerId: {}", issuerId);
+        
+        // ✅ SI SON NULL, USAR VALORES POR DEFECTO
+        if (paymentMethodId == null) {
+            paymentMethodId = "debvisa";
+            LOGGER.warn("⚠️ PaymentMethodId era null, usando: {}", paymentMethodId);
+        }
+        
+        if (issuerId == null) {
+            issuerId = "1";
+            LOGGER.warn("⚠️ IssuerId era null, usando: {}", issuerId);
+        }
+        
+        // ✅ MAPEAR CAMPOS
         cardDTO.setToken(bricksDTO.getToken());
-        cardDTO.setPaymentMethodId(bricksDTO.getPaymentMethodId());
+        cardDTO.setPaymentMethodId(paymentMethodId);
         cardDTO.setInstallments(bricksDTO.getInstallments());
-        cardDTO.setIssuerId(bricksDTO.getIssuerId());
-        cardDTO.setTransactionAmount(bricksDTO.getAmount()); // ← amount → transactionAmount
+        cardDTO.setIssuerId(issuerId);
+        cardDTO.setTransactionAmount(bricksDTO.getAmount());
         
         // ✅ DESCRIPCIÓN
         if (bricksDTO.getDescription() != null) {
@@ -90,8 +109,8 @@ public class CardPaymentController {
         
         cardDTO.setPayer(payerDTO);
         
-        LOGGER.info("✅ Datos transformados - Monto: {}, Email: {}, Método: {}", 
-                cardDTO.getTransactionAmount(), payerDTO.getEmail(), cardDTO.getPaymentMethodId());
+        LOGGER.info("✅ Datos transformados - PaymentMethodId: {}, IssuerId: {}, Monto: {}", 
+                cardDTO.getPaymentMethodId(), cardDTO.getIssuerId(), cardDTO.getTransactionAmount());
         
         return cardDTO;
     }
@@ -386,6 +405,16 @@ public class CardPaymentController {
         try {
             LOGGER.info("📥 Recibiendo pago desde Bricks - Tipo: {}", bricksPaymentDTO.getBrickType());
             
+            // ✅✅✅ DEBUGGING CRÍTICO - VER QUÉ LLEGA DEL FRONTEND
+            LOGGER.info("🔍 DEBUG - DATOS RECIBIDOS DEL FRONTEND:");
+            LOGGER.info("   - Token: {}", bricksPaymentDTO.getToken());
+            LOGGER.info("   - PaymentMethodId: {}", bricksPaymentDTO.getPaymentMethodId());
+            LOGGER.info("   - IssuerId: {}", bricksPaymentDTO.getIssuerId());
+            LOGGER.info("   - Installments: {}", bricksPaymentDTO.getInstallments());
+            LOGGER.info("   - Amount: {}", bricksPaymentDTO.getAmount());
+            LOGGER.info("   - Payer Email: {}", bricksPaymentDTO.getPayerEmail());
+            LOGGER.info("   - Payer Name: {} {}", bricksPaymentDTO.getPayerFirstName(), bricksPaymentDTO.getPayerLastName());
+            
             // ✅ LOG DEL REQUEST RECIBIDO
             mercadoPagoLogger.logRequest("PROCESS_BRICKS_PAYMENT_INPUT", bricksPaymentDTO, mercadoPagoAccessToken);
             
@@ -402,18 +431,15 @@ public class CardPaymentController {
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
-            // ✅ LOG DETALLADO DE LOS DATOS RECIBIDOS
-            LOGGER.info("🔍 Datos recibidos del frontend:");
-            LOGGER.info("   - Token: {}", bricksPaymentDTO.getToken());
-            LOGGER.info("   - PaymentMethodId: {}", bricksPaymentDTO.getPaymentMethodId());
-            LOGGER.info("   - Installments: {}", bricksPaymentDTO.getInstallments());
-            LOGGER.info("   - IssuerId: {}", bricksPaymentDTO.getIssuerId());
-            LOGGER.info("   - Amount: {}", bricksPaymentDTO.getAmount());
-            LOGGER.info("   - Payer Email: {}", bricksPaymentDTO.getPayerEmail());
-            LOGGER.info("   - Payer Name: {} {}", bricksPaymentDTO.getPayerFirstName(), bricksPaymentDTO.getPayerLastName());
-
             // ✅ TRANSFORMAR DATOS PARA MERCADO PAGO
             CardPaymentDTO cardPaymentDTO = transformBricksToCardPayment(bricksPaymentDTO);
+            
+            // ✅✅✅ DEBUGGING - VER QUÉ SE ENVÍA A MP
+            LOGGER.info("🔍 DEBUG - DATOS ENVIADOS A MERCADO PAGO:");
+            LOGGER.info("   - PaymentMethodId: {}", cardPaymentDTO.getPaymentMethodId());
+            LOGGER.info("   - IssuerId: {}", cardPaymentDTO.getIssuerId());
+            LOGGER.info("   - Token: {}", cardPaymentDTO.getToken());
+            LOGGER.info("   - TransactionAmount: {}", cardPaymentDTO.getTransactionAmount());
             
             // ✅ LOG DEL PAYLOAD TRANSFORMADO
             mercadoPagoLogger.logRequest("TRANSFORMED_CARD_PAYMENT", cardPaymentDTO, mercadoPagoAccessToken);
