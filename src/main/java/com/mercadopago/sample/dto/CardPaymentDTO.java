@@ -32,6 +32,13 @@ public class CardPaymentDTO {
     @NotNull(message = "La información del pagador es requerida")
     private PayerDTO payer;
 
+    // ✅✅✅ CAMPOS CRÍTICOS QUE FALTABAN
+    @JsonProperty("capture")
+    private Boolean capture = true;  // ← Valor por defecto: true
+
+    @JsonProperty("binary_mode")
+    private Boolean binaryMode = false; // ← Valor por defecto: false
+
     // ✅ Campos adicionales para mejor control
     @JsonProperty("notification_url")
     private String notificationUrl;
@@ -45,7 +52,7 @@ public class CardPaymentDTO {
     public CardPaymentDTO() {
     }
 
-    // ✅ Constructor para facilitar testing
+    // ✅ Constructor actualizado
     public CardPaymentDTO(String token, String paymentMethodId, BigDecimal transactionAmount, 
                          Integer installments, String productDescription, PayerDTO payer) {
         this.token = token;
@@ -54,9 +61,11 @@ public class CardPaymentDTO {
         this.installments = installments;
         this.productDescription = productDescription;
         this.payer = payer;
+        this.capture = true;    // ← Inicializar
+        this.binaryMode = false; // ← Inicializar
     }
 
-    // GETTERS Y SETTERS
+    // GETTERS Y SETTERS (agrega los nuevos)
     public String getToken() {
         return token;
     }
@@ -113,6 +122,23 @@ public class CardPaymentDTO {
         this.payer = payer;
     }
 
+    // ✅✅✅ NUEVOS GETTERS Y SETTERS
+    public Boolean getCapture() {
+        return capture;
+    }
+
+    public void setCapture(Boolean capture) {
+        this.capture = capture;
+    }
+
+    public Boolean getBinaryMode() {
+        return binaryMode;
+    }
+
+    public void setBinaryMode(Boolean binaryMode) {
+        this.binaryMode = binaryMode;
+    }
+
     public String getNotificationUrl() {
         return notificationUrl;
     }
@@ -143,7 +169,7 @@ public class CardPaymentDTO {
                paymentMethodId != null && !paymentMethodId.trim().isEmpty() &&
                transactionAmount != null && transactionAmount.compareTo(BigDecimal.ZERO) > 0 &&
                installments != null && installments > 0 &&
-               payer != null && payer.isValid(); // ✅ AHORA SÍ EXISTE isValid()
+               payer != null && payer.isValid();
     }
 
     // ✅ Método para obtener descripción por defecto si no viene
@@ -160,6 +186,8 @@ public class CardPaymentDTO {
                 ", transactionAmount=" + transactionAmount +
                 ", installments=" + installments +
                 ", productDescription='" + productDescription + '\'' +
+                ", capture=" + capture +
+                ", binaryMode=" + binaryMode +
                 ", payer=" + (payer != null ? payer.toString() : "null") +
                 ", notificationUrl='" + notificationUrl + '\'' +
                 ", externalReference='" + externalReference + '\'' +
