@@ -58,6 +58,44 @@ public class CardPaymentController {
         this.resendEmailService = resendEmailService;
     }
 
+    // ✅ MÉTODO PARA TRANSFORMAR BRICKS A CARD PAYMENT
+    private CardPaymentDTO transformBricksToCardPayment(BricksPaymentDTO bricksDTO) {
+        CardPaymentDTO cardDTO = new CardPaymentDTO();
+        
+        // ✅ MAPEAR CAMPOS DIRECTOS
+        cardDTO.setToken(bricksDTO.getToken());
+        cardDTO.setPaymentMethodId(bricksDTO.getPaymentMethodId());
+        cardDTO.setInstallments(bricksDTO.getInstallments());
+        cardDTO.setIssuerId(bricksDTO.getIssuerId());
+        cardDTO.setTransactionAmount(bricksDTO.getAmount()); // ← amount → transactionAmount
+        
+        // ✅ DESCRIPCIÓN
+        if (bricksDTO.getDescription() != null) {
+            cardDTO.setProductDescription(bricksDTO.getDescription());
+        } else {
+            cardDTO.setProductDescription("Compra Millenium");
+        }
+        
+        // ✅ PAYER
+        PayerDTO payerDTO = new PayerDTO();
+        payerDTO.setEmail(bricksDTO.getPayerEmail() != null ? bricksDTO.getPayerEmail() : "cliente@millenium.com");
+        payerDTO.setFirstName(bricksDTO.getPayerFirstName() != null ? bricksDTO.getPayerFirstName() : "Cliente");
+        payerDTO.setLastName(bricksDTO.getPayerLastName() != null ? bricksDTO.getPayerLastName() : "Millenium");
+        
+        // ✅ IDENTIFICACIÓN
+        PayerIdentificationDTO identificationDTO = new PayerIdentificationDTO();
+        identificationDTO.setType(bricksDTO.getIdentificationType() != null ? bricksDTO.getIdentificationType() : "DNI");
+        identificationDTO.setNumber(bricksDTO.getIdentificationNumber() != null ? bricksDTO.getIdentificationNumber() : "00000000");
+        payerDTO.setIdentification(identificationDTO);
+        
+        cardDTO.setPayer(payerDTO);
+        
+        LOGGER.info("✅ Datos transformados - Monto: {}, Email: {}, Método: {}", 
+                cardDTO.getTransactionAmount(), payerDTO.getEmail(), cardDTO.getPaymentMethodId());
+        
+        return cardDTO;
+    }
+
     @PostMapping("/create_ticket_payment")
     public ResponseEntity<?> createCashPayment(@RequestBody BricksPaymentDTO cashPaymentDTO) {
         try {
@@ -364,60 +402,51 @@ public class CardPaymentController {
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
-            // ✅ LOG DETALLADO DE ITEMS RECIBIDOS (CORREGIDO - SIN getTotalPrice() NI isValid())
-            if (bricksPaymentDTO.getItems() != null && !bricksPaymentDTO.getItems().isEmpty()) {
-                LOGGER.info("🛒 Items recibidos del carrito: {}", bricksPaymentDTO.getItems().size());
-                bricksPaymentDTO.getItems().forEach(item -> {
-                    // ✅ CALCULAR TOTAL MANUALMENTE (CORRECCIÓN)
-                    BigDecimal totalPrice = BigDecimal.ZERO;
-                    if (item.getUnitPrice() != null && item.getQuantity() != null) {
-                        totalPrice = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-                    }
-                    
-                    LOGGER.info("   - {} x {} = ${} (Total: ${})", 
-                        item.getTitle() != null ? item.getTitle() : "Sin título", 
-                        item.getQuantity() != null ? item.getQuantity() : 0, 
-                        item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO,
-                        totalPrice);
-                });
-                
-                // ✅ Validar que los items sean válidos (CORREGIDO - SIN method reference)
-                boolean allItemsValid = true;
-                for (ProductItemDTO item : bricksPaymentDTO.getItems()) {
-                    if (item.getTitle() == null || item.getTitle().trim().isEmpty() ||
-                        item.getQuantity() == null || item.getQuantity() <= 0 ||
-                        item.getUnitPrice() == null || item.getUnitPrice().compareTo(BigDecimal.ZERO) <= 0) {
-                        allItemsValid = false;
-                        break;
-                    }
-                }
-                
-                if (!allItemsValid) {
-                    LOGGER.warn("⚠️ Algunos items no son válidos (faltan título, cantidad o precio)");
-                }
-            } else {
-                LOGGER.info("🛒 No se recibieron items específicos, usando datos básicos");
-            }
+            // ✅ LOG DETALLADO DE LOS DATOS RECIBIDOS
+            LOGGER.info("🔍 Datos recibidos del frontend:");
+            LOGGER.info("   - Token: {}", bricksPaymentDTO.getToken());
+            LOGGER.info("   - PaymentMethodId: {}", bricksPaymentDTO.getPaymentMethodId());
+            LOGGER.info("   - Installments: {}", bricksPaymentDTO.getInstallments());
+            LOGGER.info("   - IssuerId: {}", bricksPaymentDTO.getIssuerId());
+            LOGGER.info("   - Amount: {}", bricksPaymentDTO.getAmount());
+            LOGGER.info("   - Payer Email: {}", bricksPaymentDTO.getPayerEmail());
+            LOGGER.info("   - Payer Name: {} {}", bricksPaymentDTO.getPayerFirstName(), bricksPaymentDTO.getPayerLastName());
 
-            // ✅ LOG DE ORDER NUMBER
-            if (bricksPaymentDTO.getOrderNumber() != null) {
-                LOGGER.info("📋 Order number recibido: {}", bricksPaymentDTO.getOrderNumber());
-            }
+            // ✅ TRANSFORMAR DATOS PARA MERCADO PAGO
+            CardPaymentDTO cardPaymentDTO = transformBricksToCardPayment(bricksPaymentDTO);
+            
+            // ✅ LOG DEL PAYLOAD TRANSFORMADO
+            mercadoPagoLogger.logRequest("TRANSFORMED_CARD_PAYMENT", cardPaymentDTO, mercadoPagoAccessToken);
+            
+            LOGGER.info("🔄 Enviando pago transformado a Mercado Pago...");
 
-            PaymentResponseDTO result = cardPaymentService.processBricksPayment(bricksPaymentDTO);
+            PaymentResponseDTO result = cardPaymentService.processPayment(cardPaymentDTO);
             
             LOGGER.info("✅ Pago desde Bricks procesado exitosamente - ID: {}", result.getId());
+            
+            // ✅ Enviar email de confirmación
+            try {
+                String customerName = bricksPaymentDTO.getPayerFirstName() + " " + bricksPaymentDTO.getPayerLastName();
+                resendEmailService.sendPaymentReceivedEmail(
+                    bricksPaymentDTO.getPayerEmail(),
+                    customerName,
+                    result
+                );
+            } catch (Exception emailError) {
+                LOGGER.warn("⚠️ No se pudo enviar email de confirmación: {}", emailError.getMessage());
+            }
+            
             return ResponseEntity.ok(result);
             
         } catch (MercadoPagoException e) {
-            LOGGER.error("❌ Error procesando pago Bricks: {}", e.getMessage());
+            LOGGER.error("❌ Error Mercado Pago procesando pago Bricks: {}", e.getMessage());
             Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("error_message", e.getMessage());
+            errorResponse.put("error_message", "Error Mercado Pago: " + e.getMessage());
             return ResponseEntity.status(500).body(errorResponse);
         } catch (Exception e) {
             LOGGER.error("❌ Error inesperado en Bricks: {}", e.getMessage());
             Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("error_message", "Error interno del servidor");
+            errorResponse.put("error_message", "Error interno del servidor: " + e.getMessage());
             return ResponseEntity.status(500).body(errorResponse);
         }
     }
@@ -533,7 +562,7 @@ public class CardPaymentController {
                     LOGGER.warn("⚠️ Estado de pago no manejado: {}", status);
             }
             
-            // ✅ LOG DE PROCESAMIENTO EXITOSO
+            // ✅ LOG DE PROCESAMIENTO EXITOSA
             mercadoPagoLogger.logResponse("PROCESS_WEBHOOK_NOTIFICATION", 
                 "Notificación procesada - Estado: " + status + ", Email enviado: " + customerEmail, 200);
             
