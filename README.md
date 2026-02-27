@@ -10,6 +10,9 @@
 - Java 8 or higher (follow the download instructions [here](https://java.com/en/download/help/download_options.html)).
 - [Read our instructions](https://www.mercadopago.com/developers/en/docs/getting-started) on how to create an application at the Mercado Pago Developer Panel in order to acquire your public key and access token. They will grant you access to Mercado Pago's public APIs.
 
+
+
+
 ## :gear: Installation
 1. Clone the project.
 ```bash
