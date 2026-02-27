@@ -2,6 +2,8 @@
 [Português](README.pt.md) / [Español](README.es.md)
 
 ## :computer: Technologies
+
+
 - Java 11
 - [Spring Boot](https://spring.io/projects/spring-boot) 2.5.4
 - [Maven](https://maven.apache.org/) (dependency manager)
