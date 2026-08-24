@@ -5,6 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <!-- Iconos de FontAwesome para el logo de WhatsApp -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" type="text/css" href="css/index.css">
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <style>
@@ -230,12 +232,40 @@
             border-radius: 12px;
             border: 2px solid aquamarine;
         }
+
+        /* --- ESTILOS DEL BOTÓN FLOTANTE DE WHATSAPP --- */
+        .wsp-float {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            bottom: 25px;
+            right: 25px;
+            background-color: #25d366;
+            color: #fff;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 32px;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .wsp-float:hover {
+            background-color: #20ba5a;
+            color: #fff;
+            transform: scale(1.1);
+            box-shadow: 2px 5px 15px rgba(37, 211, 102, 0.4);
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
 <!-- Public Key de Mercado Pago -->
 <input id="mercado-pago-public-key" value="APP_USR-c1273a1e-eb42-4b9e-ae43-6b0e469c7004" type="hidden" />
-<!-- ✅ CAMPO AMOUNT AGREGADO -->
 <input id="amount" type="hidden" value="0">
 
 <main>
@@ -273,7 +303,7 @@
         </div>
     </section>
 
-    <!-- NUEVA SECCIÓN: Formulario del Comprador -->
+    <!-- Formulario del Comprador -->
     <section class="customer-form dark" id="customer-form-section" style="display: none;">
         <div class="container">
             <div class="block-heading text-center">
@@ -289,23 +319,20 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="customer-first-name" class="text-primary">Nombre *</label>
-                                        <input type="text" class="form-control" id="customer-first-name" 
-                                               placeholder="Ej: Juan" required>
+                                        <input type="text" class="form-control" id="customer-first-name" placeholder="Ej: Juan" required>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="customer-last-name" class="text-primary">Apellido *</label>
-                                        <input type="text" class="form-control" id="customer-last-name" 
-                                               placeholder="Ej: Pérez" required>
+                                        <input type="text" class="form-control" id="customer-last-name" placeholder="Ej: Pérez" required>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label for="customer-email" class="text-primary">Email *</label>
-                                <input type="email" class="form-control" id="customer-email" 
-                                       placeholder="ejemplo@correo.com" required>
+                                <input type="email" class="form-control" id="customer-email" placeholder="ejemplo@correo.com" required>
                             </div>
                             
                             <div class="row">
@@ -322,36 +349,30 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="customer-dni-number" class="text-primary">Número de documento</label>
-                                        <input type="text" class="form-control" id="customer-dni-number" 
-                                               placeholder="Ej: 12345678">
+                                        <input type="text" class="form-control" id="customer-dni-number" placeholder="Ej: 12345678">
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label for="customer-phone" class="text-primary">Teléfono</label>
-                                <input type="tel" class="form-control" id="customer-phone" 
-                                       placeholder="Ej: +54 11 1234-5678">
+                                <input type="tel" class="form-control" id="customer-phone" placeholder="Ej: +54 11 1234-5678">
                             </div>
                             
                             <div class="text-center mt-4">
                                 <button type="submit" class="btn btn-primary btn-lg">
                                     ✅ Continuar al Pago
                                 </button>
-                                <!-- ✅ CORREGIDO: Botón de saltar formulario con ID correcto -->
-<button type="button" class="btn btn-outline-secondary btn-lg ml-2" id="skip-customer-info">
-    ⏭️ Saltar este paso
-</button>
+                                <button type="button" class="btn btn-outline-secondary btn-lg ml-2" id="skip-customer-info">
+                                    ⏭️ Saltar este paso
+                                </button>
                             </div>
                         </form>
                     </div>
                     
-                    <!-- Resumen del Pedido en el formulario -->
                     <div class="summary">
                         <h4 class="text-center mb-3 text-primary">📋 Resumen de tu Pedido</h4>
-                        <div id="customer-cart-summary">
-                            <!-- Los items del carrito se cargan aquí -->
-                        </div>
+                        <div id="customer-cart-summary"></div>
                         <div class="summary-item mt-3 pt-3 border-top">
                             <span class="text"><strong>Total a Pagar</strong></span>
                             <span class="price" id="customer-cart-total">$0</span>
@@ -370,13 +391,11 @@
                 <p>MILLENIUM TERMOTANQUES</p>
             </div>
             
-            <!-- ✅ NUEVO: Wallet Brick (Billetera Mercado Pago) -->
             <div class="wallet-section mb-4">
                 <h4 class="text-center mb-3 text-primary">👛 Pagar con Mercado Pago</h4>
                 <div id="walletBrick_container"></div>
             </div>
 
-            <!-- ✅ Payment Brick (Otros métodos) -->
             <div class="payment-section">
                 <h4 class="text-center mb-3 text-primary">💳 Otros métodos de pago</h4>
                 <div id="paymentBrick_container"></div>
@@ -403,7 +422,6 @@
                                 <div class="col-md-8 product-detail text-center">
                                     <div id="statusScreenBrick_container"></div>
                                     <div class="result-actions">
-                                        <!-- ✅ CORREGIDO: Botones con estilo severo -->
                                         <button id="download-receipt" class="btn-severo">
                                             📄 Descargar Comprobante
                                         </button>
@@ -421,10 +439,18 @@
     </section>
 </main>
 
+<!-- BOTÓN FLOTANTE DE WHATSAPP -->
+<a href="https://wa.me/5492612059469?text=Hola,%20tengo%20una%20consulta%20sobre%20los%20termotanques" 
+   class="wsp-float" 
+   target="_blank" 
+   rel="noopener noreferrer"
+   aria-label="Contactar por WhatsApp">
+    <i class="fab fa-whatsapp"></i>
+</a>
+
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 <script type="text/javascript" src="js/index.js" defer></script>
 <script>
-// Catálogo de termotanques Millenium
 const products = [
     {
         id: 1,
@@ -478,29 +504,22 @@ const products = [
     }
 ];
 
-// Carrito de compras
 let cart = [];
 
-// ✅ FUNCIÓN: Asegurar que el campo amount existe
 function ensureAmountField() {
     let amountInput = document.getElementById('amount');
-    
     if (!amountInput) {
         amountInput = document.createElement('input');
         amountInput.id = 'amount';
         amountInput.type = 'hidden';
         amountInput.value = '0';
         document.body.appendChild(amountInput);
-        console.log('✅ Campo amount creado dinámicamente');
     }
-    
     return amountInput;
 }
 
-// ✅ FUNCIÓN: Calcular total del carrito de forma confiable
 function calculateCartTotal() {
     if (!cart || cart.length === 0) return 0;
-    
     let total = 0;
     cart.forEach(item => {
         total += item.price * item.quantity;
@@ -508,7 +527,6 @@ function calculateCartTotal() {
     return total;
 }
 
-// Función para renderizar productos
 function renderProducts() {
     const container = document.getElementById('products-container');
     container.innerHTML = '';
@@ -565,7 +583,6 @@ function renderProducts() {
     });
 }
 
-// Funciones del carrito
 function addToCart(productId) {
     const quantityInput = document.getElementById(`quantity-${productId}`);
     const quantity = parseInt(quantityInput.value);
@@ -591,7 +608,6 @@ function updateCart(productId, quantity) {
         cart = cart.filter(item => item.id !== productId);
     } else {
         const existingItem = cart.find(item => item.id === productId);
-        
         if (existingItem) {
             existingItem.quantity = quantityNum;
         } else {
@@ -604,15 +620,12 @@ function updateCart(productId, quantity) {
             });
         }
     }
-    
     updateCartDisplay();
 }
 
 function updateCartDisplay() {
     const cartItemsContainer = document.getElementById('cart-items');
     const checkoutBtn = document.getElementById('checkout-btn');
-    
-    // ✅ USAR ensureAmountField() en lugar de getElementById
     const amountInput = ensureAmountField();
     
     cartItemsContainer.innerHTML = '';
@@ -645,11 +658,9 @@ function updateCartDisplay() {
         checkoutBtn.innerHTML = `💳 Pagar $${total.toLocaleString()}`;
         amountInput.value = total.toFixed(2);
     }
-    
     document.getElementById('cart-total').textContent = `$${total.toLocaleString()}`;
 }
 
-// ✅ FUNCIÓN: Actualizar resumen del carrito en el formulario
 function updateCustomerCartSummary() {
     const summaryContainer = document.getElementById('customer-cart-summary');
     const totalElement = document.getElementById('customer-cart-total');
@@ -670,28 +681,23 @@ function updateCustomerCartSummary() {
             </div>
         `;
     });
-    
     totalElement.textContent = `$${total.toLocaleString()}`;
 }
 
-// ✅ FUNCIÓN: Mostrar formulario del comprador
 function showCustomerForm() {
     document.querySelector('.container__cart').style.display = 'none';
     document.querySelector('#customer-form-section').style.display = 'block';
     document.querySelector('.container__payment').style.display = 'none';
-    
     updateCustomerCartSummary();
 }
 
-// ✅ FUNCIÓN: Validar email
 function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 }
 
-// ✅ FUNCIÓN: Saltar formulario (opcional)
 function skipCustomerInfo() {
-    customerData = {
+    window.customerData = {
         firstName: 'Cliente',
         lastName: 'Millenium',
         email: 'cliente@millenium.com',
@@ -699,40 +705,28 @@ function skipCustomerInfo() {
         dniNumber: '',
         phone: ''
     };
-    
     goToPayment();
 }
 
-// ✅ FUNCIÓN: Ir a métodos de pago
 function goToPayment() {
     document.querySelector('.container__cart').style.display = 'none';
     document.querySelector('#customer-form-section').style.display = 'none';
     document.querySelector('.container__payment').style.display = 'block';
     
-    // Llamar a la función del archivo index.js
     if (typeof initializeMercadoPagoBricks === 'function') {
         initializeMercadoPagoBricks();
     }
 }
 
-// ✅ FUNCIÓN PARA VOLVER A PAGOS.HTML
-function goBackToPayments() {
-    console.log('🔄 Volviendo a pagos.html');
-    window.location.href = 'pagos.html';
-}
-
-// Inicializar la página
 document.addEventListener('DOMContentLoaded', function() {
     renderProducts();
     updateCartDisplay();
     
-    // ✅ Event listener para el botón de saltar formulario
-    const skipFormBtn = document.getElementById('skip-customer-form');
+    const skipFormBtn = document.getElementById('skip-customer-info');
     if (skipFormBtn) {
         skipFormBtn.addEventListener('click', skipCustomerInfo);
     }
     
-    // ✅ Event listener para el botón de checkout
     const checkoutBtn = document.getElementById('checkout-btn');
     if (checkoutBtn) {
         checkoutBtn.addEventListener('click', function() {
@@ -743,18 +737,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('❌ Error: El carrito está vacío o el monto es inválido.');
                 return;
             }
-            
             showCustomerForm();
         });
     }
     
-    // ✅ MANEJAR FORMULARIO DEL COMPRADOR
     const customerForm = document.getElementById('customer-info-form');
     if (customerForm) {
         customerForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // Guardar datos del cliente
             const customerData = {
                 firstName: document.getElementById('customer-first-name').value.trim(),
                 lastName: document.getElementById('customer-last-name').value.trim(),
@@ -764,22 +755,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 phone: document.getElementById('customer-phone').value.trim()
             };
             
-            // Validar campos obligatorios
             if (!customerData.firstName || !customerData.lastName || !customerData.email) {
                 alert('❌ Por favor completa los campos obligatorios (*)');
                 return;
             }
             
-            // Validar email
             if (!isValidEmail(customerData.email)) {
                 alert('❌ Por favor ingresa un email válido');
                 return;
             }
             
-            // Guardar en variable global para usar en el pago
             window.customerData = customerData;
-            
-            // Ir a la sección de pago
             goToPayment();
         });
     }
