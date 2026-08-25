@@ -455,25 +455,31 @@ const products = [
     {
         id: 1,
         name: "Fernet Branca 12 unidades 750 .",
-       
-        price: 150.000,
+        description: "Caja x 12 unidades de 750ml.",
+        price: 150000,
         image: "img/Caja x 12 Mix F Rojos -Apricot-Orange.jpg",
-        
-       
+        category: "Bebidas",
+        features: ["Caja x 12", "750ml"],
         stock: 15
     },
     {
         id: 2,
         name: "1 caja de Etnia malbec x 6",
-        price: 10.500,
+        description: "Vino Etnia Malbec en caja de 6 unidades.",
+        price: 10500,
         image: "img/etniamalbecpor6.jpg",
+        category: "Vinos",
+        features: ["Caja x 6", "Malbec"],
         stock: 25
     },
     {
         id: 3,
         name: "Fernet Buho 700 ml",
+        description: "Fernet Búho botella de 700ml.",
         price: 4000,
         image: "img/fernetbuho700ml.jpg",
+        category: "Bebidas",
+        features: ["700ml"],
         stock: 8
     },
     {
@@ -526,6 +532,10 @@ function renderProducts() {
     container.innerHTML = '';
 
     products.forEach(product => {
+        const description = product.description || '';
+        const category = product.category || 'General';
+        const features = product.features ? product.features.join(', ') : '';
+
         const productElement = `
             <div class="product-card">
                 <div class="product">
@@ -541,13 +551,11 @@ function renderProducts() {
                                 <div class="col-md-5 product-detail">
                                     <h5 class="text-primary">${product.name}</h5>
                                     <div class="product-info">
-                                        <p class="mb-2">${product.description}</p>
-                                        <p class="mb-1"><b>Categoría:</b> <span class="badge badge-info">${product.category}</span></p>
+                                        ${description ? `<p class="mb-2">${description}</p>` : ''}
+                                        <p class="mb-1"><b>Categoría:</b> <span class="badge badge-info">${category}</span></p>
                                         <p class="mb-1"><b>Disponibles:</b> ${product.stock} unidades</p>
                                         <p class="mb-2"><b>Precio:</b> $<span class="unit-price">${product.price.toLocaleString()}</span></p>
-                                        <small class="text-muted">
-                                            <b>Características:</b> ${product.features.join(', ')}
-                                        </small>
+                                        ${features ? `<small class="text-muted"><b>Características:</b> ${features}</small>` : ''}
                                     </div>
                                 </div>
                                 <div class="col-md-4 product-detail text-center">
